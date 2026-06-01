@@ -63,9 +63,15 @@ def create_app():
     else:
         app = Flask(__name__)
         
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///pos.db'
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url:
+        if database_url.startswith("postgres://"):
+            database_url = database_url.replace("postgres://", "postgresql://", 1)
+        app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    else:
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///pos.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['SECRET_KEY'] = 'tn-pos-secret-2024'
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'tn-pos-secret-2024')
     app.config['STORE_NAME'] = STORE_NAME
     app.config['STORE_NAME_EN'] = STORE_NAME_EN
     app.config['STORE_GSTIN'] = STORE_GSTIN
@@ -373,7 +379,9 @@ def seed_data():
         db.session.commit()
 
 
+app = create_app()
+
 if __name__ == '__main__':
-    app = create_app()
-    app.run(debug=True, port=5000, threaded=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
 
