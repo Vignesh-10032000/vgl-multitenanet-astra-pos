@@ -16,15 +16,18 @@ from datetime import datetime
 # ── SQLite Optimization (WAL mode, normal synchronous, busy timeout) ─────────
 @event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
-    cursor = dbapi_connection.cursor()
-    try:
-        cursor.execute("PRAGMA journal_mode=WAL")
-        cursor.execute("PRAGMA synchronous=NORMAL")
-        cursor.execute("PRAGMA busy_timeout=5000")
-    except Exception:
-        pass
-    finally:
-        cursor.close()
+    # Only run SQLite pragmas if the DB API connection is native SQLite3
+    if type(dbapi_connection).__module__.startswith("sqlite3"):
+        cursor = dbapi_connection.cursor()
+        try:
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA synchronous=NORMAL")
+            cursor.execute("PRAGMA busy_timeout=5000")
+        except Exception:
+            pass
+        finally:
+            cursor.close()
+
 
 # ── Metrics Tracker ──────────────────────────────────────────────────────────
 class MetricsTracker:
