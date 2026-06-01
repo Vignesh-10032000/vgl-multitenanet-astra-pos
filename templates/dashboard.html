@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard — இன்றைய விற்பனை{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card stat-card--primary">
+      <div class="stat-icon">💰</div>
+      <div class="stat-info">
+        <div class="stat-label">இன்றைய வருவாய்</div>
+        <div class="stat-value" id="todaySales">—</div>
+        <div class="stat-sub" id="todayCount">— பரிவர்த்தனைகள்</div>
+      </div>
+    </div>
+    <div class="stat-card stat-card--cyan">
+      <div class="stat-icon">📅</div>
+      <div class="stat-info">
+        <div class="stat-label">இந்த வாரம்</div>
+        <div class="stat-value" id="weekSales">—</div>
+        <div class="stat-sub">கடந்த 7 நாட்கள்</div>
+      </div>
+    </div>
+    <div class="stat-card stat-card--purple">
+      <div class="stat-icon">📦</div>
+      <div class="stat-info">
+        <div class="stat-label">மொத்த பொருட்கள்</div>
+        <div class="stat-value" id="totalProducts">—</div>
+        <div class="stat-sub" id="lowStockStat">— குறைந்த இருப்பு</div>
+      </div>
+    </div>
+    <div class="stat-card stat-card--green">
+      <div class="stat-icon">👥</div>
+      <div class="stat-info">
+        <div class="stat-label">வாடிக்கையாளர்கள்</div>
+        <div class="stat-value" id="totalCustomers">—</div>
+        <div class="stat-sub">பதிவு செய்யப்பட்டவர்கள்</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GST summary strip -->
+  <div class="gst-summary-strip" id="gstStrip" style="display:none">
+    <div class="gst-strip-item">
+      <span class="gst-strip-label">இன்று வரி (CGST)</span>
+      <span class="gst-strip-val" id="todayCgst">—</span>
+    </div>
+    <div class="gst-strip-divider"></div>
+    <div class="gst-strip-item">
+      <span class="gst-strip-label">இன்று வரி (SGST)</span>
+      <span class="gst-strip-val" id="todaySgst">—</span>
+    </div>
+    <div class="gst-strip-divider"></div>
+    <div class="gst-strip-item">
+      <span class="gst-strip-label">மொத்த வரி</span>
+      <span class="gst-strip-val" id="todayGst">—</span>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="card chart-card chart-card--wide">
+      <div class="card-header">
+        <h3 class="card-title">கடந்த 7 நாட்கள் வருவாய் (₹)</h3>
+      </div>
+      <div class="card-body">
+        <canvas id="revenueChart" height="120"></canvas>
+      </div>
+    </div>
+    <div class="card chart-card">
+      <div class="card-header">
+        <h3 class="card-title">சிறந்த பொருட்கள்</h3>
+      </div>
+      <div class="card-body">
+        <div id="topProductsList" class="top-products-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tables-row">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">சமீபத்திய விற்பனைகள்</h3>
+        <a href="/sales" class="btn btn-ghost btn-sm">அனைத்தும் காண</a>
+      </div>
+      <div class="card-body p0">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ரசீது #</th>
+              <th>வாடிக்கையாளர்</th>
+              <th>பொருட்கள்</th>
+              <th>கட்டணம்</th>
+              <th>மொத்தம்</th>
+              <th>நேரம்</th>
+            </tr>
+          </thead>
+          <tbody id="recentSalesTbody">
+            <tr><td colspan="6" class="text-center text-muted">ஏற்றுகிறது...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">⚠️ குறைந்த இருப்பு</h3>
+        <a href="/products" class="btn btn-ghost btn-sm">நிர்வகிக்க</a>
+      </div>
+      <div class="card-body p0">
+        <div id="lowStockList" class="low-stock-list">
+          <div class="text-center text-muted p-4">ஏற்றுகிறது...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let revenueChart = null;
+
+async function loadDashboard() {
+  const res = await fetch('/api/dashboard/stats');
+  const data = await res.json();
+
+  document.getElementById('todaySales').textContent = fmt(data.today_sales);
+  document.getElementById('todayCount').textContent = data.today_count + ' பரிவர்த்தனைகள்';
+  document.getElementById('weekSales').textContent = fmt(data.week_sales);
+  document.getElementById('totalProducts').textContent = data.total_products;
+  document.getElementById('lowStockStat').textContent = data.low_stock + ' குறைந்த இருப்பு';
+  document.getElementById('totalCustomers').textContent = data.total_customers;
+
+  // GST strip
+  if (data.today_cgst !== undefined) {
+    document.getElementById('gstStrip').style.display = 'flex';
+    document.getElementById('todayCgst').textContent = fmt(data.today_cgst);
+    document.getElementById('todaySgst').textContent = fmt(data.today_sgst);
+    document.getElementById('todayGst').textContent = fmt(data.today_cgst + data.today_sgst);
+  }
+
+  // Revenue Chart
+  if (revenueChart) revenueChart.destroy();
+  const ctx = document.getElementById('revenueChart').getContext('2d');
+  revenueChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: data.daily_data.map(d => d.date),
+      datasets: [{
+        label: 'வருவாய் (₹)',
+        data: data.daily_data.map(d => d.revenue),
+        backgroundColor: 'rgba(139,92,246,0.5)',
+        borderColor: '#8b5cf6',
+        borderWidth: 2,
+        borderRadius: 8,
+        hoverBackgroundColor: 'rgba(139,92,246,0.8)',
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', callback: v => '₹' + v } }
+      }
+    }
+  });
+
+  // Top products
+  const tpl = document.getElementById('topProductsList');
+  tpl.innerHTML = data.top_products.map((p, i) => {
+    const pct = data.top_products[0].revenue ? (p.revenue / data.top_products[0].revenue * 100) : 0;
+    return `<div class="top-product-item">
+      <div class="top-product-rank">#${i+1}</div>
+      <div class="top-product-info">
+        <div class="top-product-name">${p.name}</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="top-product-revenue">${fmt(p.revenue)}</div>
+    </div>`;
+  }).join('') || '<div class="text-center text-muted p-4">விற்பனை இல்லை</div>';
+
+  // Recent sales
+  const tbody = document.getElementById('recentSalesTbody');
+  tbody.innerHTML = data.recent_sales.map(s => `
+    <tr>
+      <td><span class="sale-id">#${s.id}</span></td>
+      <td>${s.customer}</td>
+      <td>${s.item_count} பொருட்கள்</td>
+      <td><span class="badge badge--${s.payment_method}">${payLabel(s.payment_method)}</span></td>
+      <td class="fw-600">${fmt(s.total)}</td>
+      <td class="text-muted text-sm">${s.created_at}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="6" class="text-center text-muted">விற்பனை இல்லை</td></tr>';
+
+  // Low stock
+  const lsl = document.getElementById('lowStockList');
+  lsl.innerHTML = data.low_stock_products.map(p => `
+    <div class="low-stock-item">
+      <div class="low-stock-info">
+        <div class="low-stock-name">${p.name}</div>
+        <div class="low-stock-sku">${p.sku}</div>
+      </div>
+      <div class="low-stock-count ${p.stock === 0 ? 'text-danger' : 'text-warning'}">
+        ${p.stock === 0 ? 'தீர்ந்தது' : p.stock + ' உள்ளது'}
+      </div>
+    </div>
+  `).join('') || '<div class="text-center text-muted p-4">✅ அனைத்து பொருட்களும் சரியான அளவில் உள்ளன</div>';
+}
+
+loadDashboard();
+setInterval(loadDashboard, 30000);
+</script>
+{% endblock %}

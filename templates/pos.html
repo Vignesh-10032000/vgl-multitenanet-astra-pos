@@ -1,0 +1,437 @@
+{% extends 'base.html' %}
+{% block title %}POS Terminal{% endblock %}
+{% block page_title %}POS / விற்பனை Terminal{% endblock %}
+
+{% block content %}
+<div class="pos-layout">
+  <!-- Product Panel -->
+  <div class="pos-products-panel">
+    <div class="pos-search-bar">
+      <div class="search-input-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" id="productSearch" placeholder="பொருள் தேடுக / Barcode / HSN..." class="search-input" autocomplete="off">
+        <kbd class="search-kbd">⌘K</kbd>
+      </div>
+    </div>
+
+    <div class="category-filters" id="categoryFilters">
+      <button class="cat-btn active" data-cat="">அனைத்தும்</button>
+    </div>
+
+    <div class="products-grid" id="productsGrid">
+      <div class="loading-state"><div class="spinner"></div><p>ஏற்றுகிறது...</p></div>
+    </div>
+  </div>
+
+  <!-- Cart Panel -->
+  <div class="pos-cart-panel">
+    <div class="cart-header">
+      <h2 class="cart-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20">
+          <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+        </svg>
+        கார்ட்
+        <span class="cart-count" id="cartCount">0</span>
+      </h2>
+      <button class="btn btn-ghost btn-sm text-danger" id="clearCartBtn">அழி</button>
+    </div>
+
+    <!-- Customer -->
+    <div class="cart-customer">
+      <label class="form-label">வாடிக்கையாளர்</label>
+      <select id="customerSelect" class="form-select"></select>
+    </div>
+
+    <!-- Cart Items -->
+    <div class="cart-items" id="cartItems">
+      <div class="cart-empty">
+        <div class="cart-empty-icon">🛒</div>
+        <p>கார்ட் காலியாக உள்ளது</p>
+        <p class="text-sm text-muted">பொருட்களை சேர்க்கவும்</p>
+      </div>
+    </div>
+
+    <!-- GST Breakdown -->
+    <div class="gst-breakdown" id="gstBreakdown" style="display:none">
+      <div class="gst-row"><span>வரிக்குரிய தொகை</span><span id="taxableAmt">₹0.00</span></div>
+      <div class="gst-row"><span>CGST</span><span id="cgstAmt">₹0.00</span></div>
+      <div class="gst-row"><span>SGST</span><span id="sgstAmt">₹0.00</span></div>
+    </div>
+
+    <!-- Cart Summary -->
+    <div class="cart-summary">
+      <div class="summary-row">
+        <span>துணை மொத்தம்</span>
+        <span id="cartSubtotal">₹0.00</span>
+      </div>
+      <div class="summary-row">
+        <span>தள்ளுபடி</span>
+        <div class="discount-input-wrap">
+          <span>₹</span>
+          <input type="number" id="discountInput" class="discount-input" value="0" min="0" step="1">
+        </div>
+      </div>
+      <div class="summary-row summary-total">
+        <span>மொத்தம்</span>
+        <span id="cartTotal">₹0.00</span>
+      </div>
+    </div>
+
+    <!-- Payment -->
+    <div class="payment-section">
+      <div class="payment-methods">
+        <button class="pay-btn active" data-method="cash" id="payCash">💵 ரொக்கம்</button>
+        <button class="pay-btn" data-method="upi" id="payUpi">📱 UPI</button>
+        <button class="pay-btn" data-method="card" id="payCard">💳 Card</button>
+      </div>
+
+      <!-- UPI QR hint -->
+      <div id="upiSection" style="display:none" class="upi-section">
+        <div class="upi-id">📲 UPI: manikam@upi</div>
+        <div class="text-muted text-sm">PhonePe / GPay / Paytm ஏற்கிறோம்</div>
+      </div>
+
+      <div class="amount-paid-section" id="amountPaidSection">
+        <label class="form-label">பெற்ற தொகை (₹)</label>
+        <div class="amount-input-wrap">
+          <span class="amount-currency">₹</span>
+          <input type="number" id="amountPaid" class="amount-input" placeholder="0.00" step="1">
+        </div>
+        <div class="quick-amounts" id="quickAmounts"></div>
+        <div class="change-display" id="changeDisplay" style="display:none">
+          <span>திரும்ப கொடுக்க:</span>
+          <span class="change-amount" id="changeAmount">₹0.00</span>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-checkout" id="checkoutBtn" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        விற்பனை முடி
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Receipt Modal -->
+<div class="modal" id="receiptModal">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-header">
+      <h3>🧾 GST ரசீது</h3>
+      <button class="modal-close" id="closeReceipt">✕</button>
+    </div>
+    <div class="modal-body" id="receiptContent"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="printReceipt">🖨️ அச்சிடு</button>
+      <button class="btn btn-primary" id="newSaleBtn">புதிய விற்பனை</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let cart = [];
+let selectedPayment = 'cash';
+
+async function loadCategories() {
+  const res = await fetch('/api/categories');
+  const cats = await res.json();
+  const cf = document.getElementById('categoryFilters');
+  cats.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'cat-btn';
+    btn.dataset.cat = c.id;
+    btn.textContent = c.icon + ' ' + c.name;
+    cf.appendChild(btn);
+  });
+  cf.querySelectorAll('.cat-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      cf.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      loadProducts('', btn.dataset.cat || null);
+    });
+  });
+}
+
+async function loadCustomers() {
+  const res = await fetch('/api/customers');
+  const customers = await res.json();
+  const sel = document.getElementById('customerSelect');
+  sel.innerHTML = customers.map(c =>
+    `<option value="${c.id}">${c.name}${c.gstin ? ' (B2B)' : ''}</option>`
+  ).join('');
+}
+
+let selCat = null;
+async function loadProducts(q = '', cat = selCat) {
+  selCat = cat;
+  const grid = document.getElementById('productsGrid');
+  grid.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+  const params = new URLSearchParams();
+  if (q) params.set('q', q);
+  if (cat) params.set('category_id', cat);
+  const res = await fetch('/api/products/search?' + params);
+  const products = await res.json();
+  if (!products.length) {
+    grid.innerHTML = '<div class="loading-state"><p class="text-muted">பொருட்கள் இல்லை</p></div>';
+    return;
+  }
+  grid.innerHTML = products.map(p => `
+    <div class="product-card ${p.stock === 0 ? 'out-of-stock' : ''}"
+         onclick="addToCart(${p.id},'${escHtml(p.name)}',${p.price},${p.stock},${p.gst_rate})"
+         tabindex="0" role="button">
+      <div class="product-emoji">${p.category_icon}</div>
+      <div class="product-name">${p.name}</div>
+      <div class="product-gst-badge">GST ${p.gst_rate}%</div>
+      <div class="product-meta">
+        <span class="product-price">${fmt(p.price)}</span>
+        <span class="product-stock ${p.stock <= 10 ? 'low' : ''}">${p.stock === 0 ? '🚫 இல்லை' : p.stock + ' உள்ளது'}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function escHtml(s) { return s.replace(/'/g, "\\'"); }
+
+function addToCart(id, name, price, stock, gstRate) {
+  if (stock === 0) { showToast('இருப்பு இல்லை!', 'error'); return; }
+  const existing = cart.find(i => i.id === id);
+  if (existing) {
+    if (existing.qty >= stock) { showToast('அதிகபட்ச இருப்பு', 'warning'); return; }
+    existing.qty++;
+  } else {
+    cart.push({ id, name, price, qty: 1, stock, gstRate });
+  }
+  renderCart();
+  showToast(name + ' சேர்க்கப்பட்டது', 'success');
+}
+
+function renderCart() {
+  const cartCount = document.getElementById('cartCount');
+  cartCount.textContent = cart.reduce((s, i) => s + i.qty, 0);
+  const cartItems = document.getElementById('cartItems');
+  if (!cart.length) {
+    cartItems.innerHTML = `<div class="cart-empty"><div class="cart-empty-icon">🛒</div><p>கார்ட் காலியாக உள்ளது</p></div>`;
+    document.getElementById('gstBreakdown').style.display = 'none';
+  } else {
+    cartItems.innerHTML = cart.map((item, idx) => `
+      <div class="cart-item">
+        <div class="cart-item-info">
+          <div class="cart-item-name">${item.name}</div>
+          <div class="cart-item-price">${fmt(item.price)} · GST ${item.gstRate}%</div>
+        </div>
+        <div class="cart-item-controls d-flex align-items-center gap-1">
+          <button class="qty-btn" onclick="changeQty(${idx},-1)">−</button>
+          <input type="number" class="qty-input text-center" style="width:48px;height:28px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:4px" value="${item.qty}" min="1" max="${item.stock}" onchange="setQty(${idx}, this.value)">
+          <button class="qty-btn" onclick="changeQty(${idx},1)">+</button>
+        </div>
+        <div class="cart-item-total">${fmt(item.price * item.qty)}</div>
+        <button class="cart-item-remove" onclick="removeFromCart(${idx})">✕</button>
+      </div>
+    `).join('');
+    document.getElementById('gstBreakdown').style.display = 'block';
+  }
+  updateTotals();
+}
+
+function changeQty(idx, delta) {
+  cart[idx].qty = Math.max(1, Math.min(cart[idx].qty + delta, cart[idx].stock));
+  renderCart();
+}
+function setQty(idx, val) {
+  const q = parseInt(val) || 1;
+  cart[idx].qty = Math.max(1, Math.min(q, cart[idx].stock));
+  renderCart();
+}
+function removeFromCart(idx) { cart.splice(idx, 1); renderCart(); }
+function getDiscount() { return parseFloat(document.getElementById('discountInput').value) || 0; }
+
+function updateTotals() {
+  const subtotalWithGst = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const discount = getDiscount();
+  const total = Math.max(0, subtotalWithGst - discount);
+
+  // GST breakdown
+  let cgst = 0, sgst = 0, taxable = 0;
+  cart.forEach(item => {
+    const lineTotal = item.price * item.qty;
+    const taxAmt = lineTotal - lineTotal / (1 + item.gstRate / 100);
+    cgst += taxAmt / 2;
+    sgst += taxAmt / 2;
+    taxable += lineTotal - taxAmt;
+  });
+
+  document.getElementById('cartSubtotal').textContent = fmt(subtotalWithGst);
+  document.getElementById('cartTotal').textContent = fmt(total);
+  document.getElementById('taxableAmt').textContent = fmt(taxable);
+  document.getElementById('cgstAmt').textContent = fmt(cgst);
+  document.getElementById('sgstAmt').textContent = fmt(sgst);
+
+  updateChange(total);
+  document.getElementById('checkoutBtn').disabled = cart.length === 0;
+  updateQuickAmounts(total);
+}
+
+function updateChange(total) {
+  const paid = parseFloat(document.getElementById('amountPaid').value) || 0;
+  const change = paid - total;
+  const display = document.getElementById('changeDisplay');
+  if (selectedPayment === 'cash' && paid > 0) {
+    display.style.display = 'flex';
+    const el = document.getElementById('changeAmount');
+    el.textContent = fmt(Math.max(0, change));
+    el.className = 'change-amount ' + (change < 0 ? 'text-danger' : 'text-success');
+  } else { display.style.display = 'none'; }
+}
+
+function updateQuickAmounts(total) {
+  const amounts = [Math.ceil(total/10)*10, Math.ceil(total/50)*50, Math.ceil(total/100)*100, Math.ceil(total/500)*500]
+    .filter((v,i,a) => a.indexOf(v)===i && v >= total).slice(0,4);
+  document.getElementById('quickAmounts').innerHTML = amounts.map(a =>
+    `<button class="quick-amount-btn" onclick="document.getElementById('amountPaid').value=${a};updateChange(${total.toFixed(2)})">${fmt(a)}</button>`
+  ).join('');
+}
+
+// Payment toggles
+document.querySelectorAll('.pay-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.pay-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedPayment = btn.dataset.method;
+    document.getElementById('amountPaidSection').style.display = selectedPayment === 'cash' ? 'block' : 'none';
+    document.getElementById('upiSection').style.display = selectedPayment === 'upi' ? 'block' : 'none';
+    document.getElementById('changeDisplay').style.display = 'none';
+  });
+});
+
+document.getElementById('discountInput').addEventListener('input', updateTotals);
+document.getElementById('amountPaid').addEventListener('input', () => {
+  const total = parseFloat(document.getElementById('cartTotal').textContent.replace('₹','').replace(',','')) || 0;
+  updateChange(total);
+});
+
+document.getElementById('clearCartBtn').addEventListener('click', () => {
+  if (cart.length && confirm('கார்ட் அழிக்கவா?')) { cart = []; renderCart(); }
+});
+
+document.getElementById('checkoutBtn').addEventListener('click', async () => {
+  if (!cart.length) return;
+  const total = parseFloat(document.getElementById('cartTotal').textContent.replace('₹','').replace(',',''));
+  const paid = parseFloat(document.getElementById('amountPaid').value) || 0;
+  if (selectedPayment === 'cash' && paid < total) {
+    showToast('பெற்ற தொகை குறைவாக உள்ளது', 'error'); return;
+  }
+  const payload = {
+    items: cart.map(i => ({ product_id: i.id, quantity: i.qty })),
+    customer_id: parseInt(document.getElementById('customerSelect').value),
+    payment_method: selectedPayment,
+    amount_paid: selectedPayment === 'cash' ? paid : total,
+    discount: getDiscount(),
+  };
+  try {
+    document.getElementById('checkoutBtn').disabled = true;
+    document.getElementById('checkoutBtn').textContent = 'செயலாக்குகிறது...';
+    const res = await fetch('/api/checkout', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    const data = await res.json();
+    if (data.success) { showReceipt(data.sale); cart = []; renderCart(); }
+    else showToast(data.error || 'பிழை ஏற்பட்டது', 'error');
+  } finally {
+    document.getElementById('checkoutBtn').disabled = false;
+    document.getElementById('checkoutBtn').innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18"><polyline points="20 6 9 17 4 12"/></svg> விற்பனை முடி';
+  }
+});
+
+function showReceipt(sale) {
+  const content = document.getElementById('receiptContent');
+  content.innerHTML = `
+    <div class="receipt">
+      <div class="receipt-header">
+        <div class="receipt-logo">🏪 மாணிக்கம் ஸ்டோர்ஸ்</div>
+        <div style="font-size:11px;color:#94a3b8">23, Anna Salai, Chennai - 600002</div>
+        <div style="font-size:11px;color:#94a3b8">GSTIN: 33AABCU9603R1ZX</div>
+        <div style="font-size:11px;color:#94a3b8">Tamil Nadu State · CGST + SGST</div>
+        <div class="receipt-id">ரசீது #${sale.id}</div>
+        <div class="receipt-date">${sale.created_at}</div>
+        <div class="receipt-customer">வாடிக்கையாளர்: ${sale.customer}</div>
+        <div class="receipt-payment">கட்டண முறை: ${payLabel(sale.payment_method)}</div>
+      </div>
+      <div class="receipt-divider"></div>
+      <div class="receipt-items">
+        ${sale.items.map(i => `
+          <div class="receipt-item">
+            <div>
+              <div>${i.product_name}</div>
+              <div class="text-muted text-sm">${i.quantity} × ${fmt(i.price)} | HSN: ${i.hsn_code || '—'} | GST ${i.gst_rate}%</div>
+            </div>
+            <div>${fmt(i.subtotal)}</div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="receipt-divider"></div>
+      <div class="receipt-totals">
+        <div class="receipt-row"><span>வரிக்குரிய தொகை</span><span>${fmt(sale.subtotal)}</span></div>
+        <div class="receipt-row"><span>CGST</span><span>${fmt(sale.total_cgst)}</span></div>
+        <div class="receipt-row"><span>SGST</span><span>${fmt(sale.total_sgst)}</span></div>
+        ${sale.discount > 0 ? `<div class="receipt-row"><span>தள்ளுபடி</span><span>-${fmt(sale.discount)}</span></div>` : ''}
+        <div class="receipt-row receipt-row--total"><span>மொத்தம்</span><span>${fmt(sale.total)}</span></div>
+        <div class="receipt-row"><span>பெற்ற தொகை</span><span>${fmt(sale.amount_paid)}</span></div>
+        ${sale.change_given > 0 ? `<div class="receipt-row"><span>திரும்ப</span><span>${fmt(sale.change_given)}</span></div>` : ''}
+      </div>
+      <div class="receipt-footer">வாங்கியதற்கு நன்றி! 🙏<br><small>This is a computer-generated receipt</small></div>
+    </div>
+  `;
+  openModal('receiptModal');
+}
+
+document.getElementById('closeReceipt').addEventListener('click', () => closeModal('receiptModal'));
+document.getElementById('newSaleBtn').addEventListener('click', () => { closeModal('receiptModal'); loadProducts(); });
+document.getElementById('printReceipt').addEventListener('click', () => window.print());
+
+document.addEventListener('keydown', e => {
+  // Focus Search: Ctrl+K or '/' (when not typing in other inputs)
+  if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') || (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'SELECT' && document.activeElement.tagName !== 'TEXTAREA')) {
+    e.preventDefault();
+    const searchInput = document.getElementById('productSearch');
+    if (searchInput) {
+      searchInput.focus();
+      searchInput.select();
+    }
+  }
+  
+  // F2: Complete checkout
+  if (e.key === 'F2') {
+    e.preventDefault();
+    const btn = document.getElementById('checkoutBtn');
+    if (btn && !btn.disabled) {
+      btn.click();
+    }
+  }
+  
+  // F4: Clear cart
+  if (e.key === 'F4') {
+    e.preventDefault();
+    const btn = document.getElementById('clearCartBtn');
+    if (btn) {
+      btn.click();
+    }
+  }
+  
+  // Esc: Close open modals
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal.open').forEach(m => closeModal(m.id));
+  }
+});
+
+let st;
+document.getElementById('productSearch').addEventListener('input', e => {
+  clearTimeout(st); st = setTimeout(() => loadProducts(e.target.value), 300);
+});
+
+loadCategories(); loadProducts(); loadCustomers();
+</script>
+{% endblock %}
