@@ -161,3 +161,36 @@ def product_performance():
         'fast_moving': [{'name': r.name, 'sku': r.sku, 'qty': int(r.qty_sold)} for r in fast_moving],
         'slow_moving': [{'name': p.name, 'sku': p.sku, 'stock': p.stock} for p in slow_moving]
     })
+
+@reports_bp.route('/api/reports/day-close', methods=['GET'])
+def day_close():
+    from models import Sale
+    from datetime import datetime
+    
+    today = datetime.utcnow().date()
+    start = datetime.combine(today, datetime.min.time())
+    end = datetime.combine(today, datetime.max.time())
+    
+    sales_today = Sale.query.filter(
+        Sale.created_at >= start,
+        Sale.created_at <= end
+    ).all()
+    
+    total_cash = sum(s.total for s in sales_today if s.payment_method == 'cash')
+    total_upi = sum(s.total for s in sales_today if s.payment_method in ('upi', 'mobile'))
+    total_card = sum(s.total for s in sales_today if s.payment_method == 'card')
+    total_cgst = sum(s.total_cgst for s in sales_today)
+    total_sgst = sum(s.total_sgst for s in sales_today)
+    grand_total = sum(s.total for s in sales_today)
+    
+    return jsonify({
+        'success': True,
+        'date': today.strftime('%d-%m-%Y'),
+        'total_transactions': len(sales_today),
+        'cash': round(total_cash, 2),
+        'upi': round(total_upi, 2),
+        'card': round(total_card, 2),
+        'total_cgst': round(total_cgst, 2),
+        'total_sgst': round(total_sgst, 2),
+        'grand_total': round(grand_total, 2)
+    })

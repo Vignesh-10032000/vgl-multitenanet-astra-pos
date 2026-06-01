@@ -149,3 +149,49 @@ class SaleItem(db.Model):
             'sgst': round(gst_amt / 2, 2),
             'subtotal': self.subtotal,
         }
+
+
+class SaleReturn(db.Model):
+    __tablename__ = 'sale_returns'
+    id = db.Column(db.Integer, primary_key=True)
+    sale_id = db.Column(db.Integer, db.ForeignKey('sales.id'), nullable=False)
+    refund_amount = db.Column(db.Float, default=0)
+    payment_method = db.Column(db.String(50), default='cash')
+    reason = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    sale = db.relationship('Sale', backref=db.backref('returns', lazy=True))
+    items = db.relationship('SaleReturnItem', backref='sale_return', lazy=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'sale_id': self.sale_id,
+            'refund_amount': self.refund_amount,
+            'payment_method': self.payment_method,
+            'reason': self.reason,
+            'created_at': self.created_at.strftime('%d-%m-%Y %H:%M'),
+            'items': [i.to_dict() for i in self.items]
+        }
+
+
+class SaleReturnItem(db.Model):
+    __tablename__ = 'sale_return_items'
+    id = db.Column(db.Integer, primary_key=True)
+    sale_return_id = db.Column(db.Integer, db.ForeignKey('sale_returns.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    subtotal = db.Column(db.Float, nullable=False)
+
+    product = db.relationship('Product')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'product_id': self.product_id,
+            'product_name': self.product.name if self.product else '',
+            'quantity': self.quantity,
+            'price': self.price,
+            'subtotal': self.subtotal
+        }

@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify
-from models import Sale, SaleItem
+from models import Sale, SaleItem, SaleReturn, SaleReturnItem, Product
 from extensions import db
+from datetime import datetime
 
 sales_bp = Blueprint('sales', __name__)
 
@@ -32,7 +33,14 @@ def get_sales():
 @sales_bp.route('/api/sales/<int:sid>')
 def get_sale(sid):
     s = Sale.query.get_or_404(sid)
-    return jsonify(s.to_dict())
+    data = s.to_dict()
+    already_returned = {}
+    for ret in s.returns:
+        for r_item in ret.items:
+            already_returned[r_item.product_id] = already_returned.get(r_item.product_id, 0) + r_item.quantity
+    for item in data['items']:
+        item['returned_quantity'] = already_returned.get(item['product_id'], 0)
+    return jsonify(data)
 
 @sales_bp.route('/api/sales/<int:sid>', methods=['DELETE'])
 def delete_sale(sid):
@@ -43,3 +51,135 @@ def delete_sale(sid):
     db.session.delete(s)
     db.session.commit()
     return jsonify({'success': True})
+
+@sales_bp.route('/api/sales/<int:sale_id>/whatsapp', methods=['GET'])
+def whatsapp_receipt(sale_id):
+    from models import Sale, SaleItem, Product, Customer
+    sale = Sale.query.get_or_404(sale_id)
+    customer = Customer.query.get(sale.customer_id) if sale.customer_id else None
+    items = SaleItem.query.filter_by(sale_id=sale_id).all()
+    
+    lines = []
+    lines.append(f"🧾 *மாணிக்கம் ஸ்டோர்ஸ் - ரசீது*")
+    lines.append(f"GSTIN: 33AABCU9603R1ZX")
+    lines.append(f"📅 {sale.created_at.strftime('%d-%m-%Y %I:%M %p')}")
+    lines.append(f"ரசீது #: {sale.id:05d}")
+    lines.append("─" * 30)
+    
+    for item in items:
+        product = Product.query.get(item.product_id)
+        lines.append(f"• {product.name} x{item.quantity} = ₹{item.subtotal:.2f}")
+    
+    lines.append("─" * 30)
+    lines.append(f"CGST: ₹{sale.total_cgst:.2f}")
+    lines.append(f"SGST: ₹{sale.total_sgst:.2f}")
+    if sale.discount > 0:
+        lines.append(f"தள்ளுபடி: -₹{sale.discount:.2f}")
+    lines.append(f"*மொத்தம்: ₹{sale.total:.2f}*")
+    lines.append(f"கட்டணம்: {sale.payment_method.upper()}")
+    lines.append(f"\nவிற்பனைக்கு நன்றி! 🙏")
+    
+    message = "\n".join(lines)
+    phone = customer.phone if customer else ''
+    
+    import urllib.parse
+    if phone and phone != '0000000000':
+        clean_phone = ''.join(filter(str.isdigit, phone))
+        if len(clean_phone) == 10:
+            clean_phone = '91' + clean_phone
+        wa_url = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(message)}"
+    else:
+        wa_url = f"https://wa.me/?text={urllib.parse.quote(message)}"
+    
+    return jsonify({'success': True, 'whatsapp_url': wa_url, 'message': message})
+
+
+@sales_bp.route('/api/sales/<int:sale_id>/return', methods=['POST'])
+def create_return(sale_id):
+    sale = Sale.query.get_or_404(sale_id)
+    data = request.get_json() or {}
+    
+    returned_items_req = data.get('items', [])
+    payment_method = data.get('payment_method', 'cash')
+    reason = data.get('reason', '')
+    
+    if not returned_items_req:
+        return jsonify({'success': False, 'error': 'No items selected for return / திரும்பப் பெற எந்தப் பொருட்களும் தேர்ந்தெடுக்கப்படவில்லை'}), 400
+        
+    # Calculate already returned quantities for this sale
+    already_returned = {}
+    for ret in sale.returns:
+        for r_item in ret.items:
+            already_returned[r_item.product_id] = already_returned.get(r_item.product_id, 0) + r_item.quantity
+            
+    # Map sale items for easy lookup
+    sale_items_map = {item.product_id: item for item in sale.items}
+    
+    return_items_to_save = []
+    total_refund = 0.0
+    
+    for req_item in returned_items_req:
+        pid = int(req_item.get('product_id'))
+        qty_to_return = int(req_item.get('quantity', 0))
+        
+        if qty_to_return <= 0:
+            continue
+            
+        if pid not in sale_items_map:
+            return jsonify({'success': False, 'error': f'Product {pid} was not part of this sale / இந்த விற்பனையில் இந்த பொருள் இல்லை'}), 400
+            
+        sale_item = sale_items_map[pid]
+        max_allowed = sale_item.quantity - already_returned.get(pid, 0)
+        
+        if qty_to_return > max_allowed:
+            return jsonify({
+                'success': False,
+                'error': f'Cannot return {qty_to_return} of {sale_item.product.name}. Max returnable is {max_allowed}. / {sale_item.product.name}-ஐ {qty_to_return} திரும்பப் பெற முடியாது. அதிகபட்சம் {max_allowed} மட்டுமே திரும்பப் பெற முடியும்.'
+            }), 400
+            
+        unit_price = sale_item.price
+        subtotal = round(qty_to_return * unit_price, 2)
+        total_refund += subtotal
+        
+        return_items_to_save.append({
+            'product_id': pid,
+            'quantity': qty_to_return,
+            'price': unit_price,
+            'subtotal': subtotal,
+            'product': sale_item.product
+        })
+        
+    if not return_items_to_save:
+        return jsonify({'success': False, 'error': 'Invalid return quantities / தவறான திரும்பும் அளவு'}), 400
+        
+    # Create SaleReturn
+    sale_return = SaleReturn(
+        sale_id=sale.id,
+        refund_amount=round(total_refund, 2),
+        payment_method=payment_method,
+        reason=reason,
+        created_at=datetime.utcnow()
+    )
+    db.session.add(sale_return)
+    db.session.flush() # get sale_return.id
+    
+    for item_data in return_items_to_save:
+        ret_item = SaleReturnItem(
+            sale_return_id=sale_return.id,
+            product_id=item_data['product_id'],
+            quantity=item_data['quantity'],
+            price=item_data['price'],
+            subtotal=item_data['subtotal']
+        )
+        db.session.add(ret_item)
+        
+        # Restore stock
+        item_data['product'].stock += item_data['quantity']
+        
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': 'Return processed successfully / பொருட்கள் வெற்றிகரமாக திரும்பப் பெறப்பட்டன!',
+        'refund_amount': round(total_refund, 2)
+    })

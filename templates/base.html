@@ -178,7 +178,9 @@
     
     if (demoResetBtn) {
       demoResetBtn.addEventListener('click', async () => {
-        if (!confirm('Are you sure you want to drop and reset all database demo tables? / அனைத்து தரவுகளையும் மீட்டமைக்க வேண்டுமா?')) return;
+        if (!confirm('⚠️ WARNING: This will delete ALL sales, products and customers. Are you sure?\n\nஉறுதிப்படுத்தவும்: அனைத்து தரவும் நீக்கப்படும்!')) {
+          return;
+        }
         demoResetBtn.disabled = true;
         demoResetBtn.textContent = 'Resetting / மீட்டமைக்கிறது...';
         try {

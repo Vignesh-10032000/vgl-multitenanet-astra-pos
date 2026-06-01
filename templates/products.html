@@ -113,6 +113,32 @@
     </div>
   </div>
 </div>
+
+<!-- Stock Modal -->
+<div class="modal" id="stockModal">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-header">
+      <h3>📦 இருப்பு திருத்தம் (Stock Adjust)</h3>
+      <button class="modal-close" onclick="closeModal('stockModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="stockProductId">
+      <div class="form-group">
+        <label class="form-label">தற்போதைய இருப்பு / Current Stock</label>
+        <div class="fw-bold fs-4" id="stockCurrent">0</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">திருத்த அளவு / Adjustment (+/-)</label>
+        <input type="number" id="stockAdjustment" class="form-input" placeholder="உ.தா: 5 அல்லது -3">
+        <div class="text-muted text-sm" style="margin-top:4px">இருப்பை கூட்ட நேர்மறை எண்ணும் (+), குறைக்க எதிர்மறை எண்ணும் (-) உள்ளிடவும்.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('stockModal')">ரத்து</button>
+      <button class="btn btn-primary" id="saveStockBtn">சேமி</button>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -177,6 +203,7 @@ function renderProducts(products) {
       <td>
         <div class="action-btns">
           <button class="btn btn-ghost btn-sm" onclick="editProduct(${p.id})">✏️ திருத்து</button>
+          <button class="btn btn-ghost btn-sm" onclick="openStockModal(${p.id}, ${p.stock})" title="Adjust Stock">📦 இருப்பு</button>
           <button class="btn btn-ghost btn-sm text-danger" onclick="deleteProduct(${p.id}, '${p.name.replace(/'/g,"\\'")}')">🗑️</button>
         </div>
       </td>
@@ -262,6 +289,37 @@ async function deleteProduct(id, name) {
   const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
   if (res.ok) { showToast('நிறுத்தப்பட்டது', 'success'); loadProducts(); }
 }
+
+function openStockModal(id, currentStock) {
+  document.getElementById('stockProductId').value = id;
+  document.getElementById('stockCurrent').textContent = currentStock;
+  document.getElementById('stockAdjustment').value = '';
+  openModal('stockModal');
+}
+
+document.getElementById('saveStockBtn').addEventListener('click', async () => {
+  const id = document.getElementById('stockProductId').value;
+  const adjustment = parseInt(document.getElementById('stockAdjustment').value) || 0;
+  if (adjustment === 0) { showToast('இருப்பு மாற்றம் தேவை', 'error'); return; }
+  
+  try {
+    const res = await fetch(`/api/products/${id}/stock`, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ adjustment })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast('இருப்பு திருத்தப்பட்டது!', 'success');
+      closeModal('stockModal');
+      loadProducts();
+    } else {
+      showToast(data.error || 'இருப்பு மாற்றத்தில் பிழை', 'error');
+    }
+  } catch (e) {
+    showToast('இணைப்பு பிழை', 'error');
+  }
+});
 
 let st;
 document.getElementById('productSearch').addEventListener('input', () => { clearTimeout(st); st = setTimeout(loadProducts, 300); });

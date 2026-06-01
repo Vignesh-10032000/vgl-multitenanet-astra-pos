@@ -76,6 +76,15 @@ def delete_product(pid):
     db.session.commit()
     return jsonify({'success': True})
 
+@products_bp.route('/api/products/<int:pid>/stock', methods=['PATCH'])
+def adjust_stock(pid):
+    p = Product.query.get_or_404(pid)
+    data = request.get_json()
+    adjustment = int(data.get('adjustment', 0))  # positive=add, negative=remove
+    p.stock = max(0, p.stock + adjustment)
+    db.session.commit()
+    return jsonify({'success': True, 'new_stock': p.stock})
+
 @products_bp.route('/api/categories')
 def get_categories():
     cats = Category.query.all()

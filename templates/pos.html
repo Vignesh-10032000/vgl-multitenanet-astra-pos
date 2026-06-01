@@ -12,7 +12,7 @@
           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
         <input type="text" id="productSearch" placeholder="பொருள் தேடுக / Barcode / HSN..." class="search-input" autocomplete="off">
-        <kbd class="search-kbd">⌘K</kbd>
+        <kbd class="search-kbd" id="searchShortcutBadge">⌘K</kbd>
       </div>
     </div>
 
@@ -131,6 +131,7 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" id="printReceipt">🖨️ அச்சிடு</button>
       <button class="btn btn-primary" id="newSaleBtn">புதிய விற்பனை</button>
+      <button class="btn" id="shareWhatsAppBtn" style="background:#25D366; color:white; border:none;">📱 WhatsApp</button>
     </div>
   </div>
 </div>
@@ -140,6 +141,14 @@
 <script>
 let cart = [];
 let selectedPayment = 'cash';
+
+// Detect platform and show correct keyboard shortcut
+const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+const shortcutLabel = isMac ? '⌘K' : 'Ctrl+K';
+const badge = document.getElementById('searchShortcutBadge');
+if (badge) {
+  badge.textContent = shortcutLabel;
+}
 
 async function loadCategories() {
   const res = await fetch('/api/categories');
@@ -168,6 +177,12 @@ async function loadCustomers() {
   sel.innerHTML = customers.map(c =>
     `<option value="${c.id}">${c.name}${c.gstin ? ' (B2B)' : ''}</option>`
   ).join('');
+  
+  // Auto-select "Walk-in Customer"
+  const walkIn = customers.find(c => c.name === 'Walk-in Customer');
+  if (walkIn) {
+    sel.value = walkIn.id;
+  }
 }
 
 let selCat = null;
@@ -203,15 +218,38 @@ function escHtml(s) { return s.replace(/'/g, "\\'"); }
 
 function addToCart(id, name, price, stock, gstRate) {
   if (stock === 0) { showToast('இருப்பு இல்லை!', 'error'); return; }
+  
+  // Prompt for quantity
+  const input = prompt(`${name}\nஎத்தனை? / Quantity:`, '1');
+  if (input === null) return; // User cancelled
+  const qty = parseInt(input);
+  if (isNaN(qty) || qty <= 0) { showToast('தவறான அளவு', 'error'); return; }
+  
   const existing = cart.find(i => i.id === id);
   if (existing) {
-    if (existing.qty >= stock) { showToast('அதிகபட்ச இருப்பு', 'warning'); return; }
-    existing.qty++;
+    if (existing.qty + qty > stock) { showToast('அதிகபட்ச இருப்பு இல்லை!', 'warning'); return; }
+    existing.qty += qty;
   } else {
-    cart.push({ id, name, price, qty: 1, stock, gstRate });
+    if (qty > stock) { showToast('அதிகபட்ச இருப்பு இல்லை!', 'warning'); return; }
+    cart.push({ id, name, price, qty: qty, stock, gstRate });
   }
   renderCart();
-  showToast(name + ' சேர்க்கப்பட்டது', 'success');
+  showToast(`${name} (${qty} pcs) சேர்க்கப்பட்டது`, 'success');
+}
+
+function handleCartItemKey(e, idx) {
+  if (e.key >= '1' && e.key <= '9') {
+    e.preventDefault();
+    const qty = parseInt(e.key);
+    const item = cart[idx];
+    if (qty <= item.stock) {
+      item.qty = qty;
+      renderCart();
+      showToast(`${item.name} அளவு ${qty} ஆக மாற்றப்பட்டது`, 'success');
+    } else {
+      showToast('இருப்பு போதுமானதாக இல்லை', 'warning');
+    }
+  }
 }
 
 function renderCart() {
@@ -223,7 +261,7 @@ function renderCart() {
     document.getElementById('gstBreakdown').style.display = 'none';
   } else {
     cartItems.innerHTML = cart.map((item, idx) => `
-      <div class="cart-item">
+      <div class="cart-item" tabindex="0" onkeydown="handleCartItemKey(event, ${idx})">
         <div class="cart-item-info">
           <div class="cart-item-name">${item.name}</div>
           <div class="cart-item-price">${fmt(item.price)} · GST ${item.gstRate}%</div>
@@ -350,6 +388,7 @@ document.getElementById('checkoutBtn').addEventListener('click', async () => {
 });
 
 function showReceipt(sale) {
+  window.currentSaleId = sale.id;
   const content = document.getElementById('receiptContent');
   content.innerHTML = `
     <div class="receipt">
@@ -394,6 +433,22 @@ function showReceipt(sale) {
 document.getElementById('closeReceipt').addEventListener('click', () => closeModal('receiptModal'));
 document.getElementById('newSaleBtn').addEventListener('click', () => { closeModal('receiptModal'); loadProducts(); });
 document.getElementById('printReceipt').addEventListener('click', () => window.print());
+
+document.getElementById('shareWhatsAppBtn').addEventListener('click', async () => {
+  const saleId = window.currentSaleId;
+  if (!saleId) return;
+  try {
+    const res = await fetch(`/api/sales/${saleId}/whatsapp`);
+    const data = await res.json();
+    if (data.success) {
+      window.open(data.whatsapp_url, '_blank');
+    } else {
+      showToast('WhatsApp இணைப்பு பெற முடியவில்லை', 'error');
+    }
+  } catch (e) {
+    showToast('இணைப்பு பிழை', 'error');
+  }
+});
 
 document.addEventListener('keydown', e => {
   // Focus Search: Ctrl+K or '/' (when not typing in other inputs)

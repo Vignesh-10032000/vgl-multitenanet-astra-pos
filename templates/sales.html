@@ -61,6 +61,53 @@
     </div>
   </div>
 </div>
+
+<!-- Return Sale Modal -->
+<div class="modal" id="returnModal">
+  <div class="modal-dialog modal-md" style="pointer-events: auto !important;">
+    <div class="modal-header">
+      <h3>↩️ பொருட்கள் திரும்பப் பெறுதல் / Sale Return</h3>
+      <button class="modal-close" onclick="closeModal('returnModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="returnForm" onsubmit="submitReturn(event)">
+        <input type="hidden" id="returnSaleId">
+        
+        <div class="mb-3">
+          <label class="form-label text-warning fw-bold">திரும்பப் பெற வேண்டிய பொருட்கள் / Items to Return</label>
+          <div id="returnItemsContainer" class="d-flex flex-column gap-2" style="max-height: 250px; overflow-y: auto;">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label text-warning">திரும்பத் தரும் முறை / Refund Method</label>
+            <select id="returnPaymentMethod" class="form-select" style="background-color: #1a1a2e; color: white; border: 1px solid #475569;">
+              <option value="cash">💵 ரொக்கம் / Cash</option>
+              <option value="upi">📱 UPI</option>
+              <option value="card">💳 அட்டை / Card</option>
+            </select>
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label text-warning">காரணம் / Reason</label>
+            <input type="text" id="returnReason" class="form-control text-white" style="background-color: #1a1a2e; border: 1px solid #475569;" placeholder="எ.கா. சேதமடைந்தது / Damaged">
+          </div>
+        </div>
+        
+        <div class="d-flex justify-content-between align-items-center mt-3 p-3 rounded" style="background-color: #1a1a2e; border: 1px solid #475569;">
+          <span class="text-white">மொத்த ரீஃபண்ட் (Total Refund):</span>
+          <span id="returnRefundTotal" class="h5 mb-0 text-success fw-bold">₹0.00</span>
+        </div>
+
+        <div class="modal-footer px-0 pb-0 mt-3 border-0">
+          <button type="submit" class="btn btn-warning text-dark fw-bold" id="submitReturnBtn">↩️ ரீஃபண்ட் செய்க / Process Refund</button>
+          <button type="button" class="btn btn-ghost text-white" onclick="closeModal('returnModal')">Close</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -96,6 +143,7 @@ function renderSales(sales) {
       <td>
         <div class="action-btns">
           <button class="btn btn-ghost btn-sm" onclick="viewSale(${s.id})">👁 காண</button>
+          <button class="btn btn-ghost btn-sm text-warning" onclick="openReturnModal(${s.id})">↩️ Return</button>
           <button class="btn btn-ghost btn-sm text-danger" onclick="deleteSale(${s.id})">🗑️</button>
         </div>
       </td>
@@ -159,6 +207,104 @@ async function deleteSale(id) {
   if (!confirm('இந்த விற்பனையை ரத்து செய்யவா? இருப்பு திரும்ப வரும்.')) return;
   const res = await fetch(`/api/sales/${id}`, { method: 'DELETE' });
   if (res.ok) { showToast('விற்பனை ரத்து செய்யப்பட்டது', 'success'); loadSales(currentPage); }
+}
+
+async function openReturnModal(id) {
+  try {
+    const res = await fetch(`/api/sales/${id}`);
+    const s = await res.json();
+    
+    document.getElementById('returnSaleId').value = s.id;
+    document.getElementById('returnReason').value = '';
+    document.getElementById('returnPaymentMethod').value = s.payment_method === 'mobile' ? 'upi' : s.payment_method;
+    
+    const container = document.getElementById('returnItemsContainer');
+    container.innerHTML = s.items.map(i => {
+      const returnableQty = i.quantity - (i.returned_quantity || 0);
+      return `<div class="d-flex justify-content-between align-items-center p-2 rounded mb-1" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);">
+        <div class="flex-grow-1">
+          <div class="fw-bold text-white">${i.product_name}</div>
+          <div class="text-xs text-muted">
+            Price: ${fmt(i.price)} | Purchased: ${i.quantity} | Returned: ${i.returned_quantity || 0}
+          </div>
+        </div>
+        <div style="width: 100px;">
+          ${returnableQty > 0 ? `
+            <input type="number" class="form-control form-control-sm return-qty-input text-center text-white" 
+                   style="background: #1a1a2e; border: 1px solid #475569;"
+                   data-pid="${i.product_id}" data-price="${i.price}" 
+                   min="0" max="${returnableQty}" value="0" 
+                   oninput="calculateRefundTotal()">
+          ` : `
+            <span class="badge bg-secondary w-100 text-center d-block py-2">Returned</span>
+          `}
+        </div>
+      </div>`;
+    }).join('');
+    
+    calculateRefundTotal();
+    openModal('returnModal');
+  } catch (err) {
+    showToast('Failed to load sale details for return', 'error');
+  }
+}
+
+function calculateRefundTotal() {
+  let total = 0;
+  document.querySelectorAll('.return-qty-input').forEach(input => {
+    const qty = parseInt(input.value) || 0;
+    const price = parseFloat(input.dataset.price) || 0;
+    total += qty * price;
+  });
+  document.getElementById('returnRefundTotal').textContent = fmt(total);
+}
+
+async function submitReturn(event) {
+  event.preventDefault();
+  const saleId = document.getElementById('returnSaleId').value;
+  const paymentMethod = document.getElementById('returnPaymentMethod').value;
+  const reason = document.getElementById('returnReason').value;
+  
+  const items = [];
+  document.querySelectorAll('.return-qty-input').forEach(input => {
+    const qty = parseInt(input.value) || 0;
+    if (qty > 0) {
+      items.push({
+        product_id: parseInt(input.dataset.pid),
+        quantity: qty
+      });
+    }
+  });
+  
+  if (items.length === 0) {
+    showToast('Please select at least one item to return / திரும்பப் பெற ஒரு பொருளையாவது தேர்வு செய்யவும்.', 'error');
+    return;
+  }
+  
+  const btn = document.getElementById('submitReturnBtn');
+  btn.disabled = true;
+  btn.textContent = 'Processing / செயலாக்குகிறது...';
+  
+  try {
+    const res = await fetch(`/api/sales/${saleId}/return`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items, payment_method: paymentMethod, reason })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message, 'success');
+      closeModal('returnModal');
+      loadSales(currentPage);
+    } else {
+      showToast(data.error || 'Failed to process return', 'error');
+    }
+  } catch (err) {
+    showToast('Network error while processing return', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '↩️ ரீஃபண்ட் செய்க / Process Refund';
+  }
 }
 
 let st;

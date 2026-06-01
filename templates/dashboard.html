@@ -4,6 +4,16 @@
 
 {% block content %}
 <div class="dashboard">
+  <!-- Day Close Quick Action -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="h4 mb-0 text-white">வணிக மேலாண்மை / Business Overview</h2>
+    </div>
+    <button class="btn btn-danger d-flex align-items-center gap-2 px-3 py-2 fw-bold" onclick="openDayCloseModal()">
+      <span>🔒</span> கணக்கு முடிப்பு (Day Close)
+    </button>
+  </div>
+
   <div class="stats-grid" id="statsGrid">
     <div class="stat-card stat-card--primary">
       <div class="stat-icon">💰</div>
@@ -207,7 +217,126 @@ async function loadDashboard() {
   `).join('') || '<div class="text-center text-muted p-4">✅ அனைத்து பொருட்களும் சரியான அளவில் உள்ளன</div>';
 }
 
+async function openDayCloseModal() {
+  try {
+    const res = await fetch('/api/reports/day-close');
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('dcDate').textContent = 'தேதி: ' + data.date;
+      document.getElementById('dcCount').textContent = data.total_transactions;
+      document.getElementById('dcCash').textContent = '₹' + data.cash.toFixed(2);
+      document.getElementById('dcUpi').textContent = '₹' + data.upi.toFixed(2);
+      document.getElementById('dcCard').textContent = '₹' + data.card.toFixed(2);
+      document.getElementById('dcCgst').textContent = '₹' + data.total_cgst.toFixed(2);
+      document.getElementById('dcSgst').textContent = '₹' + data.total_sgst.toFixed(2);
+      document.getElementById('dcGrandTotal').textContent = '₹' + data.grand_total.toFixed(2);
+      
+      openModal('dayCloseModal');
+    } else {
+      showToast('Failed to fetch day close details', 'error');
+    }
+  } catch (err) {
+    showToast('Network error while closing day', 'error');
+  }
+}
+
+function printDayClose() {
+  const content = document.getElementById('dayCloseModalBody').innerHTML;
+  const printWindow = window.open('', '_blank', 'width=600,height=600');
+  printWindow.document.write('<html><head><title>Day Close Slip</title>');
+  printWindow.document.write('<style>');
+  printWindow.document.write('body { font-family: monospace; padding: 20px; background: #fff; color: #000; }');
+  printWindow.document.write('.text-center { text-align: center; }');
+  printWindow.document.write('.mb-1 { margin-bottom: 4px; }');
+  printWindow.document.write('.mb-2 { margin-bottom: 8px; }');
+  printWindow.document.write('.mb-3 { margin-bottom: 12px; }');
+  printWindow.document.write('.my-2 { margin-top: 8px; margin-bottom: 8px; border-top: 1px dashed #000; }');
+  printWindow.document.write('.d-flex { display: flex; justify-content: space-between; }');
+  printWindow.document.write('.fw-bold { font-weight: bold; }');
+  printWindow.document.write('.text-sm { font-size: 14px; }');
+  printWindow.document.write('.text-xs { font-size: 12px; }');
+  printWindow.document.write('h4 { margin: 0; font-size: 18px; }');
+  printWindow.document.write('h5 { margin: 0; font-size: 16px; }');
+  printWindow.document.write('</style></head><body>');
+  printWindow.document.write(content);
+  printWindow.document.write('</body></html>');
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => {
+    printWindow.print();
+    printWindow.close();
+  }, 250);
+}
+
 loadDashboard();
 setInterval(loadDashboard, 30000);
 </script>
+{% endblock %}
+
+{% block modals %}
+  <!-- Day Close Modal -->
+  <div class="modal" id="dayCloseModal">
+    <div class="modal-dialog modal-md" style="pointer-events: auto !important;">
+      <div class="modal-header">
+        <h3>🔒 Day Close Summary / கணக்கு முடிப்பு</h3>
+        <button class="modal-close" onclick="closeModal('dayCloseModal')">✕</button>
+      </div>
+      <div class="modal-body" id="dayCloseModalBody">
+        <div class="receipt-print-wrapper p-4 text-white" style="font-family: monospace; border: 1px dashed #475569; border-radius: 8px; background-color: #1a1a2e;">
+          <div class="text-center mb-3">
+            <h4 class="mb-1 text-warning fw-bold">மாணிக்கம் ஸ்டோர்ஸ்</h4>
+            <div class="text-xs text-muted">23, Anna Salai, Chennai - 600002</div>
+            <div class="text-xs text-muted">GSTIN: 33AABCU9603R1ZX</div>
+            <div class="my-2" style="border-top: 1px dashed #475569;"></div>
+            <h5 class="text-white fw-bold uppercase">கணக்கு முடிப்பு / DAY CLOSE SLIP</h5>
+            <div class="text-xs text-muted" id="dcDate">தேதி: --</div>
+          </div>
+          
+          <div class="d-flex justify-content-between mb-1 text-sm">
+            <span>மொத்த பரிவர்த்தனைகள்:</span>
+            <span id="dcCount" class="fw-bold">0</span>
+          </div>
+          
+          <div class="my-2" style="border-top: 1px dashed #475569;"></div>
+          
+          <div class="text-xs text-warning fw-bold mb-2 uppercase">பணம் பெறும் முறைகள் / PAYMENT BREAKDOWN</div>
+          <div class="d-flex justify-content-between mb-1 text-sm">
+            <span>பணம் (Cash):</span>
+            <span id="dcCash" class="fw-bold">₹0.00</span>
+          </div>
+          <div class="d-flex justify-content-between mb-1 text-sm">
+            <span>யுபிஐ (UPI):</span>
+            <span id="dcUpi" class="fw-bold">₹0.00</span>
+          </div>
+          <div class="d-flex justify-content-between mb-1 text-sm">
+            <span>அட்டை (Card):</span>
+            <span id="dcCard" class="fw-bold">₹0.00</span>
+          </div>
+          
+          <div class="my-2" style="border-top: 1px dashed #475569;"></div>
+          
+          <div class="text-xs text-warning fw-bold mb-2 uppercase">வரி விவரம் / GST TAX SUMMARY</div>
+          <div class="d-flex justify-content-between mb-1 text-sm">
+            <span>மத்திய ஜிஎஸ்டி (CGST):</span>
+            <span id="dcCgst" class="fw-bold">₹0.00</span>
+          </div>
+          <div class="d-flex justify-content-between mb-1 text-sm">
+            <span>மாநில ஜிஎஸ்டி (SGST):</span>
+            <span id="dcSgst" class="fw-bold">₹0.00</span>
+          </div>
+          
+          <div class="my-2" style="border-top: 1px dashed #475569;"></div>
+          
+          <div class="d-flex justify-content-between text-base fw-bold text-white">
+            <span>மொத்தம் (Grand Total):</span>
+            <span id="dcGrandTotal">₹0.00</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-warning text-dark fw-bold" onclick="printDayClose()">🖨️ Print / அச்சிடுக</button>
+        <button class="btn btn-ghost text-white" onclick="closeModal('dayCloseModal')">Close</button>
+      </div>
+    </div>
+  </div>
 {% endblock %}
