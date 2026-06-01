@@ -1021,6 +1021,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  pointer-events: auto !important;
 }
 
 .modal-sm { max-width: 420px; }
