@@ -1010,7 +1010,7 @@ body {
   max-width: 560px;
 }
 
-.modal.open { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
+.modal.open { display: block !important; opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
 
 .modal-dialog {
   background: var(--bg-card);
