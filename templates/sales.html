@@ -222,18 +222,34 @@ async function openReturnModal(id) {
     container.innerHTML = s.items.map(i => {
       const returnableQty = i.quantity - (i.returned_quantity || 0);
       return `<div class="d-flex justify-content-between align-items-center p-2 rounded mb-1" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);">
-        <div class="flex-grow-1">
-          <div class="fw-bold text-white">${i.product_name}</div>
-          <div class="text-xs text-muted">
-            Price: ${fmt(i.price)} | Purchased: ${i.quantity} | Returned: ${i.returned_quantity || 0}
+        <div class="d-flex align-items-center gap-2 flex-grow-1">
+          ${returnableQty > 0 ? `
+            <input type="checkbox" class="form-check-input return-item-checkbox me-2" 
+                   style="background-color: #1a1a2e; border: 1px solid #475569;"
+                   data-pid="${i.product_id}"
+                   onchange="toggleReturnItem(this, ${i.product_id})">
+          ` : ''}
+          <div>
+            <div class="fw-bold text-white d-flex align-items-center">
+              <span>${i.product_name}</span>
+              ${returnableQty > 0 ? `
+                <span id="badge-select-${i.product_id}" class="badge bg-success ms-2 d-none">Returned</span>
+              ` : `
+                <span class="badge bg-secondary ms-2">Returned</span>
+              `}
+            </div>
+            <div class="text-xs text-muted">
+              Price: ${fmt(i.price)} | Purchased: ${i.quantity} | Returned: ${i.returned_quantity || 0}
+            </div>
           </div>
         </div>
-        <div style="width: 100px;">
+        <div style="width: 120px;">
           ${returnableQty > 0 ? `
-            <input type="number" class="form-control form-control-sm return-qty-input text-center text-white" 
+            <input type="number" class="form-control form-control-sm return-qty-input text-center text-white d-none" 
                    style="background: #1a1a2e; border: 1px solid #475569;"
+                   id="qty-input-${i.product_id}"
                    data-pid="${i.product_id}" data-price="${i.price}" 
-                   min="0" max="${returnableQty}" value="0" 
+                   min="1" max="${returnableQty}" value="1" 
                    oninput="calculateRefundTotal()">
           ` : `
             <span class="badge bg-secondary w-100 text-center d-block py-2">Returned</span>
@@ -249,12 +265,37 @@ async function openReturnModal(id) {
   }
 }
 
+function toggleReturnItem(checkbox, productId) {
+  const badge = document.getElementById(`badge-select-${productId}`);
+  const qtyInput = document.getElementById(`qty-input-${productId}`);
+  if (checkbox.checked) {
+    if (badge) badge.classList.remove('d-none');
+    if (qtyInput) {
+      qtyInput.classList.remove('d-none');
+      qtyInput.value = 1;
+    }
+  } else {
+    if (badge) badge.classList.add('d-none');
+    if (qtyInput) {
+      qtyInput.classList.add('d-none');
+      qtyInput.value = 0;
+    }
+  }
+  calculateRefundTotal();
+}
+
 function calculateRefundTotal() {
   let total = 0;
-  document.querySelectorAll('.return-qty-input').forEach(input => {
-    const qty = parseInt(input.value) || 0;
-    const price = parseFloat(input.dataset.price) || 0;
-    total += qty * price;
+  document.querySelectorAll('.return-item-checkbox').forEach(chk => {
+    if (chk.checked) {
+      const pid = chk.dataset.pid;
+      const qtyInput = document.getElementById(`qty-input-${pid}`);
+      if (qtyInput) {
+        const qty = parseInt(qtyInput.value) || 0;
+        const price = parseFloat(qtyInput.dataset.price) || 0;
+        total += qty * price;
+      }
+    }
   });
   document.getElementById('returnRefundTotal').textContent = fmt(total);
 }
@@ -266,13 +307,19 @@ async function submitReturn(event) {
   const reason = document.getElementById('returnReason').value;
   
   const items = [];
-  document.querySelectorAll('.return-qty-input').forEach(input => {
-    const qty = parseInt(input.value) || 0;
-    if (qty > 0) {
-      items.push({
-        product_id: parseInt(input.dataset.pid),
-        quantity: qty
-      });
+  document.querySelectorAll('.return-item-checkbox').forEach(chk => {
+    if (chk.checked) {
+      const pid = chk.dataset.pid;
+      const qtyInput = document.getElementById(`qty-input-${pid}`);
+      if (qtyInput) {
+        const qty = parseInt(qtyInput.value) || 0;
+        if (qty > 0) {
+          items.push({
+            product_id: parseInt(pid),
+            quantity: qty
+          });
+        }
+      }
     }
   });
   
