@@ -54,30 +54,21 @@ def delete_sale(sid):
 
 @sales_bp.route('/api/sales/<int:sale_id>/whatsapp', methods=['GET'])
 def whatsapp_receipt(sale_id):
-    from models import Sale, SaleItem, Product, Customer
+    from models import Sale, Customer
     sale = Sale.query.get_or_404(sale_id)
     customer = Customer.query.get(sale.customer_id) if sale.customer_id else None
-    items = SaleItem.query.filter_by(sale_id=sale_id).all()
+    
+    BASE_URL = 'https://web-production-9375fc.up.railway.app'
     
     lines = []
-    lines.append(f"🧾 *மாணிக்கம் ஸ்டோர்ஸ் - ரசீது*")
-    lines.append(f"GSTIN: 33AABCU9603R1ZX")
+    lines.append(f"🧾 *மாணிக்கம் ஸ்டோர்ஸ் - ரசீது #{sale.id:05d}*")
     lines.append(f"📅 {sale.created_at.strftime('%d-%m-%Y %I:%M %p')}")
-    lines.append(f"ரசீது #: {sale.id:05d}")
-    lines.append("─" * 30)
-    
-    for item in items:
-        product = Product.query.get(item.product_id)
-        lines.append(f"• {product.name} x{item.quantity} = ₹{item.subtotal:.2f}")
-    
-    lines.append("─" * 30)
-    lines.append(f"CGST: ₹{sale.total_cgst:.2f}")
-    lines.append(f"SGST: ₹{sale.total_sgst:.2f}")
-    if sale.discount > 0:
-        lines.append(f"தள்ளுபடி: -₹{sale.discount:.2f}")
-    lines.append(f"*மொத்தம்: ₹{sale.total:.2f}*")
-    lines.append(f"கட்டணம்: {sale.payment_method.upper()}")
-    lines.append(f"\nவிற்பனைக்கு நன்றி! 🙏")
+    lines.append(f"💰 மொத்தம்: ₹{sale.total:.2f} ({sale.payment_method.upper()})")
+    lines.append(f"")
+    lines.append(f"📄 உங்கள் ரசீதை இங்கே காணலாம்:")
+    lines.append(f"{BASE_URL}/receipt/{sale.id}")
+    lines.append(f"")
+    lines.append(f"விற்பனைக்கு நன்றி! 🙏")
     
     message = "\n".join(lines)
     phone = customer.phone if customer else ''
@@ -183,3 +174,10 @@ def create_return(sale_id):
         'message': 'Return processed successfully / பொருட்கள் வெற்றிகரமாக திரும்பப் பெறப்பட்டன!',
         'refund_amount': round(total_refund, 2)
     })
+
+
+@sales_bp.route('/receipt/<int:sale_id>')
+def receipt_page(sale_id):
+    from models import Sale
+    sale = Sale.query.get_or_404(sale_id)
+    return render_template('receipt.html', sale=sale)
