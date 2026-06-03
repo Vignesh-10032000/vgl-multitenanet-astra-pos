@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}Dashboard{% endblock %}
-{% block page_title %}Dashboard — இன்றைய விற்பனை{% endblock %}
+{% block page_title %}<span class="lang-en">Dashboard</span><span class="lang-ta">டேஷ்போர்டு</span>{% endblock %}
 
 {% block content %}
 <div class="dashboard">
@@ -202,10 +202,10 @@ async function loadDashboard() {
   const data = await res.json();
 
   document.getElementById('todaySales').textContent = fmt(data.today_sales);
-  document.getElementById('todayCount').textContent = data.today_count + ' பரிவர்த்தனைகள்';
+  document.getElementById('todayCount').textContent = data.today_count + ' ' + getLangTxt('transactions', 'பரிவர்த்தனைகள்');
   document.getElementById('weekSales').textContent = fmt(data.week_sales);
   document.getElementById('totalProducts').textContent = data.total_products;
-  document.getElementById('lowStockStat').textContent = data.low_stock + ' குறைந்த இருப்பு';
+  document.getElementById('lowStockStat').textContent = data.low_stock + ' ' + getLangTxt('low stock', 'குறைந்த இருப்பு');
   document.getElementById('totalCustomers').textContent = data.total_customers;
 
   // GST strip
@@ -224,7 +224,7 @@ async function loadDashboard() {
     data: {
       labels: data.daily_data.map(d => d.date),
       datasets: [{
-        label: 'வருவாய் (₹)',
+        label: getLangTxt('Revenue (₹)', 'வருவாய் (₹)'),
         data: data.daily_data.map(d => d.revenue),
         backgroundColor: 'rgba(139,92,246,0.5)',
         borderColor: '#8b5cf6',
@@ -255,7 +255,7 @@ async function loadDashboard() {
       </div>
       <div class="top-product-revenue">${fmt(p.revenue)}</div>
     </div>`;
-  }).join('') || '<div class="text-center text-muted p-4">விற்பனை இல்லை</div>';
+  }).join('') || `<div class="text-center text-muted">${getLangTxt('No sales', 'விற்பனை இல்லை')}</div>`;
 
   // Recent sales
   const tbody = document.getElementById('recentSalesTbody');
@@ -263,12 +263,12 @@ async function loadDashboard() {
     <tr>
       <td><span class="sale-id">#${s.id}</span></td>
       <td>${s.customer}</td>
-      <td>${s.item_count} பொருட்கள்</td>
+      <td>${s.item_count} ${getLangTxt('items', 'பொருட்கள்')}</td>
       <td><span class="badge badge--${s.payment_method}">${payLabel(s.payment_method)}</span></td>
       <td class="fw-600">${fmt(s.total)}</td>
       <td class="text-muted text-sm">${s.created_at}</td>
     </tr>
-  `).join('') || '<tr><td colspan="6" class="text-center text-muted">விற்பனை இல்லை</td></tr>';
+  `).join('') || `<tr><td colspan="6" class="text-center text-muted">${getLangTxt('No sales', 'விற்பனை இல்லை')}</td></tr>`;
 
   // Low stock
   const lsl = document.getElementById('lowStockList');
@@ -279,10 +279,10 @@ async function loadDashboard() {
         <div class="low-stock-sku">${p.sku}</div>
       </div>
       <div class="low-stock-count ${p.stock === 0 ? 'text-danger' : 'text-warning'}">
-        ${p.stock === 0 ? 'தீர்ந்தது' : p.stock + ' உள்ளது'}
+        ${p.stock === 0 ? getLangTxt('Out of stock', 'தீர்ந்தது') : p.stock + ' ' + getLangTxt('in stock', 'உள்ளது')}
       </div>
     </div>
-  `).join('') || '<div class="text-center text-muted p-4">✅ அனைத்து பொருட்களும் சரியான அளவில் உள்ளன</div>';
+  `).join('') || `<div class="text-center text-muted p-4">✅ ${getLangTxt('All products are in sufficient stock', 'அனைத்து பொருட்களும் சரியான அளவில் உள்ளன')}</div>`;
 }
 
 async function openDayCloseModal() {
@@ -290,7 +290,7 @@ async function openDayCloseModal() {
     const res = await fetch('/api/reports/day-close');
     const data = await res.json();
     if (data.success) {
-      document.getElementById('dcDate').textContent = 'தேதி: ' + data.date;
+      document.getElementById('dcDate').textContent = getLangTxt('Date: ', 'தேதி: ') + data.date;
       document.getElementById('dcCount').textContent = data.total_transactions;
       document.getElementById('dcCash').textContent = '₹' + data.cash.toFixed(2);
       document.getElementById('dcUpi').textContent = '₹' + data.upi.toFixed(2);
