@@ -7,10 +7,15 @@
   <!-- Day Close Quick Action -->
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-      <h2 class="h4 mb-0 text-white">வணிக மேலாண்மை / Business Overview</h2>
+      <h2 class="h4 mb-0 text-white">
+        <span class="lang-ta">வணிக மேலாண்மை</span>
+        <span class="lang-en">Business Overview</span>
+      </h2>
     </div>
     <button class="btn btn-danger d-flex align-items-center gap-2 px-3 py-2 fw-bold" onclick="openDayCloseModal()">
-      <span>🔒</span> கணக்கு முடிப்பு (Day Close)
+      <span>🔒</span> 
+      <span class="lang-ta">கணக்கு முடிப்பு (Day Close)</span>
+      <span class="lang-en">Day Close Summary</span>
     </button>
   </div>
 
@@ -18,33 +23,51 @@
     <div class="stat-card stat-card--primary">
       <div class="stat-icon">💰</div>
       <div class="stat-info">
-        <div class="stat-label">இன்றைய வருவாய்</div>
+        <div class="stat-label">
+          <span class="lang-ta">இன்றைய வருவாய்</span>
+          <span class="lang-en">Today's Revenue</span>
+        </div>
         <div class="stat-value" id="todaySales">—</div>
-        <div class="stat-sub" id="todayCount">— பரிவர்த்தனைகள்</div>
+        <div class="stat-sub" id="todayCount">—</div>
       </div>
     </div>
     <div class="stat-card stat-card--cyan">
       <div class="stat-icon">📅</div>
       <div class="stat-info">
-        <div class="stat-label">இந்த வாரம்</div>
+        <div class="stat-label">
+          <span class="lang-ta">இந்த வாரம்</span>
+          <span class="lang-en">This Week</span>
+        </div>
         <div class="stat-value" id="weekSales">—</div>
-        <div class="stat-sub">கடந்த 7 நாட்கள்</div>
+        <div class="stat-sub">
+          <span class="lang-ta">கடந்த 7 நாட்கள்</span>
+          <span class="lang-en">Last 7 Days</span>
+        </div>
       </div>
     </div>
     <div class="stat-card stat-card--purple">
       <div class="stat-icon">📦</div>
       <div class="stat-info">
-        <div class="stat-label">மொத்த பொருட்கள்</div>
+        <div class="stat-label">
+          <span class="lang-ta">மொத்த பொருட்கள்</span>
+          <span class="lang-en">Total Products</span>
+        </div>
         <div class="stat-value" id="totalProducts">—</div>
-        <div class="stat-sub" id="lowStockStat">— குறைந்த இருப்பு</div>
+        <div class="stat-sub" id="lowStockStat">—</div>
       </div>
     </div>
     <div class="stat-card stat-card--green">
       <div class="stat-icon">👥</div>
       <div class="stat-info">
-        <div class="stat-label">வாடிக்கையாளர்கள்</div>
+        <div class="stat-label">
+          <span class="lang-ta">வாடிக்கையாளர்கள்</span>
+          <span class="lang-en">Customers</span>
+        </div>
         <div class="stat-value" id="totalCustomers">—</div>
-        <div class="stat-sub">பதிவு செய்யப்பட்டவர்கள்</div>
+        <div class="stat-sub">
+          <span class="lang-ta">பதிவு செய்யப்பட்டவர்கள்</span>
+          <span class="lang-en">Registered</span>
+        </div>
       </div>
     </div>
   </div>
@@ -52,17 +75,26 @@
   <!-- GST summary strip -->
   <div class="gst-summary-strip" id="gstStrip" style="display:none">
     <div class="gst-strip-item">
-      <span class="gst-strip-label">இன்று வரி (CGST)</span>
+      <span class="gst-strip-label">
+        <span class="lang-ta">இன்று வரி (CGST)</span>
+        <span class="lang-en">Today CGST</span>
+      </span>
       <span class="gst-strip-val" id="todayCgst">—</span>
     </div>
     <div class="gst-strip-divider"></div>
     <div class="gst-strip-item">
-      <span class="gst-strip-label">இன்று வரி (SGST)</span>
+      <span class="gst-strip-label">
+        <span class="lang-ta">இன்று வரி (SGST)</span>
+        <span class="lang-en">Today SGST</span>
+      </span>
       <span class="gst-strip-val" id="todaySgst">—</span>
     </div>
     <div class="gst-strip-divider"></div>
     <div class="gst-strip-item">
-      <span class="gst-strip-label">மொத்த வரி</span>
+      <span class="gst-strip-label">
+        <span class="lang-ta">மொத்த வரி</span>
+        <span class="lang-en">Total GST Today</span>
+      </span>
       <span class="gst-strip-val" id="todayGst">—</span>
     </div>
   </div>
@@ -70,7 +102,10 @@
   <div class="charts-row">
     <div class="card chart-card chart-card--wide">
       <div class="card-header">
-        <h3 class="card-title">கடந்த 7 நாட்கள் வருவாய் (₹)</h3>
+        <h3 class="card-title">
+          <span class="lang-ta">கடந்த 7 நாட்கள் வருவாய் (₹)</span>
+          <span class="lang-en">Weekly Revenue Trend (₹)</span>
+        </h3>
       </div>
       <div class="card-body">
         <canvas id="revenueChart" height="120"></canvas>
@@ -78,7 +113,10 @@
     </div>
     <div class="card chart-card">
       <div class="card-header">
-        <h3 class="card-title">சிறந்த பொருட்கள்</h3>
+        <h3 class="card-title">
+          <span class="lang-ta">சிறந்த பொருட்கள்</span>
+          <span class="lang-en">Top Selling Products</span>
+        </h3>
       </div>
       <div class="card-body">
         <div id="topProductsList" class="top-products-list"></div>
@@ -89,35 +127,65 @@
   <div class="tables-row">
     <div class="card">
       <div class="card-header">
-        <h3 class="card-title">சமீபத்திய விற்பனைகள்</h3>
-        <a href="/sales" class="btn btn-ghost btn-sm">அனைத்தும் காண</a>
+        <h3 class="card-title">
+          <span class="lang-ta">சமீபத்திய விற்பனைகள்</span>
+          <span class="lang-en">Recent Transactions</span>
+        </h3>
+        <a href="/sales" class="btn btn-ghost btn-sm">
+          <span class="lang-ta">அனைத்தும் காண</span>
+          <span class="lang-en">View All</span>
+        </a>
       </div>
       <div class="card-body p0">
         <table class="table">
           <thead>
             <tr>
-              <th>ரசீது #</th>
-              <th>வாடிக்கையாளர்</th>
-              <th>பொருட்கள்</th>
-              <th>கட்டணம்</th>
-              <th>மொத்தம்</th>
-              <th>நேரம்</th>
+              <th>
+                <span class="lang-ta">ரசீது #</span>
+                <span class="lang-en">Invoice #</span>
+              </th>
+              <th>
+                <span class="lang-ta">வாடிக்கையாளர்</span>
+                <span class="lang-en">Customer</span>
+              </th>
+              <th>
+                <span class="lang-ta">பொருட்கள்</span>
+                <span class="lang-en">Items</span>
+              </th>
+              <th>
+                <span class="lang-ta">கட்டணம்</span>
+                <span class="lang-en">Payment</span>
+              </th>
+              <th>
+                <span class="lang-ta">மொத்தம்</span>
+                <span class="lang-en">Total</span>
+              </th>
+              <th>
+                <span class="lang-ta">நேரம்</span>
+                <span class="lang-en">Time</span>
+              </th>
             </tr>
           </thead>
           <tbody id="recentSalesTbody">
-            <tr><td colspan="6" class="text-center text-muted">ஏற்றுகிறது...</td></tr>
+            <tr><td colspan="6" class="text-center text-muted">Loading / ஏற்றுகிறது...</td></tr>
           </tbody>
         </table>
       </div>
     </div>
     <div class="card">
       <div class="card-header">
-        <h3 class="card-title">⚠️ குறைந்த இருப்பு</h3>
-        <a href="/products" class="btn btn-ghost btn-sm">நிர்வகிக்க</a>
+        <h3 class="card-title">
+          <span class="lang-ta">⚠️ குறைந்த இருப்பு</span>
+          <span class="lang-en">⚠️ Low Stock Alerts</span>
+        </h3>
+        <a href="/products" class="btn btn-ghost btn-sm">
+          <span class="lang-ta">நிர்வகிக்க</span>
+          <span class="lang-en">Manage</span>
+        </a>
       </div>
       <div class="card-body p0">
         <div id="lowStockList" class="low-stock-list">
-          <div class="text-center text-muted p-4">ஏற்றுகிறது...</div>
+          <div class="text-center text-muted p-4">Loading / ஏற்றுகிறது...</div>
         </div>
       </div>
     </div>

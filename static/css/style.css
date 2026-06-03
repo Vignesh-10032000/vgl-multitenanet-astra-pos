@@ -1337,3 +1337,186 @@ body {
   color: var(--text-primary) !important;
   box-shadow: 0 0 0 3px var(--primary-glow) !important;
 }
+
+/* ============================================================
+   Language Visibility Rules
+   ============================================================ */
+html.lang-en .lang-ta { display: none !important; }
+html.lang-ta .lang-en { display: none !important; }
+
+/* ============================================================
+   Light Theme Variable Overrides
+   ============================================================ */
+html.theme-light {
+  --bg-base: #f1f5f9;
+  --bg-surface: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8fafc;
+  --bg-input: #f8fafc;
+  --bg-input-focus: #ffffff;
+
+  --border: rgba(0, 0, 0, 0.08);
+  --border-focus: rgba(139, 92, 246, 0.6);
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-link: #8b5cf6;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow: 0 4px 12px rgba(0,0,0,0.05);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
+  --shadow-glow: 0 0 20px rgba(139,92,246,0.1);
+}
+
+/* Specific Light Theme Overrides */
+html.theme-light body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+}
+
+html.theme-light .top-bar {
+  background: rgba(241, 245, 249, 0.8) !important;
+  border-bottom-color: var(--border) !important;
+}
+
+html.theme-light .time-display {
+  background: rgba(0,0,0,0.03) !important;
+  border-color: var(--border) !important;
+  color: var(--text-secondary) !important;
+}
+
+html.theme-light .sidebar {
+  background: var(--bg-surface) !important;
+  border-right-color: var(--border) !important;
+}
+
+html.theme-light .sidebar-header {
+  border-bottom-color: var(--border) !important;
+}
+
+html.theme-light .sidebar-footer {
+  border-top-color: var(--border) !important;
+}
+
+html.theme-light .nav-item {
+  color: var(--text-secondary) !important;
+}
+
+html.theme-light .nav-item:hover {
+  background: rgba(139, 92, 246, 0.06) !important;
+  color: var(--text-primary) !important;
+}
+
+html.theme-light .nav-item.active {
+  background: rgba(139, 92, 246, 0.08) !important;
+  color: var(--primary) !important;
+}
+
+html.theme-light .nav-icon {
+  background: rgba(0,0,0,0.03) !important;
+}
+
+html.theme-light .table th {
+  background: rgba(0, 0, 0, 0.02) !important;
+  color: var(--text-secondary) !important;
+}
+
+html.theme-light .cat-btn {
+  background: rgba(0, 0, 0, 0.04) !important;
+  color: var(--text-secondary) !important;
+  border-color: var(--border) !important;
+}
+
+html.theme-light .cat-btn:hover {
+  background: rgba(0, 0, 0, 0.07) !important;
+  color: var(--text-primary) !important;
+}
+
+html.theme-light .cat-btn.active {
+  background: var(--primary-glow) !important;
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+}
+
+html.theme-light .product-card {
+  background: var(--bg-card) !important;
+  border-color: var(--border) !important;
+}
+
+html.theme-light .product-card:hover:not(.out-of-stock) {
+  background: var(--bg-card-hover) !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 4px 16px rgba(139,92,246,0.15) !important;
+}
+
+html.theme-light .pos-cart-panel {
+  background: var(--bg-card) !important;
+  border-color: var(--border) !important;
+}
+
+html.theme-light .cart-header, html.theme-light .cart-customer {
+  border-bottom-color: var(--border) !important;
+}
+
+html.theme-light .cart-item {
+  border-bottom-color: rgba(0,0,0,0.03) !important;
+}
+
+html.theme-light .cart-item:hover {
+  background: rgba(139,92,246,0.03) !important;
+}
+
+html.theme-light .cart-summary {
+  background: rgba(0,0,0,0.01) !important;
+  border-top-color: var(--border) !important;
+}
+
+html.theme-light .modal-dialog {
+  background: var(--bg-card) !important;
+  border-color: var(--border) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+html.theme-light .modal-header {
+  border-bottom-color: var(--border) !important;
+}
+
+html.theme-light .modal-footer {
+  border-top-color: var(--border) !important;
+}
+
+html.theme-light .stat-card {
+  background: var(--bg-card) !important;
+  border-color: var(--border) !important;
+}
+
+html.theme-light .stat-card::before {
+  opacity: 0.04 !important;
+}
+
+html.theme-light .stat-card--primary:hover {
+  border-color: rgba(139,92,246,0.3) !important;
+}
+
+html.theme-light .stat-card--cyan:hover {
+  border-color: rgba(6,182,212,0.3) !important;
+}
+
+html.theme-light .stat-card--green:hover {
+  border-color: rgba(16,185,129,0.3) !important;
+}
+
+html.theme-light .gst-summary-strip {
+  background: rgba(6,182,212,0.03) !important;
+  border-color: rgba(6,182,212,0.15) !important;
+}
+
+html.theme-light .gst-strip-divider {
+  background: rgba(6,182,212,0.15) !important;
+}
+
+/* Transitions for Theme Switch Smoothness */
+body, aside, main, .card, .stat-card, input, select, button, .top-bar, .table, th, td, .nav-item, .nav-icon {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease !important;
+}

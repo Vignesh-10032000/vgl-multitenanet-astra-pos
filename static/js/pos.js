@@ -12,12 +12,6 @@ function fmt(amount) {
   });
 }
 
-// Payment method label (Tamil + English)
-function payLabel(method) {
-  const labels = { cash: '💵 ரொக்கம்', upi: '📱 UPI', card: '💳 Card', mobile: '📱 UPI' };
-  return labels[method] || method;
-}
-
 // Live Clock (IST)
 function updateClock() {
   const el = document.getElementById('timeDisplay');
@@ -65,3 +59,78 @@ function showToast(message, type = 'info', duration = 3000) {
   setTimeout(() => toast.classList.add('visible'), 10);
   setTimeout(() => { toast.classList.remove('visible'); setTimeout(() => toast.remove(), 300); }, duration);
 }
+
+// Language and Theme Toggle Implementation
+let currentLanguage = localStorage.getItem('vgl_lang') || 'ta';
+
+function getLangTxt(en, ta) {
+  return currentLanguage === 'en' ? en : ta;
+}
+
+function payLabel(method) {
+  const labels = {
+    cash: getLangTxt('💵 Cash', '💵 ரொக்கம்'),
+    upi: getLangTxt('📱 UPI', '📱 UPI'),
+    card: getLangTxt('💳 Card', '💳 அட்டை'),
+    mobile: getLangTxt('📱 UPI', '📱 UPI')
+  };
+  return labels[method] || method;
+}
+
+function toggleTheme() {
+  const isLight = document.documentElement.classList.contains('theme-light');
+  if (isLight) {
+    document.documentElement.classList.remove('theme-light');
+    localStorage.setItem('vgl_theme', 'dark');
+    showThemeIcon('dark');
+  } else {
+    document.documentElement.classList.add('theme-light');
+    localStorage.setItem('vgl_theme', 'light');
+    showThemeIcon('light');
+  }
+}
+
+function showThemeIcon(theme) {
+  const darkIcon = document.querySelector('.theme-icon-dark');
+  const lightIcon = document.querySelector('.theme-icon-light');
+  if (!darkIcon || !lightIcon) return;
+  if (theme === 'light') {
+    darkIcon.classList.add('d-none');
+    lightIcon.classList.remove('d-none');
+  } else {
+    darkIcon.classList.remove('d-none');
+    lightIcon.classList.add('d-none');
+  }
+}
+
+function toggleLanguage() {
+  const isTa = document.documentElement.classList.contains('lang-ta');
+  if (isTa) {
+    document.documentElement.classList.remove('lang-ta');
+    document.documentElement.classList.add('lang-en');
+    document.documentElement.setAttribute('lang', 'en');
+    localStorage.setItem('vgl_lang', 'en');
+    currentLanguage = 'en';
+  } else {
+    document.documentElement.classList.remove('lang-en');
+    document.documentElement.classList.add('lang-ta');
+    document.documentElement.setAttribute('lang', 'ta');
+    localStorage.setItem('vgl_lang', 'ta');
+    currentLanguage = 'ta';
+  }
+  
+  // Re-trigger dynamic render functions if present on the active page
+  if (typeof loadDashboard === 'function') loadDashboard();
+  if (typeof loadProducts === 'function') loadProducts();
+  if (typeof loadSales === 'function') loadSales();
+  if (typeof loadCustomers === 'function') loadCustomers();
+  if (typeof renderCart === 'function') renderCart();
+  if (typeof loadReports === 'function') loadReports();
+}
+
+// Sync UI on DOM Load
+document.addEventListener('DOMContentLoaded', () => {
+  const currentTheme = localStorage.getItem('vgl_theme') || 'dark';
+  showThemeIcon(currentTheme);
+});
+

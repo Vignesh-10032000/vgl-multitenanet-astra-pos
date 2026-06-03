@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
-{% block title %}அறிக்கைகள்{% endblock %}
-{% block page_title %}அறிக்கைகள் & பகுப்பாய்வு{% endblock %}
+{% block title %}<span class="lang-en">Reports</span><span class="lang-ta">அறிக்கைகள்</span>{% endblock %}
+{% block page_title %}<span class="lang-en">Reports & Analytics</span><span class="lang-ta">அறிக்கைகள் & பகுப்பாய்வு</span>{% endblock %}
 
 {% block content %}
 <div class="reports-toolbar">
   <div class="period-selector">
-    <button class="period-btn" data-days="7">7 நாட்கள்</button>
-    <button class="period-btn active" data-days="30">30 நாட்கள்</button>
-    <button class="period-btn" data-days="90">90 நாட்கள்</button>
+    <button class="period-btn" data-days="7"><span class="lang-en">7 Days</span><span class="lang-ta">7 நாட்கள்</span></button>
+    <button class="period-btn active" data-days="30"><span class="lang-en">30 Days</span><span class="lang-ta">30 நாட்கள்</span></button>
+    <button class="period-btn" data-days="90"><span class="lang-en">90 Days</span><span class="lang-ta">90 நாட்கள்</span></button>
   </div>
 </div>
 
@@ -16,28 +16,28 @@
   <div class="stat-card stat-card--primary">
     <div class="stat-icon">💰</div>
     <div class="stat-info">
-      <div class="stat-label">மொத்த வருவாய்</div>
+      <div class="stat-label"><span class="lang-en">Total Revenue</span><span class="lang-ta">மொத்த வருவாய்</span></div>
       <div class="stat-value" id="rptRevenue">—</div>
     </div>
   </div>
   <div class="stat-card stat-card--cyan">
     <div class="stat-icon">🛒</div>
     <div class="stat-info">
-      <div class="stat-label">மொத்த விற்பனை</div>
+      <div class="stat-label"><span class="lang-en">Total Sales</span><span class="lang-ta">மொத்த விற்பனை</span></div>
       <div class="stat-value" id="rptOrders">—</div>
     </div>
   </div>
   <div class="stat-card stat-card--purple">
     <div class="stat-icon">📊</div>
     <div class="stat-info">
-      <div class="stat-label">சராசரி விற்பனை</div>
+      <div class="stat-label"><span class="lang-en">Average Order</span><span class="lang-ta">சராசரி விற்பனை</span></div>
       <div class="stat-value" id="rptAvg">—</div>
     </div>
   </div>
   <div class="stat-card stat-card--green">
     <div class="stat-icon">🏛️</div>
     <div class="stat-info">
-      <div class="stat-label">மொத்த GST (CGST+SGST)</div>
+      <div class="stat-label"><span class="lang-en">Total GST (CGST+SGST)</span><span class="lang-ta">மொத்த GST (CGST+SGST)</span></div>
       <div class="stat-value" id="rptGst">—</div>
       <div class="stat-sub" id="rptGstBreakdown">—</div>
     </div>
@@ -47,22 +47,22 @@
 <!-- Charts -->
 <div class="charts-row">
   <div class="card chart-card chart-card--wide">
-    <div class="card-header"><h3 class="card-title">வருவாய் வரைபடம் (₹)</h3></div>
+    <div class="card-header"><h3 class="card-title"><span class="lang-en">Revenue Trend (₹)</span><span class="lang-ta">வருவாய் வரைபடம் (₹)</span></h3></div>
     <div class="card-body"><canvas id="revenueLineChart" height="120"></canvas></div>
   </div>
   <div class="card chart-card">
-    <div class="card-header"><h3 class="card-title">கட்டண முறைகள்</h3></div>
+    <div class="card-header"><h3 class="card-title"><span class="lang-en">Payment Methods</span><span class="lang-ta">கட்டண முறைகள்</span></h3></div>
     <div class="card-body"><canvas id="paymentDoughnutChart" height="200"></canvas></div>
   </div>
 </div>
 
 <div class="charts-row">
   <div class="card chart-card chart-card--wide">
-    <div class="card-header"><h3 class="card-title">வகை வாரியான வருவாய் (₹)</h3></div>
+    <div class="card-header"><h3 class="card-title"><span class="lang-en">Revenue by Category (₹)</span><span class="lang-ta">வகை வாரியான வருவாய் (₹)</span></h3></div>
     <div class="card-body"><canvas id="categoryBarChart" height="120"></canvas></div>
   </div>
   <div class="card chart-card">
-    <div class="card-header"><h3 class="card-title">சிறந்த 10 பொருட்கள்</h3></div>
+    <div class="card-header"><h3 class="card-title"><span class="lang-en">Top 10 Products</span><span class="lang-ta">சிறந்த 10 பொருட்கள்</span></h3></div>
     <div class="card-body p0">
       <div id="topProductsReport" style="padding:16px"></div>
     </div>
@@ -72,34 +72,34 @@
 <div class="charts-row">
   <div class="card chart-card chart-card--wide">
     <div class="card-header">
-      <h3 class="card-title">⭐ சிறந்த வாடிக்கையாளர்கள் (Best Customers)</h3>
+      <h3 class="card-title">⭐ <span class="lang-en">Best Customers</span><span class="lang-ta">சிறந்த வாடிக்கையாளர்கள்</span></h3>
     </div>
     <div class="card-body p0">
       <table class="table mb-0">
         <thead>
           <tr>
-            <th class="ps-3">பெயர் (Name)</th>
-            <th>கைபேசி (Phone)</th>
-            <th>விற்பனை (Orders)</th>
-            <th>செலவு (Total Spent)</th>
-            <th class="pe-3">புள்ளிகள் (Points)</th>
+            <th class="ps-3"><span class="lang-en">Name</span><span class="lang-ta">பெயர்</span></th>
+            <th><span class="lang-en">Phone</span><span class="lang-ta">கைபேசி</span></th>
+            <th><span class="lang-en">Orders</span><span class="lang-ta">விற்பனை</span></th>
+            <th><span class="lang-en">Total Spent</span><span class="lang-ta">செலவு</span></th>
+            <th class="pe-3"><span class="lang-en">Points</span><span class="lang-ta">புள்ளிகள்</span></th>
           </tr>
         </thead>
         <tbody id="bestCustomersTbody">
-          <tr><td colspan="5" class="text-center text-muted">ஏற்றுகிறது...</td></tr>
+          <tr><td colspan="5" class="text-center text-muted"><span class="lang-en">Loading...</span><span class="lang-ta">ஏற்றுகிறது...</span></td></tr>
         </tbody>
       </table>
     </div>
   </div>
   <div class="card chart-card">
     <div class="card-header">
-      <h3 class="card-title">📊 தயாரிப்பு செயல்திறன் (Inventory Performance)</h3>
+      <h3 class="card-title">📊 <span class="lang-en">Inventory Performance</span><span class="lang-ta">தயாரிப்பு செயல்திறன்</span></h3>
     </div>
     <div class="card-body">
-      <h5 class="text-success fw-bold mb-2">Fast-Moving Items</h5>
+      <h5 class="text-success fw-bold mb-2"><span class="lang-en">Fast-Moving Items</span><span class="lang-ta">அதிக விற்பனையானவை (Fast-Moving)</span></h5>
       <div id="fastMovingList" class="mb-4"></div>
       
-      <h5 class="text-warning fw-bold mb-2">Slow-Moving Stocks (Dead Stock)</h5>
+      <h5 class="text-warning fw-bold mb-2"><span class="lang-en">Slow-Moving Stocks</span><span class="lang-ta">குறைந்த விற்பனையானவை (Slow-Moving)</span></h5>
       <div id="slowMovingList"></div>
     </div>
   </div>
@@ -139,7 +139,7 @@ async function loadReports() {
     data: {
       labels: rev.data.map(d => d.date),
       datasets: [{
-        label: 'வருவாய் (₹)',
+        label: getLangTxt('Revenue (₹)', 'வருவாய் (₹)'),
         data: rev.data.map(d => d.revenue),
         borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.15)',
         fill: true, tension: 0.4, pointBackgroundColor: '#8b5cf6', pointRadius: 4,
@@ -171,12 +171,21 @@ async function loadReports() {
     }
   });
 
+  const catTranslations = {
+    'உணவு & பானம்': 'Food & Drinks',
+    'மளிகை': 'Grocery',
+    'மின்னணுவியல்': 'Electronics',
+    'ஆடை & துணி': 'Clothing & Textiles',
+    'சுகாதார பொருட்கள்': 'Health & Care',
+    'எழுதுபொருட்கள்': 'Stationery'
+  };
+
   if (charts.category) charts.category.destroy();
   charts.category = new Chart(document.getElementById('categoryBarChart').getContext('2d'), {
     type: 'bar',
     data: {
-      labels: cats.map(c => c.name),
-      datasets: [{ label: 'வருவாய்', data: cats.map(c => c.revenue), backgroundColor: colors, borderRadius: 8 }]
+      labels: cats.map(c => getLangTxt(catTranslations[c.name] || c.name, c.name)),
+      datasets: [{ label: getLangTxt('Revenue', 'வருவாய்'), data: cats.map(c => c.revenue), backgroundColor: colors, borderRadius: 8 }]
     },
     options: {
       responsive: true, plugins: { legend: { display: false } },
@@ -197,36 +206,36 @@ async function loadReports() {
       </div>
       <div>
         <div class="top-product-revenue">${fmt(p.revenue)}</div>
-        <div class="text-muted text-sm">${p.qty} விற்கப்பட்டது</div>
+        <div class="text-muted text-sm">${p.qty} ${getLangTxt('sold', 'விற்கப்பட்டது')}</div>
       </div>
     </div>
-  `).join('') || '<p class="text-muted text-center">தரவு இல்லை</p>';
+  `).join('') || `<p class="text-muted text-center">${getLangTxt('No data available', 'தரவு இல்லை')}</p>`;
 
   // Render Best Customers Table
   document.getElementById('bestCustomersTbody').innerHTML = cust.map(c => `
     <tr>
       <td class="ps-3"><span class="fw-bold">${c.name}</span></td>
       <td class="text-muted">${c.phone}</td>
-      <td>${c.orders} முறை</td>
+      <td>${c.orders} ${getLangTxt('times', 'முறை')}</td>
       <td class="fw-semibold text-primary">${fmt(c.total_spent)}</td>
       <td class="pe-3">⭐ ${c.points}</td>
     </tr>
-  `).join('') || '<tr><td colspan="5" class="text-center text-muted">தரவு இல்லை</td></tr>';
+  `).join('') || `<tr><td colspan="5" class="text-center text-muted">${getLangTxt('No data available', 'தரவு இல்லை')}</td></tr>`;
 
   // Render Product Performance lists
   document.getElementById('fastMovingList').innerHTML = perf.fast_moving.map(p => `
     <div class="d-flex justify-content-between align-items-center mb-2 text-sm">
       <span>📦 ${p.name} <code class="sku-code text-xs">${p.sku}</code></span>
-      <span class="badge badge--success">${p.qty} sold</span>
+      <span class="badge badge--success">${p.qty} ${getLangTxt('sold', 'விற்கப்பட்டது')}</span>
     </div>
-  `).join('') || '<p class="text-muted text-xs">விற்பனை இல்லை</p>';
+  `).join('') || `<p class="text-muted text-xs">${getLangTxt('No sales', 'விற்பனை இல்லை')}</p>`;
 
   document.getElementById('slowMovingList').innerHTML = perf.slow_moving.map(p => `
     <div class="d-flex justify-content-between align-items-center mb-2 text-sm">
       <span>📦 ${p.name} <code class="sku-code text-xs">${p.sku}</code></span>
-      <span class="badge badge--upi">${p.stock} in stock</span>
+      <span class="badge badge--upi">${p.stock} ${getLangTxt('in stock', 'உள்ளது')}</span>
     </div>
-  `).join('') || '<p class="text-muted text-xs">விற்பனை இல்லாத பொருட்கள் இல்லை</p>';
+  `).join('') || `<p class="text-muted text-xs">${getLangTxt('No slow moving products', 'விற்பனை இல்லாத பொருட்கள் இல்லை')}</p>`;
 }
 
 document.querySelectorAll('.period-btn').forEach(btn => {
@@ -237,6 +246,13 @@ document.querySelectorAll('.period-btn').forEach(btn => {
     loadReports();
   });
 });
+
+// Override global toggleLanguage callback to re-trigger reports rendering
+const originalToggleLanguage = window.toggleLanguage;
+window.toggleLanguage = function() {
+  if (typeof originalToggleLanguage === 'function') originalToggleLanguage();
+  loadReports();
+};
 
 loadReports();
 </script>

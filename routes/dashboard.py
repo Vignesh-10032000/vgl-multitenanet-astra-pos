@@ -10,6 +10,10 @@ dashboard_bp = Blueprint('dashboard', __name__)
 def index():
     return render_template('dashboard.html', page='dashboard')
 
+@dashboard_bp.route('/settings')
+def settings():
+    return render_template('settings.html', page='settings')
+
 @dashboard_bp.route('/api/dashboard/stats')
 @cache.cached(timeout=10)
 def stats():

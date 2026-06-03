@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}வாடிக்கையாளர்கள்{% endblock %}
-{% block page_title %}வாடிக்கையாளர்கள்{% endblock %}
+{% block title %}<span class="lang-en">Customers</span><span class="lang-ta">வாடிக்கையாளர்கள்</span>{% endblock %}
+{% block page_title %}<span class="lang-en">Customers Directory</span><span class="lang-ta">வாடிக்கையாளர்கள்</span>{% endblock %}
 
 {% block content %}
 <div class="page-toolbar">
@@ -13,12 +13,12 @@
     </div>
   </div>
   <div class="toolbar-right">
-    <button class="btn btn-primary" id="addCustomerBtn">+ வாடிக்கையாளர் சேர்</button>
+    <button class="btn btn-primary" id="addCustomerBtn">+ <span class="lang-en">Add Customer</span><span class="lang-ta">வாடிக்கையாளர் சேர்</span></button>
   </div>
 </div>
 
 <div class="customers-grid" id="customersGrid">
-  <div class="loading-state"><div class="spinner"></div><p>ஏற்றுகிறது...</p></div>
+  <div class="loading-state"><div class="spinner"></div><p><span class="lang-en">Loading...</span><span class="lang-ta">ஏற்றுகிறது...</span></p></div>
 </div>
 
 {% endblock %}
@@ -28,32 +28,32 @@
 <div class="modal" id="customerModal">
   <div class="modal-dialog modal-sm">
     <div class="modal-header">
-      <h3 id="customerModalTitle">வாடிக்கையாளர் சேர்</h3>
+      <h3 id="customerModalTitle"><span class="lang-en">Add Customer</span><span class="lang-ta">வாடிக்கையாளர் சேர்</span></h3>
       <button class="modal-close" onclick="closeModal('customerModal')">✕</button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="customerId">
       <div class="form-group">
-        <label class="form-label">முழு பெயர் *</label>
-        <input type="text" id="customerName" class="form-input" placeholder="உ.தா: முருகன் ராஜன்">
+        <label class="form-label"><span class="lang-en">Full Name *</span><span class="lang-ta">முழு பெயர் *</span></label>
+        <input type="text" id="customerName" class="form-input" placeholder="e.g. Murugan Rajan">
       </div>
       <div class="form-group">
-        <label class="form-label">மின்னஞ்சல்</label>
+        <label class="form-label"><span class="lang-en">Email</span><span class="lang-ta">மின்னஞ்சல்</span></label>
         <input type="email" id="customerEmail" class="form-input" placeholder="example@gmail.com">
       </div>
       <div class="form-group">
-        <label class="form-label">கைபேசி எண்</label>
+        <label class="form-label"><span class="lang-en">Mobile Number</span><span class="lang-ta">கைபேசி எண்</span></label>
         <input type="tel" id="customerPhone" class="form-input" placeholder="98400 00000">
       </div>
       <div class="form-group">
-        <label class="form-label">GSTIN (B2B வாடிக்கையாளர்)</label>
-        <input type="text" id="customerGstin" class="form-input" placeholder="உ.தா: 33AABCA1234B1ZX">
-        <div class="text-muted text-sm" style="margin-top:4px">வணிக வாடிக்கையாளராக இருந்தால் மட்டும்</div>
+        <label class="form-label"><span class="lang-en">GSTIN (B2B Customer)</span><span class="lang-ta">GSTIN (B2B வாடிக்கையாளர்)</span></label>
+        <input type="text" id="customerGstin" class="form-input" placeholder="e.g. 33AABCA1234B1ZX">
+        <div class="text-muted text-sm" style="margin-top:4px"><span class="lang-en">Only if business customer</span><span class="lang-ta">வணிக வாடிக்கையாளராக இருந்தால் மட்டும்</span></div>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('customerModal')">ரத்து</button>
-      <button class="btn btn-primary" id="saveCustomerBtn">சேமி</button>
+      <button class="btn btn-ghost" onclick="closeModal('customerModal')"><span class="lang-en">Cancel</span><span class="lang-ta">ரத்து</span></button>
+      <button class="btn btn-primary" id="saveCustomerBtn"><span class="lang-en">Save</span><span class="lang-ta">சேமி</span></button>
     </div>
   </div>
 </div>
@@ -62,7 +62,11 @@
 {% block scripts %}
 <script>
 async function loadCustomers() {
-  const q = document.getElementById('customerSearch').value;
+  const searchInput = document.getElementById('customerSearch');
+  if (searchInput) {
+    searchInput.placeholder = getLangTxt('Search name / phone...', 'பெயர் / தொலைபேசி தேடுக...');
+  }
+  const q = searchInput ? searchInput.value : '';
   const params = new URLSearchParams();
   if (q) params.set('q', q);
   const res = await fetch('/api/customers?' + params);
@@ -72,7 +76,7 @@ async function loadCustomers() {
 
 function renderCustomers(customers) {
   const grid = document.getElementById('customersGrid');
-  if (!customers.length) { grid.innerHTML = '<div class="loading-state"><p class="text-muted">வாடிக்கையாளர்கள் இல்லை</p></div>'; return; }
+  if (!customers.length) { grid.innerHTML = `<div class="loading-state"><p class="text-muted">${getLangTxt('No customers found', 'வாடிக்கையாளர்கள் இல்லை')}</p></div>`; return; }
   grid.innerHTML = customers.map(c => `
     <div class="customer-card">
       <div class="customer-avatar">${c.name.charAt(0).toUpperCase()}</div>
@@ -85,19 +89,19 @@ function renderCustomers(customers) {
       <div class="customer-stats">
         <div class="customer-stat">
           <div class="customer-stat-value">${fmt(c.total_spent)}</div>
-          <div class="customer-stat-label">மொத்த செலவு</div>
+          <div class="customer-stat-label">${getLangTxt('Total Spent', 'மொத்த செலவு')}</div>
         </div>
         <div class="customer-stat">
           <div class="customer-stat-value">${c.total_orders}</div>
-          <div class="customer-stat-label">கொள்முதல்</div>
+          <div class="customer-stat-label">${getLangTxt('Orders', 'கொள்முதல்')}</div>
         </div>
         <div class="customer-stat">
           <div class="customer-stat-value">⭐ ${c.points}</div>
-          <div class="customer-stat-label">புள்ளிகள்</div>
+          <div class="customer-stat-label">${getLangTxt('Points', 'புள்ளிகள்')}</div>
         </div>
       </div>
       <div class="customer-actions">
-        <button class="btn btn-ghost btn-sm" onclick="editCustomer(${c.id})">✏️ திருத்து</button>
+        <button class="btn btn-ghost btn-sm" onclick="editCustomer(${c.id})">✏️ ${getLangTxt('Edit', 'திருத்து')}</button>
         <button class="btn btn-ghost btn-sm text-danger" onclick="deleteCustomer(${c.id}, '${c.name.replace(/'/g,"\\'")}')">🗑️</button>
       </div>
     </div>
@@ -105,7 +109,7 @@ function renderCustomers(customers) {
 }
 
 document.getElementById('addCustomerBtn').addEventListener('click', () => {
-  document.getElementById('customerModalTitle').textContent = 'புதிய வாடிக்கையாளர்';
+  document.getElementById('customerModalTitle').innerHTML = `<span class="lang-en">Add New Customer</span><span class="lang-ta">புதிய வாடிக்கையாளர்</span>`;
   document.getElementById('customerId').value = '';
   ['customerName','customerEmail','customerPhone','customerGstin'].forEach(id => document.getElementById(id).value = '');
   openModal('customerModal');
@@ -114,7 +118,7 @@ document.getElementById('addCustomerBtn').addEventListener('click', () => {
 async function editCustomer(id) {
   const res = await fetch(`/api/customers/${id}`);
   const c = await res.json();
-  document.getElementById('customerModalTitle').textContent = 'வாடிக்கையாளர் திருத்து';
+  document.getElementById('customerModalTitle').innerHTML = `<span class="lang-en">Edit Customer</span><span class="lang-ta">வாடிக்கையாளர் திருத்து</span>`;
   document.getElementById('customerId').value = c.id;
   document.getElementById('customerName').value = c.name;
   document.getElementById('customerEmail').value = c.email || '';
@@ -131,23 +135,31 @@ document.getElementById('saveCustomerBtn').addEventListener('click', async () =>
     phone: document.getElementById('customerPhone').value,
     gstin: document.getElementById('customerGstin').value,
   };
-  if (!payload.name) { showToast('பெயர் தேவை', 'error'); return; }
+  if (!payload.name) { showToast(getLangTxt('Name is required', 'பெயர் தேவை'), 'error'); return; }
   const url = id ? `/api/customers/${id}` : '/api/customers';
   const method = id ? 'PUT' : 'POST';
   const res = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-  if (res.ok) { showToast(id ? 'திருத்தப்பட்டது!' : 'சேர்க்கப்பட்டது!', 'success'); closeModal('customerModal'); loadCustomers(); }
-  else showToast('பிழை ஏற்பட்டது', 'error');
+  if (res.ok) { showToast(id ? getLangTxt('Updated successfully!', 'திருத்தப்பட்டது!') : getLangTxt('Added successfully!', 'சேர்க்கப்பட்டது!'), 'success'); closeModal('customerModal'); loadCustomers(); }
+  else showToast(getLangTxt('An error occurred', 'பிழை ஏற்பட்டது'), 'error');
 });
 
 async function deleteCustomer(id, name) {
-  if (!confirm(`"${name}" வாடிக்கையாளரை நீக்கவா?`)) return;
+  if (!confirm(getLangTxt(`Are you sure you want to delete customer "${name}"?`, `"${name}" வாடிக்கையாளரை நீக்கவா?`))) return;
   const res = await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-  if (res.ok) { showToast('நீக்கப்பட்டது', 'success'); loadCustomers(); }
-  else showToast('விற்பனை வரலாறு உள்ளதால் நீக்க முடியாது', 'error');
+  if (res.ok) { showToast(getLangTxt('Deleted successfully', 'நீக்கப்பட்டது'), 'success'); loadCustomers(); }
+  else showToast(getLangTxt('Cannot delete customer with sales history', 'விற்பனை வரலாறு உள்ளதால் நீக்க முடியாது'), 'error');
 }
 
 let st;
 document.getElementById('customerSearch').addEventListener('input', () => { clearTimeout(st); st = setTimeout(loadCustomers, 300); });
+
+// Override the global toggle callback if present to re-trigger list
+const originalToggleLanguage = window.toggleLanguage;
+window.toggleLanguage = function() {
+  if (typeof originalToggleLanguage === 'function') originalToggleLanguage();
+  loadCustomers();
+};
+
 loadCustomers();
 </script>
 {% endblock %}
