@@ -155,13 +155,13 @@ def create_app():
         }), 500
 
     # ── Loader.io domain verification ──────────────────────────────────────────
-    @app.route('/loaderio-3719f26e3ec9072c24f17ae2a51d804c.txt')
-    @app.route('/loaderio-3719f26e3ec9072c24f17ae2a51d804c.html')
-    @app.route('/loaderio-3719f26e3ec9072c24f17ae2a51d804c/')
-    @app.route('/loaderio-3719f26e3ec9072c24f17ae2a51d804c')
+    @app.route('/loaderio-<token>.txt')
+    @app.route('/loaderio-<token>.html')
+    @app.route('/loaderio-<token>/')
+    @app.route('/loaderio-<token>')
     @limiter.exempt
-    def loaderio_verify():
-        return 'loaderio-3719f26e3ec9072c24f17ae2a51d804c', 200, {'Content-Type': 'text/plain'}
+    def loaderio_verify(token):
+        return f'loaderio-{token}', 200, {'Content-Type': 'text/plain'}
 
     # ── Health Check Endpoint ──────────────────────────────────────────────────
     @app.route('/health')

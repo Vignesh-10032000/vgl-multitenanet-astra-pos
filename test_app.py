@@ -142,5 +142,25 @@ class POSTestCase(unittest.TestCase):
         })
         self.assertEqual(response_dup.status_code, 400)
 
+    def test_loaderio_dynamic_verification(self):
+        # Verify dynamic loader.io endpoint responds with loaderio-TOKEN
+        test_token = '30b619278e7e5d9e56623259767975ba'
+        
+        # Test .txt extension
+        response_txt = self.client.get(f'/loaderio-{test_token}.txt')
+        self.assertEqual(response_txt.status_code, 200)
+        self.assertEqual(response_txt.data.decode('utf-8'), f'loaderio-{test_token}')
+        self.assertEqual(response_txt.content_type, 'text/plain')
+        
+        # Test .html extension
+        response_html = self.client.get(f'/loaderio-{test_token}.html')
+        self.assertEqual(response_html.status_code, 200)
+        self.assertEqual(response_html.data.decode('utf-8'), f'loaderio-{test_token}')
+        
+        # Test bare path
+        response_bare = self.client.get(f'/loaderio-{test_token}')
+        self.assertEqual(response_bare.status_code, 200)
+        self.assertEqual(response_bare.data.decode('utf-8'), f'loaderio-{test_token}')
+
 if __name__ == '__main__':
     unittest.main()
