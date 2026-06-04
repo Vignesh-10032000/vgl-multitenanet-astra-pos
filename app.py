@@ -43,10 +43,14 @@ metrics = MetricsTracker()
 logging.basicConfig(level=logging.INFO)
 morgan_logger = logging.getLogger('morgan')
 
-# Setup Rate Limiter (Default: 100 requests per minute per IP)
+# Setup Rate Limiter (Default: 100 requests per minute per IP, configurable for load tests)
+rate_limit_enabled = os.environ.get('RATE_LIMIT_ENABLED', 'true').lower() in ('true', '1', 'yes')
+default_rate_limit = os.environ.get('RATE_LIMIT_DEFAULT', '100 per minute')
+
 limiter = Limiter(
     key_func=get_remote_address,
-    default_limits=["100 per minute"],
+    default_limits=[default_rate_limit],
+    enabled=rate_limit_enabled,
     storage_uri="memory://"
 )
 
