@@ -177,6 +177,13 @@ def create_app():
             'uptime': f"{uptime:.1f}s"
         }), 200
 
+    # ── OpenAPI Spec Endpoint ──────────────────────────────────────────────────
+    @app.route('/openapi.json')
+    @limiter.exempt
+    def openapi_spec():
+        return app.send_static_file('openapi.json')
+
+
     # ── Metrics Monitoring Endpoint ────────────────────────────────────────────
     @app.route('/metrics')
     @limiter.exempt

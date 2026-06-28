@@ -162,5 +162,14 @@ class POSTestCase(unittest.TestCase):
         self.assertEqual(response_bare.status_code, 200)
         self.assertEqual(response_bare.data.decode('utf-8'), f'loaderio-{test_token}')
 
+    def test_openapi_spec(self):
+        # Verify `/openapi.json` returns openapi specification
+        response = self.client.get('/openapi.json')
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data['openapi'], '3.0.0')
+        self.assertEqual(data['info']['title'], 'VGL Retail POS API')
+
 if __name__ == '__main__':
     unittest.main()
+
