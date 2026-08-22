@@ -12,6 +12,28 @@ function fmt(amount) {
   });
 }
 
+// [P0-8] HTML-escape server-supplied data before ANY innerHTML interpolation.
+// Escapes & < > " ' — every template must route dynamic text through this.
+function escapeHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// [P0-8] Escape for building a JS string LITERAL (e.g. inside an inline
+// onclick). This is NOT HTML escaping — when the literal sits inside an HTML
+// attribute, apply escapeHtml() on top: escapeHtml(escJsString(value)).
+// (Renamed from the misleading escHtml, which only escaped apostrophes.)
+function escJsString(s) {
+  return String(s ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '\\"');
+}
+
 // Live Clock (IST)
 function updateClock() {
   const el = document.getElementById('timeDisplay');
@@ -54,7 +76,7 @@ function showToast(message, type = 'info', duration = 3000) {
   const toast = document.createElement('div');
   toast.className = `toast toast--${type}`;
   const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
-  toast.innerHTML = `<span class="toast-icon">${icons[type] || 'ℹ️'}</span><span class="toast-msg">${message}</span>`;
+  toast.innerHTML = `<span class="toast-icon">${icons[type] || 'ℹ️'}</span><span class="toast-msg">${escapeHtml(message)}</span>`;
   container.appendChild(toast);
   setTimeout(() => toast.classList.add('visible'), 10);
   setTimeout(() => { toast.classList.remove('visible'); setTimeout(() => toast.remove(), 300); }, duration);

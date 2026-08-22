@@ -176,8 +176,8 @@ function renderCategoryOptions() {
   
   categories.forEach(c => {
     const name = getLangTxt(catTranslations[c.name] || c.name, c.name);
-    sel1.innerHTML += `<option value="${c.id}">${c.icon} ${name}</option>`;
-    sel2.innerHTML += `<option value="${c.id}">${c.icon} ${name}</option>`;
+    sel1.innerHTML += `<option value="${c.id}">${escapeHtml(c.icon)} ${escapeHtml(name)}</option>`;
+    sel2.innerHTML += `<option value="${c.id}">${escapeHtml(c.icon)} ${escapeHtml(name)}</option>`;
   });
   
   sel1.value = val1;
@@ -218,15 +218,15 @@ function renderProducts(products) {
     return `<tr>
       <td>
         <div class="product-name-cell">
-          <span class="product-icon">${p.category_icon}</span>
+          <span class="product-icon">${escapeHtml(p.category_icon)}</span>
           <div>
-            <div class="fw-500">${p.name}</div>
-            ${p.barcode ? `<div class="text-muted text-sm">${p.barcode}</div>` : ''}
+            <div class="fw-500">${escapeHtml(p.name)}</div>
+            ${p.barcode ? `<div class="text-muted text-sm">${escapeHtml(p.barcode)}</div>` : ''}
           </div>
         </div>
       </td>
-      <td><code class="sku-code">${p.sku}</code></td>
-      <td class="text-muted text-sm">${p.hsn_code || '—'}</td>
+      <td><code class="sku-code">${escapeHtml(p.sku)}</code></td>
+      <td class="text-muted text-sm">${escapeHtml(p.hsn_code || '—')}</td>
       <td><span class="badge ${gstCls}">${p.gst_rate}%</span></td>
       <td class="fw-600 text-primary">${fmt(p.price)}</td>
       <td class="${profit !== '—' && profit > 20 ? 'text-success' : 'text-muted'}">${profit !== '—' ? profit + '%' : '—'}</td>
@@ -236,7 +236,7 @@ function renderProducts(products) {
         <div class="action-btns">
           <button class="btn btn-ghost btn-sm" onclick="editProduct(${p.id})">✏️ ${getLangTxt('Edit', 'திருத்து')}</button>
           <button class="btn btn-ghost btn-sm" onclick="openStockModal(${p.id}, ${p.stock})" title="Adjust Stock">📦 ${getLangTxt('Stock', 'இருப்பு')}</button>
-          <button class="btn btn-ghost btn-sm text-danger" onclick="deleteProduct(${p.id}, '${p.name.replace(/'/g,"\\'")}')">🗑️</button>
+          <button class="btn btn-ghost btn-sm text-danger" onclick="deleteProduct(${p.id}, '${escapeHtml(escJsString(p.name))}')">🗑️</button>
         </div>
       </td>
     </tr>`;

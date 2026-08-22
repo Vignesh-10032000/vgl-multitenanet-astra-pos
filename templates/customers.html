@@ -79,12 +79,12 @@ function renderCustomers(customers) {
   if (!customers.length) { grid.innerHTML = `<div class="loading-state"><p class="text-muted">${getLangTxt('No customers found', 'வாடிக்கையாளர்கள் இல்லை')}</p></div>`; return; }
   grid.innerHTML = customers.map(c => `
     <div class="customer-card">
-      <div class="customer-avatar">${c.name.charAt(0).toUpperCase()}</div>
+      <div class="customer-avatar">${escapeHtml(c.name.charAt(0).toUpperCase())}</div>
       <div class="customer-info">
-        <div class="customer-name">${c.name} ${c.gstin ? '<span class="badge badge--cyan" style="font-size:10px">B2B</span>' : ''}</div>
-        <div class="customer-email">${c.email || '—'}</div>
-        <div class="customer-phone">📞 ${c.phone || '—'}</div>
-        ${c.gstin ? `<div class="text-muted text-sm">GSTIN: ${c.gstin}</div>` : ''}
+        <div class="customer-name">${escapeHtml(c.name)} ${c.gstin ? '<span class="badge badge--cyan" style="font-size:10px">B2B</span>' : ''}</div>
+        <div class="customer-email">${escapeHtml(c.email || '—')}</div>
+        <div class="customer-phone">📞 ${escapeHtml(c.phone || '—')}</div>
+        ${c.gstin ? `<div class="text-muted text-sm">GSTIN: ${escapeHtml(c.gstin)}</div>` : ''}
       </div>
       <div class="customer-stats">
         <div class="customer-stat">
@@ -102,7 +102,7 @@ function renderCustomers(customers) {
       </div>
       <div class="customer-actions">
         <button class="btn btn-ghost btn-sm" onclick="editCustomer(${c.id})">✏️ ${getLangTxt('Edit', 'திருத்து')}</button>
-        <button class="btn btn-ghost btn-sm text-danger" onclick="deleteCustomer(${c.id}, '${c.name.replace(/'/g,"\\'")}')">🗑️</button>
+        <button class="btn btn-ghost btn-sm text-danger" onclick="deleteCustomer(${c.id}, '${escapeHtml(escJsString(c.name))}')">🗑️</button>
       </div>
     </div>
   `).join('');

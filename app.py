@@ -1,9 +1,12 @@
 import os
 import sys
 import time
+import hmac
+import uuid
+import secrets
 import logging
 import psutil
-from flask import Flask, jsonify, request
+from flask import Flask, abort, jsonify, request
 from flask_compress import Compress
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -61,7 +64,7 @@ STORE_ADDRESS = "23, Anna Salai, Chennai - 600002, Tamil Nadu"
 STORE_PHONE = "+91 98400 00001"
 
 
-def create_app():
+def create_app(config=None):
     if getattr(sys, 'frozen', False):
         base_path = sys._MEIPASS
         app = Flask(__name__, 
@@ -78,18 +81,40 @@ def create_app():
     else:
         app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///pos.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'tn-pos-secret-2024')
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
     app.config['STORE_NAME'] = STORE_NAME
     app.config['STORE_NAME_EN'] = STORE_NAME_EN
     app.config['STORE_GSTIN'] = STORE_GSTIN
     app.config['STORE_ADDRESS'] = STORE_ADDRESS
     app.config['STORE_PHONE'] = STORE_PHONE
 
+    # [P0-6] Test/override config must be applied BEFORE db.init_app(), because
+    # Flask-SQLAlchemy 3.x builds its engine inside init_app(). Overriding
+    # SQLALCHEMY_DATABASE_URI after create_app() has no effect.
+    if config is not None:
+        if isinstance(config, dict):
+            app.config.update(config)
+        else:
+            app.config.from_object(config)
+
+    # [P1-11] Never boot production with a missing/hardcoded SECRET_KEY.
+    if not app.config.get('SECRET_KEY'):
+        if os.environ.get('APP_ENV') == 'production':
+            raise RuntimeError(
+                'SECRET_KEY environment variable is not set. Refusing to start '
+                'in production without an explicit SECRET_KEY.'
+            )
+        # Dev fallback: random per-process key (sessions do not survive restarts).
+        app.config['SECRET_KEY'] = secrets.token_hex(32)
+
     db.init_app(app)
     cache.init_app(app, config={'CACHE_TYPE': 'SimpleCache'})
     Compress(app)
     limiter.init_app(app)
-    CORS(app)
+    # [P1-10] Allow only origins listed in CORS_ORIGINS (comma-separated).
+    # Empty/unset means same-origin only: no CORS headers are emitted at all.
+    cors_origins = [o.strip() for o in os.environ.get('CORS_ORIGINS', '').split(',') if o.strip()]
+    CORS(app, origins=cors_origins)
 
 
     from routes.dashboard import dashboard_bp
@@ -143,19 +168,23 @@ def create_app():
         return response
 
     # Global Exception Handler
+    # [P1-8] Never leak str(e) (SQL text, schema, paths) to the client. Log the
+    # full traceback server-side under a request id; return only the id.
     @app.errorhandler(Exception)
     def handle_exception(e):
         from werkzeug.exceptions import HTTPException
         if isinstance(e, HTTPException):
             return e
-        
+
         import traceback
-        tb = traceback.format_exc()
-        morgan_logger.error(f"Unhandled Exception: {str(e)}\n{tb}")
+        request_id = str(uuid.uuid4())
+        morgan_logger.error(
+            f"Unhandled exception [request_id={request_id}] "
+            f"{request.method} {request.path}: {e}\n{traceback.format_exc()}"
+        )
         return jsonify({
-            'success': False,
-            'error': 'Internal Server Error / உள் சர்வர் பிழை',
-            'details': str(e)
+            'error': 'Internal server error',
+            'request_id': request_id
         }), 500
 
     # ── Loader.io domain verification ──────────────────────────────────────────
@@ -207,32 +236,44 @@ def create_app():
             'memory_usage_mb': round(memory_mb, 2)
         }), 200
 
-    @app.route('/api/demo/reset', methods=['POST'])
-    def demo_reset():
-        try:
+    # [P0-1] Demo endpoints (db.drop_all!) are registered ONLY when
+    # APP_ENV=demo. In every other environment the routes do not exist and the
+    # paths fall through to Flask's default 404, so they are not advertised.
+    # Even in demo, every request must carry X-Demo-Token matching DEMO_TOKEN;
+    # a missing/wrong token also yields 404, never 403.
+    if os.environ.get('APP_ENV') == 'demo':
+
+        def _demo_token_valid():
+            expected = os.environ.get('DEMO_TOKEN', '')
+            supplied = request.headers.get('X-Demo-Token', '')
+            return bool(expected) and hmac.compare_digest(supplied, expected)
+
+        @app.route('/api/demo/reset', methods=['POST'])
+        def demo_reset():
+            if not _demo_token_valid():
+                abort(404)
             db.drop_all()
             db.create_all()
             seed_data()
             return jsonify({'success': True, 'message': 'Demo data reset successfully / டெமோ தரவு மீட்டமைக்கப்பட்டது'})
-        except Exception as e:
-            return jsonify({'success': False, 'error': str(e)}), 500
 
-    @app.route('/api/demo/simulate_sale', methods=['POST'])
-    def simulate_sale():
-        try:
+        @app.route('/api/demo/simulate_sale', methods=['POST'])
+        def simulate_sale():
+            if not _demo_token_valid():
+                abort(404)
             from models import Product, Customer, Sale, SaleItem
             import random
             from datetime import timedelta
-            
+
             customer_ids = [c.id for c in Customer.query.all()]
             product_list = Product.query.filter_by(active=True).all()
             if not product_list:
                 return jsonify({'success': False, 'error': 'No active products found'}), 400
-                
+
             num_items = random.randint(1, 3)
             items = random.sample(product_list, min(num_items, len(product_list)))
             total_cgst = 0; total_sgst = 0; grand_total = 0; sub = 0
-            
+
             sale = Sale(
                 customer_id=random.choice(customer_ids) if customer_ids else None,
                 payment_method=random.choice(['cash', 'card', 'upi']),
@@ -241,7 +282,7 @@ def create_app():
             )
             db.session.add(sale)
             db.session.flush()
-            
+
             for prod in items:
                 qty = random.randint(1, 2)
                 subtotal = round(prod.price * qty, 2)
@@ -250,7 +291,7 @@ def create_app():
                 total_sgst += gst_amt / 2
                 grand_total += subtotal
                 sub += round(subtotal - gst_amt, 2)
-                
+
                 si = SaleItem(
                     sale_id=sale.id,
                     product_id=prod.id,
@@ -261,22 +302,23 @@ def create_app():
                 )
                 db.session.add(si)
                 prod.stock = max(0, prod.stock - qty)
-                
+
             sale.subtotal = round(sub, 2)
             sale.total_cgst = round(total_cgst, 2)
             sale.total_sgst = round(total_sgst, 2)
             sale.total = round(grand_total, 2)
             sale.amount_paid = grand_total
             sale.change_given = 0
-            
+
             db.session.commit()
             return jsonify({'success': True, 'sale': sale.to_dict()})
-        except Exception as e:
-            return jsonify({'success': False, 'error': str(e)}), 500
 
     with app.app_context():
-        db.create_all()
-        seed_data()
+        # [P0-6] Tests own their schema/seed lifecycle; auto-create/seed only
+        # outside TESTING so the suite never inherits demo data.
+        if not app.config.get('TESTING'):
+            db.create_all()
+            seed_data()
 
     return app
 

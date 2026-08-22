@@ -201,7 +201,7 @@ async function loadReports() {
     <div class="top-product-item">
       <div class="top-product-rank">#${i+1}</div>
       <div class="top-product-info">
-        <div class="top-product-name">${p.name}</div>
+        <div class="top-product-name">${escapeHtml(p.name)}</div>
         <div class="progress-bar"><div class="progress-fill" style="width:${(p.revenue/maxRev*100).toFixed(1)}%"></div></div>
       </div>
       <div>
@@ -214,8 +214,8 @@ async function loadReports() {
   // Render Best Customers Table
   document.getElementById('bestCustomersTbody').innerHTML = cust.map(c => `
     <tr>
-      <td class="ps-3"><span class="fw-bold">${c.name}</span></td>
-      <td class="text-muted">${c.phone}</td>
+      <td class="ps-3"><span class="fw-bold">${escapeHtml(c.name)}</span></td>
+      <td class="text-muted">${escapeHtml(c.phone)}</td>
       <td>${c.orders} ${getLangTxt('times', 'முறை')}</td>
       <td class="fw-semibold text-primary">${fmt(c.total_spent)}</td>
       <td class="pe-3">⭐ ${c.points}</td>
@@ -225,14 +225,14 @@ async function loadReports() {
   // Render Product Performance lists
   document.getElementById('fastMovingList').innerHTML = perf.fast_moving.map(p => `
     <div class="d-flex justify-content-between align-items-center mb-2 text-sm">
-      <span>📦 ${p.name} <code class="sku-code text-xs">${p.sku}</code></span>
+      <span>📦 ${escapeHtml(p.name)} <code class="sku-code text-xs">${escapeHtml(p.sku)}</code></span>
       <span class="badge badge--success">${p.qty} ${getLangTxt('sold', 'விற்கப்பட்டது')}</span>
     </div>
   `).join('') || `<p class="text-muted text-xs">${getLangTxt('No sales', 'விற்பனை இல்லை')}</p>`;
 
   document.getElementById('slowMovingList').innerHTML = perf.slow_moving.map(p => `
     <div class="d-flex justify-content-between align-items-center mb-2 text-sm">
-      <span>📦 ${p.name} <code class="sku-code text-xs">${p.sku}</code></span>
+      <span>📦 ${escapeHtml(p.name)} <code class="sku-code text-xs">${escapeHtml(p.sku)}</code></span>
       <span class="badge badge--upi">${p.stock} ${getLangTxt('in stock', 'உள்ளது')}</span>
     </div>
   `).join('') || `<p class="text-muted text-xs">${getLangTxt('No slow moving products', 'விற்பனை இல்லாத பொருட்கள் இல்லை')}</p>`;

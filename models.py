@@ -101,6 +101,9 @@ class Sale(db.Model):
     payment_method = db.Column(db.String(50), default='cash')  # cash/card/upi
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # Financial records are never hard-deleted; cancellation stamps this.
+    # Existing databases: run scripts/add_cancelled_at_column.py once.
+    cancelled_at = db.Column(db.DateTime, nullable=True)
     items = db.relationship('SaleItem', backref='sale', lazy=True)
 
     def to_dict(self):

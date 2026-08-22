@@ -1,3 +1,5 @@
+import os
+
 from flask import Blueprint, render_template, request, jsonify
 from models import Sale, SaleItem, SaleReturn, SaleReturnItem, Product
 from extensions import db
@@ -16,7 +18,8 @@ def get_sales():
     q = request.args.get('q', '')
     payment = request.args.get('payment', '')
 
-    query = Sale.query
+    # Cancelled sales stay in the database but leave the operational list.
+    query = Sale.query.filter(Sale.cancelled_at.is_(None))
     if q:
         query = query.filter(Sale.id == int(q) if q.isdigit() else Sale.id == -1)
     if payment:
@@ -44,11 +47,15 @@ def get_sale(sid):
 
 @sales_bp.route('/api/sales/<int:sid>', methods=['DELETE'])
 def delete_sale(sid):
+    # DELETE guard: a sale is a financial record — never hard-delete it.
+    # Cancellation is stamped in cancelled_at; stock restoration stays.
     s = Sale.query.get_or_404(sid)
-    # Restore stock
+    if s.cancelled_at is not None:
+        return jsonify({'success': False,
+                        'error': 'Sale is already cancelled / விற்பனை ஏற்கனவே ரத்து செய்யப்பட்டது'}), 400
     for item in s.items:
         item.product.stock += item.quantity
-    db.session.delete(s)
+    s.cancelled_at = datetime.utcnow()
     db.session.commit()
     return jsonify({'success': True})
 
@@ -58,8 +65,11 @@ def whatsapp_receipt(sale_id):
     sale = Sale.query.get_or_404(sale_id)
     customer = Customer.query.get(sale.customer_id) if sale.customer_id else None
     
-    BASE_URL = 'https://web-production-9375fc.up.railway.app'
-    
+    # Deployment hostname comes from the environment, never from code.
+    # Fallback: the host this request arrived on (correct for local/dev).
+    BASE_URL = os.environ.get('RECEIPT_BASE_URL', '').strip().rstrip('/') \
+        or request.url_root.rstrip('/')
+
     lines = []
     lines.append(f"🧾 *மாணிக்கம் ஸ்டோர்ஸ் - ரசீது #{sale.id:05d}*")
     lines.append(f"📅 {sale.created_at.strftime('%d-%m-%Y %I:%M %p')}")

@@ -250,7 +250,7 @@ async function loadDashboard() {
     return `<div class="top-product-item">
       <div class="top-product-rank">#${i+1}</div>
       <div class="top-product-info">
-        <div class="top-product-name">${p.name}</div>
+        <div class="top-product-name">${escapeHtml(p.name)}</div>
         <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
       </div>
       <div class="top-product-revenue">${fmt(p.revenue)}</div>
@@ -262,11 +262,11 @@ async function loadDashboard() {
   tbody.innerHTML = data.recent_sales.map(s => `
     <tr>
       <td><span class="sale-id">#${s.id}</span></td>
-      <td>${s.customer}</td>
+      <td>${escapeHtml(s.customer)}</td>
       <td>${s.item_count} ${getLangTxt('items', 'பொருட்கள்')}</td>
-      <td><span class="badge badge--${s.payment_method}">${payLabel(s.payment_method)}</span></td>
+      <td><span class="badge badge--${escapeHtml(s.payment_method)}">${escapeHtml(payLabel(s.payment_method))}</span></td>
       <td class="fw-600">${fmt(s.total)}</td>
-      <td class="text-muted text-sm">${s.created_at}</td>
+      <td class="text-muted text-sm">${escapeHtml(s.created_at)}</td>
     </tr>
   `).join('') || `<tr><td colspan="6" class="text-center text-muted">${getLangTxt('No sales', 'விற்பனை இல்லை')}</td></tr>`;
 
@@ -275,8 +275,8 @@ async function loadDashboard() {
   lsl.innerHTML = data.low_stock_products.map(p => `
     <div class="low-stock-item">
       <div class="low-stock-info">
-        <div class="low-stock-name">${p.name}</div>
-        <div class="low-stock-sku">${p.sku}</div>
+        <div class="low-stock-name">${escapeHtml(p.name)}</div>
+        <div class="low-stock-sku">${escapeHtml(p.sku)}</div>
       </div>
       <div class="low-stock-count ${p.stock === 0 ? 'text-danger' : 'text-warning'}">
         ${p.stock === 0 ? getLangTxt('Out of stock', 'தீர்ந்தது') : p.stock + ' ' + getLangTxt('in stock', 'உள்ளது')}
@@ -290,7 +290,7 @@ async function openDayCloseModal() {
     const res = await fetch('/api/reports/day-close');
     const data = await res.json();
     if (data.success) {
-      document.getElementById('dcDate').innerHTML = `<span class="lang-en">Date: ${data.date}</span><span class="lang-ta">தேதி: ${data.date}</span>`;
+      document.getElementById('dcDate').innerHTML = `<span class="lang-en">Date: ${escapeHtml(data.date)}</span><span class="lang-ta">தேதி: ${escapeHtml(data.date)}</span>`;
       document.getElementById('dcCount').textContent = data.total_transactions;
       document.getElementById('dcCash').textContent = '₹' + data.cash.toFixed(2);
       document.getElementById('dcUpi').textContent = '₹' + data.upi.toFixed(2);

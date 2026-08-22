@@ -27,6 +27,11 @@ ngrok.exe
 *.zip
 *.log
 
+# Tunnel/load-test credentials — never commit these
+ngrok.yml
+static/loaderio-*.txt
+loaderio-*.txt
+
 # Editors
 .idea/
 .vscode/

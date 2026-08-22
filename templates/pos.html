@@ -141,6 +141,10 @@
 <script>
 let cart = [];
 let selectedPayment = 'cash';
+// [P3-1] The payable total lives here as a Number. It is NEVER parsed back
+// out of the DOM — a single comma-replace strips only the FIRST comma of
+// Indian digit grouping, so ₹1,00,000.00 used to parse as ₹100.
+let cartTotal = 0;
 
 // Detect platform and show correct keyboard shortcut
 const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
@@ -175,7 +179,7 @@ async function loadCategories() {
     btn.dataset.cat = c.id;
     const nameEn = catTranslations[c.name] || c.name;
     const nameTa = c.name;
-    btn.innerHTML = `${c.icon} <span class="lang-en">${nameEn}</span><span class="lang-ta">${nameTa}</span>`;
+    btn.innerHTML = `${escapeHtml(c.icon)} <span class="lang-en">${escapeHtml(nameEn)}</span><span class="lang-ta">${escapeHtml(nameTa)}</span>`;
     cf.appendChild(btn);
   });
   cf.querySelectorAll('.cat-btn').forEach(btn => {
@@ -192,7 +196,7 @@ async function loadCustomers() {
   const customers = await res.json();
   const sel = document.getElementById('customerSelect');
   sel.innerHTML = customers.map(c =>
-    `<option value="${c.id}">${c.name}${c.gstin ? ' (B2B)' : ''}</option>`
+    `<option value="${c.id}">${escapeHtml(c.name)}${c.gstin ? ' (B2B)' : ''}</option>`
   ).join('');
   
   // Auto-select "Walk-in Customer"
@@ -223,12 +227,14 @@ async function loadProducts(q = '', cat = selCat) {
     grid.innerHTML = `<div class="loading-state"><p class="text-muted">${getLangTxt('No products found', 'பொருட்கள் இல்லை')}</p></div>`;
     return;
   }
+  // The onclick builds a JS string literal inside an HTML attribute, so the
+  // name is JS-escaped first, then HTML-escaped: escapeHtml(escJsString(...)).
   grid.innerHTML = products.map(p => `
     <div class="product-card ${p.stock === 0 ? 'out-of-stock' : ''}"
-         onclick="addToCart(${p.id},'${escHtml(p.name)}',${p.price},${p.stock},${p.gst_rate})"
+         onclick="addToCart(${p.id},'${escapeHtml(escJsString(p.name))}',${p.price},${p.stock},${p.gst_rate})"
          tabindex="0" role="button">
-      <div class="product-emoji">${p.category_icon}</div>
-      <div class="product-name">${p.name}</div>
+      <div class="product-emoji">${escapeHtml(p.category_icon)}</div>
+      <div class="product-name">${escapeHtml(p.name)}</div>
       <div class="product-gst-badge">GST ${p.gst_rate}%</div>
       <div class="product-meta">
         <span class="product-price">${fmt(p.price)}</span>
@@ -237,8 +243,6 @@ async function loadProducts(q = '', cat = selCat) {
     </div>
   `).join('');
 }
-
-function escHtml(s) { return s.replace(/'/g, "\\'"); }
 
 function addToCart(id, name, price, stock, gstRate) {
   if (stock === 0) { showToast(getLangTxt('Out of stock!', 'இருப்பு இல்லை!'), 'error'); return; }
@@ -287,7 +291,7 @@ function renderCart() {
     cartItems.innerHTML = cart.map((item, idx) => `
       <div class="cart-item" tabindex="0" onkeydown="handleCartItemKey(event, ${idx})">
         <div class="cart-item-info">
-          <div class="cart-item-name">${item.name}</div>
+          <div class="cart-item-name">${escapeHtml(item.name)}</div>
           <div class="cart-item-price">${fmt(item.price)} · GST ${item.gstRate}%</div>
         </div>
         <div class="cart-item-controls d-flex align-items-center gap-1">
@@ -320,6 +324,7 @@ function updateTotals() {
   const subtotalWithGst = cart.reduce((s, i) => s + i.price * i.qty, 0);
   const discount = getDiscount();
   const total = Math.max(0, subtotalWithGst - discount);
+  cartTotal = total;
 
   // GST breakdown
   let cgst = 0, sgst = 0, taxable = 0;
@@ -358,7 +363,7 @@ function updateQuickAmounts(total) {
   const amounts = [Math.ceil(total/10)*10, Math.ceil(total/50)*50, Math.ceil(total/100)*100, Math.ceil(total/500)*500]
     .filter((v,i,a) => a.indexOf(v)===i && v >= total).slice(0,4);
   document.getElementById('quickAmounts').innerHTML = amounts.map(a =>
-    `<button class="quick-amount-btn" onclick="document.getElementById('amountPaid').value=${a};updateChange(${total.toFixed(2)})">${fmt(a)}</button>`
+    `<button class="quick-amount-btn" onclick="document.getElementById('amountPaid').value=${a};updateChange(cartTotal)">${fmt(a)}</button>`
   ).join('');
 }
 
@@ -376,8 +381,7 @@ document.querySelectorAll('.pay-btn').forEach(btn => {
 
 document.getElementById('discountInput').addEventListener('input', updateTotals);
 document.getElementById('amountPaid').addEventListener('input', () => {
-  const total = parseFloat(document.getElementById('cartTotal').textContent.replace('₹','').replace(',','')) || 0;
-  updateChange(total);
+  updateChange(cartTotal);
 });
 
 document.getElementById('clearCartBtn').addEventListener('click', () => {
@@ -386,7 +390,7 @@ document.getElementById('clearCartBtn').addEventListener('click', () => {
 
 document.getElementById('checkoutBtn').addEventListener('click', async () => {
   if (!cart.length) return;
-  const total = parseFloat(document.getElementById('cartTotal').textContent.replace('₹','').replace(',',''));
+  const total = cartTotal;
   const paid = parseFloat(document.getElementById('amountPaid').value) || 0;
   if (selectedPayment === 'cash' && paid < total) {
     showToast(getLangTxt('Received amount is less than total', 'பெற்ற தொகை குறைவாக உள்ளது'), 'error'); return;
@@ -422,17 +426,17 @@ function showReceipt(sale) {
         <div style="font-size:11px;color:#94a3b8">GSTIN: 33AABCU9603R1ZX</div>
         <div style="font-size:11px;color:#94a3b8">${getLangTxt('Tamil Nadu State · CGST + SGST', 'தமிழ்நாடு மாநிலம் · CGST + SGST')}</div>
         <div class="receipt-id">${getLangTxt('Receipt', 'ரசீது')} #${sale.id}</div>
-        <div class="receipt-date">${sale.created_at}</div>
-        <div class="receipt-customer">${getLangTxt('Customer', 'வாடிக்கையாளர்')}: ${sale.customer}</div>
-        <div class="receipt-payment">${getLangTxt('Payment Method', 'கட்டண முறை')}: ${payLabel(sale.payment_method)}</div>
+        <div class="receipt-date">${escapeHtml(sale.created_at)}</div>
+        <div class="receipt-customer">${getLangTxt('Customer', 'வாடிக்கையாளர்')}: ${escapeHtml(sale.customer)}</div>
+        <div class="receipt-payment">${getLangTxt('Payment Method', 'கட்டண முறை')}: ${escapeHtml(payLabel(sale.payment_method))}</div>
       </div>
       <div class="receipt-divider"></div>
       <div class="receipt-items">
         ${sale.items.map(i => `
           <div class="receipt-item">
             <div>
-              <div>${i.product_name}</div>
-              <div class="text-muted text-sm">${i.quantity} × ${fmt(i.price)} | HSN: ${i.hsn_code || '—'} | GST ${i.gst_rate}%</div>
+              <div>${escapeHtml(i.product_name)}</div>
+              <div class="text-muted text-sm">${i.quantity} × ${fmt(i.price)} | HSN: ${escapeHtml(i.hsn_code || '—')} | GST ${i.gst_rate}%</div>
             </div>
             <div>${fmt(i.subtotal)}</div>
           </div>

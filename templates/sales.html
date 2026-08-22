@@ -138,12 +138,12 @@ function renderSales(sales) {
     const gstTotal = (s.total_cgst || 0) + (s.total_sgst || 0);
     return `<tr>
       <td><span class="sale-id">#${s.id}</span></td>
-      <td>${s.customer}</td>
+      <td>${escapeHtml(s.customer)}</td>
       <td>${s.item_count} ${getLangTxt('items', 'பொருட்கள்')}</td>
-      <td><span class="badge badge--${s.payment_method}">${payLabel(s.payment_method)}</span></td>
+      <td><span class="badge badge--${escapeHtml(s.payment_method)}">${escapeHtml(payLabel(s.payment_method))}</span></td>
       <td class="text-muted text-sm">${fmt(gstTotal)}</td>
       <td class="fw-600">${fmt(s.total)}</td>
-      <td class="text-muted text-sm">${s.created_at}</td>
+      <td class="text-muted text-sm">${escapeHtml(s.created_at)}</td>
       <td>
         <div class="action-btns">
           <button class="btn btn-ghost btn-sm" onclick="viewSale(${s.id})">👁 ${getLangTxt('View', 'காண')}</button>
@@ -175,17 +175,17 @@ async function viewSale(id) {
         <div class="receipt-logo">🏪 ${getLangTxt('Manikam Stores', 'மாணிக்கம் ஸ்டோர்ஸ்')}</div>
         <div style="font-size:11px;color:#94a3b8">GSTIN: 33AABCU9603R1ZX · ${getLangTxt('Tamil Nadu', 'தமிழ்நாடு')}</div>
         <div class="receipt-id">${getLangTxt('Receipt', 'ரசீது')} #${s.id}</div>
-        <div class="receipt-date">${s.created_at}</div>
-        <div class="receipt-customer">${getLangTxt('Customer', 'வாடிக்கையாளர்')}: ${s.customer}</div>
-        <div class="receipt-payment">${getLangTxt('Payment Method', 'கட்டணம்')}: ${payLabel(s.payment_method)}</div>
+        <div class="receipt-date">${escapeHtml(s.created_at)}</div>
+        <div class="receipt-customer">${getLangTxt('Customer', 'வாடிக்கையாளர்')}: ${escapeHtml(s.customer)}</div>
+        <div class="receipt-payment">${getLangTxt('Payment Method', 'கட்டணம்')}: ${escapeHtml(payLabel(s.payment_method))}</div>
       </div>
       <div class="receipt-divider"></div>
       <div class="receipt-items">
         ${s.items.map(i => `
           <div class="receipt-item">
             <div>
-              <div>${i.product_name}</div>
-              <div class="text-muted text-sm">${i.quantity} × ${fmt(i.price)} | HSN: ${i.hsn_code||'—'} | GST ${i.gst_rate}%</div>
+              <div>${escapeHtml(i.product_name)}</div>
+              <div class="text-muted text-sm">${i.quantity} × ${fmt(i.price)} | HSN: ${escapeHtml(i.hsn_code||'—')} | GST ${i.gst_rate}%</div>
               <div class="text-muted text-sm">${getLangTxt('Taxable', 'வரிக்குரிய')}: ${fmt(i.taxable)} | CGST: ${fmt(i.cgst)} | SGST: ${fmt(i.sgst)}</div>
             </div>
             <div>${fmt(i.subtotal)}</div>
@@ -235,7 +235,7 @@ async function openReturnModal(id) {
           ` : ''}
           <div>
             <div class="fw-bold text-white d-flex align-items-center">
-              <span>${i.product_name}</span>
+              <span>${escapeHtml(i.product_name)}</span>
               ${returnableQty > 0 ? `
                 <span id="badge-select-${i.product_id}" class="badge bg-success ms-2 d-none">Returned</span>
               ` : `
