@@ -127,6 +127,19 @@ def test_testing_config_ignores_database_url_env(monkeypatch: pytest.MonkeyPatch
     assert config.DATABASE_URL == "sqlite+pysqlite:///:memory:"
 
 
+def test_testing_config_ignores_non_test_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A developer's runtime variables must not make the hermetic test app invalid."""
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("DEBUG", "release")
+    monkeypatch.setenv("SECRET_KEY", "runtime-secret-that-tests-must-not-use")
+
+    config = TestingConfig()
+
+    assert config.APP_ENV == "testing"
+    assert config.DEBUG is False
+    assert config.SECRET_KEY == "testing-only-secret-key-not-for-production"
+
+
 def test_p1a_1_health_survives_redis_outage() -> None:
     """P1A-1: with rate limiting enabled and Redis unreachable, requests must
     degrade to the in-memory fallback (and still carry a request_id), not 500."""

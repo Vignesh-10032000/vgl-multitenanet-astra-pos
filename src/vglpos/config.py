@@ -135,8 +135,9 @@ class DevelopmentConfig(BaseConfig):
     of them outright.
     """
 
-    APP_ENV: str = "development"
-    DEBUG: bool = True
+    APP_ENV: str = Field(default="development", validation_alias="VGLPOS_DEVELOPMENT_ENV")
+    DEBUG: bool = Field(default=True, validation_alias="VGLPOS_DEVELOPMENT_DEBUG")
+    TESTING: bool = Field(default=False, validation_alias="VGLPOS_DEVELOPMENT_TESTING")
     SECRET_KEY: str = "dev-only-secret-key-not-for-production"
     JWT_SECRET_KEY: str = "dev-only-jwt-key-not-for-production"
     DATABASE_URL: str = "postgresql+psycopg://vglpos:vglpos@localhost:5432/vglpos_dev"
@@ -154,6 +155,20 @@ class TestingConfig(BaseConfig):
 
     # Tell pytest this is not a test class despite the Test* name.
     __test__ = False
+
+    # Test configuration must be hermetic.  In particular, a developer's
+    # project-level .env may contain deployment-oriented values (or even values
+    # that are invalid for these strongly typed fields) and must never prevent
+    # the test app from being constructed.  The deliberately unusual prefix
+    # keeps ordinary APP_ENV/DEBUG/etc. variables out; TEST_DATABASE_URL keeps
+    # its explicit validation alias below so callers can still opt into a
+    # disposable PostgreSQL database.
+    model_config = SettingsConfigDict(
+        env_file=None,
+        env_prefix="VGLPOS_TEST_",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     APP_ENV: str = "testing"
     TESTING: bool = True
@@ -183,9 +198,9 @@ class ProductionConfig(BaseConfig):
     to refuse is before the first request can ever be served.
     """
 
-    APP_ENV: str = "production"
-    DEBUG: bool = False
-    TESTING: bool = False
+    APP_ENV: str = Field(default="production", validation_alias="VGLPOS_PRODUCTION_ENV")
+    DEBUG: bool = Field(default=False, validation_alias="VGLPOS_PRODUCTION_DEBUG")
+    TESTING: bool = Field(default=False, validation_alias="VGLPOS_PRODUCTION_TESTING")
 
     @model_validator(mode="after")
     def _refuse_missing_or_default_values(self) -> ProductionConfig:

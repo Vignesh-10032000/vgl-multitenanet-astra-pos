@@ -2,7 +2,7 @@
 
 Tests cover:
 - Multi-tenancy integrity: every tenant model requires a non-nullable company_id FK
-- Zero-Float rule: all monetary, tax, and inventory columns are typed Numeric with explicit precision
+- Zero-Float rule: monetary, tax, and inventory columns use explicit Numeric precision
 - Append-only stock ledger: strictly no updated_at or is_edited columns
 - Model schema creation and relation navigation
 """
@@ -12,7 +12,6 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
-import pytest
 from sqlalchemy import Float, Numeric, inspect
 from sqlalchemy.orm import Session, scoped_session
 
@@ -34,9 +33,9 @@ def test_zero_float_rule_across_all_models() -> None:
     for model in models:
         mapper = inspect(model)
         for col in mapper.columns:
-            assert not isinstance(
-                col.type, Float
-            ), f"Column {model.__tablename__}.{col.key} violates Zero Float rule by using Float!"
+            assert not isinstance(col.type, Float), (
+                f"Column {model.__tablename__}.{col.key} violates Zero Float rule by using Float!"
+            )
 
 
 def test_strict_tenancy_company_id_fk_present() -> None:
@@ -46,9 +45,13 @@ def test_strict_tenancy_company_id_fk_present() -> None:
         mapper = inspect(model)
         company_id_col = mapper.columns.get("company_id")
         assert company_id_col is not None, f"Model {model.__tablename__} is missing company_id!"
-        assert not company_id_col.nullable, f"{model.__tablename__}.company_id must be non-nullable!"
+        assert not company_id_col.nullable, (
+            f"{model.__tablename__}.company_id must be non-nullable!"
+        )
         fk_targets = [fk.target_fullname for fk in company_id_col.foreign_keys]
-        assert "companies.id" in fk_targets, f"{model.__tablename__}.company_id must point to companies.id!"
+        assert "companies.id" in fk_targets, (
+            f"{model.__tablename__}.company_id must point to companies.id!"
+        )
 
 
 def test_stock_ledger_is_strictly_append_only() -> None:

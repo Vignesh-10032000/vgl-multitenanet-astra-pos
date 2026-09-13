@@ -41,15 +41,23 @@ class Company(Base):
     contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Status & Timestamps
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=text("true"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
     # Relationships
-    branches: Mapped[list[Branch]] = relationship("Branch", back_populates="company", cascade="all, delete-orphan")
+    branches: Mapped[list[Branch]] = relationship(
+        "Branch", back_populates="company", cascade="all, delete-orphan"
+    )
     registers: Mapped[list[Register]] = relationship("Register", back_populates="company")
     products: Mapped[list[Product]] = relationship("Product", back_populates="company")
     tax_rates: Mapped[list[TaxRate]] = relationship("TaxRate", back_populates="company")
-    stock_ledger_entries: Mapped[list[StockLedgerEntry]] = relationship("StockLedgerEntry", back_populates="company")
+    stock_ledger_entries: Mapped[list[StockLedgerEntry]] = relationship(
+        "StockLedgerEntry", back_populates="company"
+    )

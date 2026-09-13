@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import enum
 from datetime import datetime
 from decimal import Decimal
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String, func
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from vglpos.domain.models.company import Company
 
 
-class StockMovementType(str, enum.Enum):
+class StockMovementType(StrEnum):
     """Enumeration of physical inventory movement types."""
 
     PURCHASE = "purchase"
@@ -36,9 +36,15 @@ class StockLedgerEntry(Base):
     __tablename__ = "stock_ledger"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id", ondelete="RESTRICT"), nullable=False, index=True)
-    branch_id: Mapped[int] = mapped_column(ForeignKey("branches.id", ondelete="RESTRICT"), nullable=False, index=True)
-    product_id: Mapped[int] = mapped_column(ForeignKey("product_catalog.id", ondelete="RESTRICT"), nullable=False, index=True)
+    company_id: Mapped[int] = mapped_column(
+        ForeignKey("companies.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    branch_id: Mapped[int] = mapped_column(
+        ForeignKey("branches.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("product_catalog.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
 
     movement_type: Mapped[StockMovementType] = mapped_column(
         Enum(
@@ -58,7 +64,9 @@ class StockLedgerEntry(Base):
     notes: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Movement timestamp (append-only, no updated_at)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
     # Relationships
     company: Mapped[Company] = relationship("Company", back_populates="stock_ledger_entries")
