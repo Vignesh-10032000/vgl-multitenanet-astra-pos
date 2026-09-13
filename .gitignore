@@ -1,42 +1,31 @@
+# Secrets / local environment — never commit
+.env
+.env.*
+!.env.example
+
 # Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
-venv/
+*.py[cod]
 .venv/
-pip-log.txt
-pip-delete-this-directory.txt
-
-# PyInstaller / Build
-build/
 dist/
-*.spec
+build/
+*.egg-info/
 
-# Database
-instance/
+# Local databases
 *.db
-*.db-journal
-*.db-wal
-*.db-shm
+*.sqlite3
+instance/
 
-# Large executables and files
-ngrok.exe
-*.zip
-*.log
+# Tool caches / test output
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+.audit-requirements.txt
 
-# Tunnel/load-test credentials — never commit these
-ngrok.yml
-static/loaderio-*.txt
-loaderio-*.txt
-
-# Editors
-.idea/
-.vscode/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.swp
+# OS / editor noise
+.DS_Store
+Thumbs.db

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest test_app.py)",
+      "PowerShell(uv add --no-sync --bounds exact flask flask-sqlalchemy flask-migrate flask-jwt-extended flask-limiter flask-caching \"psycopg[binary]\" alembic pydantic pydantic-settings celery redis argon2-cffi gunicorn structlog python-dateutil)",
+      "PowerShell($pkgs = @\\('flask','flask-sqlalchemy','flask-migrate','flask-jwt-extended','flask-limiter','flask-caching','psycopg','alembic','pydantic','pydantic-settings','celery','redis','argon2-cffi','gunicorn','structlog','python-dateutil','pytest','pytest-cov','pytest-postgresql','hypothesis','factory-boy','ruff','mypy','pip-audit','locust','playwright'\\); foreach \\($p in $pkgs\\) { try { $v = \\(Invoke-RestMethod \"https://pypi.org/pypi/$p/json\" -TimeoutSec 30\\).info.version; \"$p==$v\" } catch { \"$p==FETCH-FAILED\" } })"
+    ]
+  }
+}

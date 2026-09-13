@@ -1,0 +1,235 @@
+"""Application configuration via Pydantic Settings.
+
+One class per environment; ``create_app`` receives the class and instantiates
+it, so every process (gunicorn worker, celery worker, test session) gets its
+configuration from the same validated source instead of scattered ``os.environ``
+reads.
+"""
+
+from __future__ import annotations
+
+import os
+from typing import Any
+
+from pydantic import Field, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.pool import StaticPool
+
+_INSECURE_SECRET_VALUES: frozenset[str] = frozenset(
+    {
+        "",
+        "change-me",
+        "change_me",
+        "changeme",
+        "secret",
+        "secret-key",
+        "secretkey",
+        "password",
+        "dev",
+        "development",
+        "test",
+        "testing",
+    }
+)
+
+# Substrings that mark a value as a committed non-production default from this
+# very file; production must refuse them even if someone copies them into env.
+_INSECURE_SECRET_MARKERS: tuple[str, ...] = ("not-for-production", "dev-only-", "testing-only-")
+
+_MIN_SECRET_LENGTH = 32
+
+
+class BaseConfig(BaseSettings):
+    """Settings shared by every environment.
+
+    WHY env-driven: rule 10 forbids hardcoded secrets/hostnames; everything
+    here is overridable via environment variables or ``.env``.
+    """
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    APP_ENV: str = "development"
+    DEBUG: bool = False
+    TESTING: bool = False
+    LOG_LEVEL: str = "INFO"
+
+    SECRET_KEY: str = ""
+    JWT_SECRET_KEY: str = ""
+    JWT_ACCESS_TOKEN_EXPIRES: int = 900  # seconds
+    JWT_REFRESH_TOKEN_EXPIRES: int = 2_592_000  # seconds (30 days)
+
+    DATABASE_URL: str = ""
+    REDIS_URL: str = "redis://localhost:6379/0"
+
+    CACHE_TYPE: str = "RedisCache"
+    CACHE_DEFAULT_TIMEOUT: int = 300
+
+    RATELIMIT_ENABLED: bool = True
+    RATELIMIT_DEFAULT: str = "200 per minute"
+
+    # Empty string means "use REDIS_URL"; separate vars exist so the broker can
+    # move off the cache Redis without a code change.
+    CELERY_BROKER_URL: str = ""
+    CELERY_RESULT_BACKEND: str = ""
+
+    def _engine_options(self) -> dict[str, Any]:
+        """Connection-pool sizing for PostgreSQL.
+
+        WHY pre_ping/recycle: POS terminals sit behind flaky retail networks and
+        NAT timeouts; stale pooled connections must be detected, not surfaced as
+        checkout errors.
+        """
+        return {
+            "pool_size": 10,
+            "max_overflow": 20,
+            "pool_pre_ping": True,
+            "pool_recycle": 1800,
+        }
+
+    def flask_config(self) -> dict[str, Any]:
+        """Materialise the Flask config mapping.
+
+        WHY explicit keys instead of ``model_dump``: only keys listed here can
+        reach ``app.config``, so a new settings field never leaks into Flask (or
+        an extension) by accident.
+        """
+        return {
+            "APP_ENV": self.APP_ENV,
+            "DEBUG": self.DEBUG,
+            "TESTING": self.TESTING,
+            "LOG_LEVEL": self.LOG_LEVEL,
+            "SECRET_KEY": self.SECRET_KEY,
+            "SQLALCHEMY_DATABASE_URI": self.DATABASE_URL,
+            "SQLALCHEMY_ENGINE_OPTIONS": self._engine_options(),
+            "JWT_SECRET_KEY": self.JWT_SECRET_KEY,
+            "JWT_ACCESS_TOKEN_EXPIRES": self.JWT_ACCESS_TOKEN_EXPIRES,
+            "JWT_REFRESH_TOKEN_EXPIRES": self.JWT_REFRESH_TOKEN_EXPIRES,
+            "CACHE_TYPE": self.CACHE_TYPE,
+            "CACHE_REDIS_URL": self.REDIS_URL,
+            "CACHE_DEFAULT_TIMEOUT": self.CACHE_DEFAULT_TIMEOUT,
+            "RATELIMIT_ENABLED": self.RATELIMIT_ENABLED,
+            "RATELIMIT_DEFAULT": self.RATELIMIT_DEFAULT,
+            "RATELIMIT_STORAGE_URI": self.REDIS_URL,
+            # A Redis outage must degrade rate limiting (per-process in-memory
+            # fallback), never block checkouts with 500s (P1A-1).
+            "RATELIMIT_SWALLOW_ERRORS": True,
+            "RATELIMIT_IN_MEMORY_FALLBACK_ENABLED": True,
+            "CELERY": {
+                "broker_url": self.CELERY_BROKER_URL or self.REDIS_URL,
+                "result_backend": self.CELERY_RESULT_BACKEND or self.REDIS_URL,
+                "task_serializer": "json",
+                "result_serializer": "json",
+                "accept_content": ["json"],
+                "timezone": "UTC",
+                "enable_utc": True,
+                "broker_connection_retry_on_startup": True,
+            },
+        }
+
+
+class DevelopmentConfig(BaseConfig):
+    """Local development against docker-compose Postgres/Redis.
+
+    The literals below are local-only conveniences, not deployment values:
+    every one is overridable via ``.env`` and ``ProductionConfig`` refuses all
+    of them outright.
+    """
+
+    APP_ENV: str = "development"
+    DEBUG: bool = True
+    SECRET_KEY: str = "dev-only-secret-key-not-for-production"
+    JWT_SECRET_KEY: str = "dev-only-jwt-key-not-for-production"
+    DATABASE_URL: str = "postgresql+psycopg://vglpos:vglpos@localhost:5432/vglpos_dev"
+
+
+class TestingConfig(BaseConfig):
+    """Hermetic test configuration.
+
+    WHY in-memory SQLite by default: the suite must never touch a real
+    database. Set ``TEST_DATABASE_URL`` (note: NOT ``DATABASE_URL``, which is
+    deliberately ignored here so a developer's dev database can never leak into
+    a test run) to use a disposable Postgres; ``tests/conftest.py`` refuses any
+    database whose name does not end in ``_test``.
+    """
+
+    # Tell pytest this is not a test class despite the Test* name.
+    __test__ = False
+
+    APP_ENV: str = "testing"
+    TESTING: bool = True
+    DEBUG: bool = False
+    SECRET_KEY: str = "testing-only-secret-key-not-for-production"
+    JWT_SECRET_KEY: str = "testing-only-jwt-key-not-for-production"
+    DATABASE_URL: str = Field(
+        default="sqlite+pysqlite:///:memory:", validation_alias="TEST_DATABASE_URL"
+    )
+    CACHE_TYPE: str = "SimpleCache"
+    RATELIMIT_ENABLED: bool = False
+
+    def _engine_options(self) -> dict[str, Any]:
+        """In-memory SQLite needs one shared connection (StaticPool); the
+        PostgreSQL pool sizing keywords would be rejected by its pool class."""
+        if self.DATABASE_URL.startswith("sqlite"):
+            return {"poolclass": StaticPool, "connect_args": {"check_same_thread": False}}
+        return super()._engine_options()
+
+
+class ProductionConfig(BaseConfig):
+    """Production settings: everything security-relevant must come from the
+    environment, and construction fails hard if it does not.
+
+    WHY validate at construction: a production process that boots with a
+    missing or well-known secret is a silent catastrophe; the only safe moment
+    to refuse is before the first request can ever be served.
+    """
+
+    APP_ENV: str = "production"
+    DEBUG: bool = False
+    TESTING: bool = False
+
+    @model_validator(mode="after")
+    def _refuse_missing_or_default_values(self) -> ProductionConfig:
+        """Reject empty, short, or known-default secrets and database URLs."""
+        problems: list[str] = []
+        for name in ("SECRET_KEY", "JWT_SECRET_KEY"):
+            value = getattr(self, name).strip()
+            lowered = value.lower()
+            if lowered in _INSECURE_SECRET_VALUES or any(
+                marker in lowered for marker in _INSECURE_SECRET_MARKERS
+            ):
+                problems.append(f"{name} is missing or a known-default value")
+            elif len(value) < _MIN_SECRET_LENGTH:
+                problems.append(f"{name} must be at least {_MIN_SECRET_LENGTH} characters")
+
+        database_url = self.DATABASE_URL.strip()
+        dev_default = DevelopmentConfig.model_fields["DATABASE_URL"].default
+        if not database_url or database_url == dev_default:
+            problems.append("DATABASE_URL is missing or the development default")
+        elif not database_url.startswith("postgresql"):
+            problems.append("DATABASE_URL must be PostgreSQL for server deployments")
+
+        if problems:
+            raise ValueError(
+                "refusing to start with unsafe production configuration: " + "; ".join(problems)
+            )
+        return self
+
+
+_CONFIGS: dict[str, type[BaseConfig]] = {
+    "development": DevelopmentConfig,
+    "testing": TestingConfig,
+    "production": ProductionConfig,
+}
+
+
+def get_config(env: str | None = None) -> type[BaseConfig]:
+    """Map APP_ENV to a config class.
+
+    WHY a hard error on unknown names: a typo like ``APP_ENV=prod`` silently
+    falling back to development config would ship debug mode to a store.
+    """
+    name = (env or os.environ.get("APP_ENV", "development")).strip().lower()
+    try:
+        return _CONFIGS[name]
+    except KeyError as exc:
+        raise RuntimeError(f"Unknown APP_ENV {name!r}; expected one of {sorted(_CONFIGS)}") from exc
