@@ -13,10 +13,12 @@ import structlog
 from celery import Celery, Task
 from flask import Flask, Response, g, request
 
+from vglpos.cli import register_cli
 from vglpos.config import BaseConfig, get_config
 from vglpos.errors import problem_response, register_error_handlers
 from vglpos.extensions import cache, celery, db, jwt, limiter, migrate
 from vglpos.routes import BLUEPRINTS, PUBLIC_ENDPOINTS
+from vglpos.security.tokens import register_jwt_callbacks
 from vglpos.utils.logging import configure_logging
 
 
@@ -46,6 +48,8 @@ def create_app(config_class: type[BaseConfig] | None = None) -> Flask:
     for blueprint in BLUEPRINTS:
         app.register_blueprint(blueprint)
 
+    register_cli(app)
+
     _register_endpoint_guard(app)
     _register_security_headers(app)
     register_error_handlers(app)
@@ -59,6 +63,7 @@ def _init_extensions(app: Flask) -> None:
     cache.init_app(app)
     limiter.init_app(app)
     jwt.init_app(app)
+    register_jwt_callbacks(app)
 
 
 def _init_celery(app: Flask) -> Celery:
@@ -115,6 +120,9 @@ def _register_endpoint_guard(app: Flask) -> None:
         endpoint = request.endpoint
         if endpoint is None or endpoint in PUBLIC_ENDPOINTS:
             # None means no URL rule matched; fall through so Flask returns 404.
+            return None
+        view = app.view_functions.get(endpoint)
+        if view is not None and getattr(view, "_permission_required", False) is True:
             return None
         return problem_response(
             status=403,

@@ -1,63 +1,58 @@
-"""Company model (tenant root)."""
+"""Company tenant-root model."""
 
 from __future__ import annotations
 
-from datetime import datetime
-from typing import TYPE_CHECKING
+from sqlalchemy import Boolean, Index, String, text
+from sqlalchemy.orm import Mapped, mapped_column
 
-from sqlalchemy import Boolean, DateTime, String, func, text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-
+from vglpos.domain.models.base import AuditMixin, SurrogateKeyMixin
 from vglpos.extensions import Base
 
-if TYPE_CHECKING:
-    from vglpos.domain.models.branch import Branch
-    from vglpos.domain.models.catalog import Product
-    from vglpos.domain.models.register import Register
-    from vglpos.domain.models.stock import StockLedgerEntry
-    from vglpos.domain.models.tax_rate import TaxRate
 
-
-class Company(Base):
-    """Tenant root model for multi-company retail operations."""
+class Company(AuditMixin, SurrogateKeyMixin, Base):
+    """Legal entity that owns all tenant-scoped records."""
 
     __tablename__ = "companies"
+    __table_args__ = (
+        Index(
+            "uq_companies_login_code",
+            "login_code",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL AND login_code IS NOT NULL"),
+            sqlite_where=text("deleted_at IS NULL AND login_code IS NOT NULL"),
+        ),
+        Index(
+            "uq_companies_gstin",
+            "gstin",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL AND gstin IS NOT NULL"),
+            sqlite_where=text("deleted_at IS NULL AND gstin IS NOT NULL"),
+        ),
+        Index(
+            "idx_companies_active",
+            "is_active",
+            postgresql_where=text("deleted_at IS NULL"),
+            sqlite_where=text("deleted_at IS NULL"),
+        ),
+    )
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    gstin: Mapped[str | None] = mapped_column(String(15), nullable=True, unique=True, index=True)
-
-    # Address
-    address_line1: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    legal_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    login_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    gstin: Mapped[str | None] = mapped_column(String(15), nullable=True)
+    pan: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    cin: Mapped[str | None] = mapped_column(String(21), nullable=True)
+    state_code: Mapped[str] = mapped_column(String(2), nullable=False)
+    currency: Mapped[str] = mapped_column(
+        String(3), default="INR", server_default=text("'INR'"), nullable=False
+    )
+    address_line1: Mapped[str] = mapped_column(String(255), nullable=False)
     address_line2: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    city: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    state: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    state_code: Mapped[str | None] = mapped_column(String(2), nullable=True)
-    postal_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
-
-    # Contact
-    contact_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    contact_phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
-
-    # Status & Timestamps
+    city: Mapped[str] = mapped_column(String(100), nullable=False)
+    state: Mapped[str] = mapped_column(String(100), nullable=False)
+    postal_code: Mapped[str] = mapped_column(String(10), nullable=False)
+    contact_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    contact_phone: Mapped[str] = mapped_column(String(20), nullable=False)
     is_active: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=text("true"), nullable=False
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
-    )
-
-    # Relationships
-    branches: Mapped[list[Branch]] = relationship(
-        "Branch", back_populates="company", cascade="all, delete-orphan"
-    )
-    registers: Mapped[list[Register]] = relationship("Register", back_populates="company")
-    products: Mapped[list[Product]] = relationship("Product", back_populates="company")
-    tax_rates: Mapped[list[TaxRate]] = relationship("TaxRate", back_populates="company")
-    stock_ledger_entries: Mapped[list[StockLedgerEntry]] = relationship(
-        "StockLedgerEntry", back_populates="company"
     )

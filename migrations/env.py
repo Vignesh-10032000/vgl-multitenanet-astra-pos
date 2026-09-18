@@ -9,7 +9,10 @@ from alembic import context
 from sqlalchemy import create_engine, pool
 
 from vglpos.config import get_config
+from vglpos.domain import models as domain_models
 from vglpos.extensions import db
+
+_ = domain_models  # Importing the registry populates target_metadata for autogenerate.
 
 config = context.config
 

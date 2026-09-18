@@ -8,6 +8,8 @@ import structlog
 from flask import Flask, Response, g, request
 from werkzeug.exceptions import HTTPException
 
+from vglpos.services.exceptions import ServiceError
+
 logger: structlog.stdlib.BoundLogger = structlog.get_logger(__name__)
 
 
@@ -59,6 +61,21 @@ def register_error_handlers(app: Flask) -> None:
             detail=exc.detail,
         )
         return problem_response(status=exc.status_code, title=exc.title, detail=exc.detail)
+
+    @app.errorhandler(ServiceError)
+    def _handle_service_error(exc: ServiceError) -> Response:
+        logger.warning(
+            "service_error",
+            error_type=exc.error_type,
+            status=exc.status_code,
+            detail=exc.detail,
+        )
+        return problem_response(
+            status=exc.status_code,
+            title="Request Rejected",
+            detail=exc.detail,
+            type_=f"urn:vglpos:error:{exc.error_type}",
+        )
 
     @app.errorhandler(HTTPException)
     def _handle_http_exception(exc: HTTPException) -> Response:

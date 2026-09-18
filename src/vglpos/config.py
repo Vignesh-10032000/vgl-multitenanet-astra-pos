@@ -56,7 +56,8 @@ class BaseConfig(BaseSettings):
     SECRET_KEY: str = ""
     JWT_SECRET_KEY: str = ""
     JWT_ACCESS_TOKEN_EXPIRES: int = 900  # seconds
-    JWT_REFRESH_TOKEN_EXPIRES: int = 2_592_000  # seconds (30 days)
+    JWT_REFRESH_TOKEN_EXPIRES: int = 604_800  # seconds (7 days)
+    MFA_ISSUER_NAME: str = "VGL POS"
 
     DATABASE_URL: str = ""
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -104,6 +105,7 @@ class BaseConfig(BaseSettings):
             "JWT_SECRET_KEY": self.JWT_SECRET_KEY,
             "JWT_ACCESS_TOKEN_EXPIRES": self.JWT_ACCESS_TOKEN_EXPIRES,
             "JWT_REFRESH_TOKEN_EXPIRES": self.JWT_REFRESH_TOKEN_EXPIRES,
+            "MFA_ISSUER_NAME": self.MFA_ISSUER_NAME,
             "CACHE_TYPE": self.CACHE_TYPE,
             "CACHE_REDIS_URL": self.REDIS_URL,
             "CACHE_DEFAULT_TIMEOUT": self.CACHE_DEFAULT_TIMEOUT,

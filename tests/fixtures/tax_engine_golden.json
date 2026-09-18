@@ -1,0 +1,267 @@
+{
+  "verification": {
+    "checked_on": "2026-09-17",
+    "method": "Hand-calculated from the published inclusive/exclusive GST formulas, then cross-checked against the worked ClearTax and ICSI calculator examples. Component sums and discount allocations were independently re-added in paise.",
+    "sources": [
+      "https://cleartax.in/s/gst-calculator",
+      "https://cleartax.in/s/reverse-gst-calculator",
+      "https://www.icsi.edu/media/webmodules/Academics/Final_Book_GST_%26_Corporate_Tax_Planning_20_6_2025.pdf"
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "audit-p0-4-inclusive-discount",
+      "description": "Audit regression: discounted 18% inclusive MRP in Tamil Nadu",
+      "supplier_state": "33",
+      "place_of_supply": "33",
+      "order_discount": "50.00",
+      "apply_round_off": true,
+      "lines": [
+        {"quantity": "1", "unit_price": "299.00", "tax_rate": "18", "tax_inclusive": true}
+      ],
+      "expected": {"gross_amount": "299.00", "line_discount_amount": "0.00", "order_discount_amount": "50.00", "discount_amount": "50.00", "taxable_amount": "211.02", "cgst_amount": "18.99", "sgst_amount": "18.99", "igst_amount": "0.00", "cess_amount": "0.00", "round_off": "0.00", "net_amount": "249.00"},
+      "line_order_discounts": ["50.00"]
+    },
+    {
+      "id": "exclusive-five-percent-intrastate",
+      "description": "Basic local 5% taxable supply",
+      "supplier_state": "33",
+      "place_of_supply": "33",
+      "order_discount": "0.00",
+      "apply_round_off": false,
+      "lines": [
+        {"quantity": "1", "unit_price": "1000.00", "tax_rate": "5", "tax_inclusive": false}
+      ],
+      "expected": {"gross_amount": "1000.00", "line_discount_amount": "0.00", "order_discount_amount": "0.00", "discount_amount": "0.00", "taxable_amount": "1000.00", "cgst_amount": "25.00", "sgst_amount": "25.00", "igst_amount": "0.00", "cess_amount": "0.00", "round_off": "0.00", "net_amount": "1050.00"}
+    },
+    {
+      "id": "exclusive-eighteen-percent-interstate",
+      "description": "Tamil Nadu to Karnataka 18% taxable supply",
+      "supplier_state": "33",
+      "place_of_supply": "29",
+      "order_discount": "0.00",
+      "apply_round_off": false,
+      "lines": [
+        {"quantity": "1", "unit_price": "1000.00", "tax_rate": "18", "tax_inclusive": false}
+      ],
+      "expected": {"gross_amount": "1000.00", "line_discount_amount": "0.00", "order_discount_amount": "0.00", "discount_amount": "0.00", "taxable_amount": "1000.00", "cgst_amount": "0.00", "sgst_amount": "0.00", "igst_amount": "180.00", "cess_amount": "0.00", "round_off": "0.00", "net_amount": "1180.00"}
+    },
+    {
+      "id": "inclusive-eighteen-percent-intrastate",
+      "description": "MRP of 1180 containing 18% local GST",
+      "supplier_state": "33",
+      "place_of_supply": "33",
+      "order_discount": "0.00",
+      "apply_round_off": true,
+      "lines": [
+        {"quantity": "1", "unit_price": "1180.00", "tax_rate": "18", "tax_inclusive": true}
+      ],
+      "expected": {"gross_amount": "1180.00", "line_discount_amount": "0.00", "order_discount_amount": "0.00", "discount_amount": "0.00", "taxable_amount": "1000.00", "cgst_amount": "90.00", "sgst_amount": "90.00", "igst_amount": "0.00", "cess_amount": "0.00", "round_off": "0.00", "net_amount": "1180.00"}
+    },
+    {
+      "id": "inclusive-five-percent-interstate",
+      "description": "MRP of 1050 containing 5% IGST",
+      "supplier_state": "33",
+      "place_of_supply": "29",
+      "order_discount": "0.00",
+      "apply_round_off": true,
+      "lines": [
+        {"quantity": "1", "unit_price": "1050.00", "tax_rate": "5", "tax_inclusive": true}
+      ],
+      "expected": {"gross_amount": "1050.00", "line_discount_amount": "0.00", "order_discount_amount": "0.00", "discount_amount": "0.00", "taxable_amount": "1000.00", "cgst_amount": "0.00", "sgst_amount": "0.00", "igst_amount": "50.00", "cess_amount": "0.00", "round_off": "0.00", "net_amount": "1050.00"}
+    },
+    {
+      "id": "nil-rated-round-up",
+      "description": "Nil-rated line demonstrates invoice rupee round-off",
+      "supplier_state": "33",
+      "place_of_supply": "33",
+      "order_discount": "0.00",
+      "apply_round_off": true,
+      "lines": [
+        {"quantity": "1", "unit_price": "250.75", "tax_rate": "0", "tax_inclusive": false}
+      ],
+      "expected": {"gross_amount": "250.75", "line_discount_amount": "0.00", "order_discount_amount": "0.00", "discount_amount": "0.00", "taxable_amount": "250.75", "cgst_amount": "0.00", "sgst_amount": "0.00", "igst_amount": "0.00", "cess_amount": "0.00", "round_off": "0.25", "net_amount": "251.00"}
+    },
+    {
+      "id": "fractional-quantity-pre-gst2-twelve",
+      "description": "2.500 units on the historical 12% slab",
+      "invoice_date": "2025-09-20",
+      "supplier_state": "33",
+      "place_of_supply": "33",
+      "order_discount": "0.00",
+      "apply_round_off": true,
+      "lines": [
+        {"quantity": "2.500", "unit_price": "199.99", "tax_rate": "12", "tax_inclusive": false}
+      ],
+      "expected": {"gross_amount": "499.98", "line_discount_amount": "0.00", "order_discount_amount": "0.00", "discount_amount": "0.00", "taxable_amount": "499.98", "cgst_amount": "30.00", "sgst_amount": "30.00", "igst_amount": "0.00", "cess_amount": "0.00", "round_off": "0.02", "net_amount": "560.00"}
+    },
+    {
+      "id": "line-discount-interstate",
+      "description": "Line discount is removed before 18% IGST",
+      "supplier_state": "33",
+      "place_of_supply": "29",
+      "order_discount": "0.00",
+      "apply_round_off": true,
+      "lines": [
+        {"quantity": "3", "unit_price": "99.50", "tax_rate": "18", "line_discount": "28.50", "tax_inclusive": false}
+      ],
+      "expected": {"gross_amount": "298.50", "line_discount_amount": "28.50", "order_discount_amount": "0.00", "discount_amount": "28.50", "taxable_amount": "270.00", "cgst_amount": "0.00", "sgst_amount": "0.00", "igst_amount": "48.60", "cess_amount": "0.00", "round_off": "0.40", "net_amount": "319.00"}
+    },
+    {
+      "id": "fully-discounted-line",
+      "description": "A permitted full discount produces no tax or payable amount",
+      "supplier_state": "33",
+      "place_of_supply": "33",
+      "order_discount": "0.00",
+      "apply_round_off": true,
+      "lines": [
+        {"quantity": "1", "unit_price": "500.00", "tax_rate": "18", "line_discount": "500.00", "tax_inclusive": false}
+      ],
+      "expected": {"gross_amount": "500.00", "line_discount_amount": "500.00", "order_discount_amount": "0.00", "discount_amount": "500.00", "taxable_amount": "0.00", "cgst_amount": "0.00", "sgst_amount": "0.00", "igst_amount": "0.00", "cess_amount": "0.00", "round_off": "0.00", "net_amount": "0.00"}
+    },
+    {
+      "id": "odd-paisa-tax-split",
+      "description": "Five percent tax of 16.67 splits without losing the odd paisa",
+      "supplier_state": "33",
+      "place_of_supply": "33",
+      "order_discount": "0.00",
+      "apply_round_off": false,
+      "lines": [
+        {"quantity": "1", "unit_price": "333.33", "tax_rate": "5", "tax_inclusive": false}
+      ],
+      "expected": {"gross_amount": "333.33", "line_discount_amount": "0.00", "order_discount_amount": "0.00", "discount_amount": "0.00", "taxable_amount": "333.33", "cgst_amount": "8.33", "sgst_amount": "8.34", "igst_amount": "0.00", "cess_amount": "0.00", "round_off": "0.00", "net_amount": "350.00"}
+    },
+    {
+      "id": "inclusive-forty-percent",
+      "description": "Post-GST-2.0 40% inclusive local supply",
+      "supplier_state": "33",
+      "place_of_supply": "33",
+      "order_discount": "0.00",
+      "apply_round_off": true,
+      "lines": [
+        {"quantity": "1", "unit_price": "999.00", "tax_rate": "40", "tax_inclusive": true}
+      ],
+      "expected": {"gross_amount": "999.00", "line_discount_amount": "0.00", "order_discount_amount": "0.00", "discount_amount": "0.00", "taxable_amount": "713.57", "cgst_amount": "142.71", "sgst_amount": "142.72", "igst_amount": "0.00", "cess_amount": "0.00", "round_off": "0.00", "net_amount": "999.00"}
+    },
+    {
+      "id": "historical-twenty-eight-percent",
+      "description": "Historical 28% interstate slab remains calculable",
+      "invoice_date": "2025-09-20",
+      "supplier_state": "33",
+      "place_of_supply": "29",
+      "order_discount": "0.00",
+      "apply_round_off": false,
+      "lines": [
+        {"quantity": "1", "unit_price": "1000.00", "tax_rate": "28", "tax_inclusive": false}
+      ],
+      "expected": {"gross_amount": "1000.00", "line_discount_amount": "0.00", "order_discount_amount": "0.00", "discount_amount": "0.00", "taxable_amount": "1000.00", "cgst_amount": "0.00", "sgst_amount": "0.00", "igst_amount": "280.00", "cess_amount": "0.00", "round_off": "0.00", "net_amount": "1280.00"}
+    },
+    {
+      "id": "inclusive-gst-and-cess",
+      "description": "Inclusive local value containing 18% GST and 12% cess",
+      "supplier_state": "33",
+      "place_of_supply": "33",
+      "order_discount": "0.00",
+      "apply_round_off": false,
+      "lines": [
+        {"quantity": "1", "unit_price": "1200.00", "tax_rate": "18", "cess_rate": "12", "tax_inclusive": true}
+      ],
+      "expected": {"gross_amount": "1200.00", "line_discount_amount": "0.00", "order_discount_amount": "0.00", "discount_amount": "0.00", "taxable_amount": "923.08", "cgst_amount": "83.07", "sgst_amount": "83.08", "igst_amount": "0.00", "cess_amount": "110.77", "round_off": "0.00", "net_amount": "1200.00"}
+    },
+    {
+      "id": "exclusive-gst-and-cess-interstate",
+      "description": "Exclusive interstate 40% GST plus 15% cess",
+      "supplier_state": "33",
+      "place_of_supply": "29",
+      "order_discount": "0.00",
+      "apply_round_off": false,
+      "lines": [
+        {"quantity": "1", "unit_price": "1000.00", "tax_rate": "40", "cess_rate": "15", "tax_inclusive": false}
+      ],
+      "expected": {"gross_amount": "1000.00", "line_discount_amount": "0.00", "order_discount_amount": "0.00", "discount_amount": "0.00", "taxable_amount": "1000.00", "cgst_amount": "0.00", "sgst_amount": "0.00", "igst_amount": "400.00", "cess_amount": "150.00", "round_off": "0.00", "net_amount": "1550.00"}
+    },
+    {
+      "id": "one-paisa-order-discount",
+      "description": "One paisa is allocated deterministically across equal lines",
+      "supplier_state": "33",
+      "place_of_supply": "33",
+      "order_discount": "0.01",
+      "apply_round_off": true,
+      "lines": [
+        {"quantity": "1", "unit_price": "100.00", "tax_rate": "5", "tax_inclusive": false},
+        {"quantity": "1", "unit_price": "100.00", "tax_rate": "5", "tax_inclusive": false}
+      ],
+      "expected": {"gross_amount": "200.00", "line_discount_amount": "0.00", "order_discount_amount": "0.01", "discount_amount": "0.01", "taxable_amount": "199.99", "cgst_amount": "5.00", "sgst_amount": "5.00", "igst_amount": "0.00", "cess_amount": "0.00", "round_off": "0.01", "net_amount": "210.00"},
+      "line_order_discounts": ["0.01", "0.00"]
+    },
+    {
+      "id": "mixed-rates-exclusive-discount",
+      "description": "5%, 18%, and 40% exclusive lines share an order discount",
+      "supplier_state": "33",
+      "place_of_supply": "33",
+      "order_discount": "60.00",
+      "apply_round_off": true,
+      "lines": [
+        {"quantity": "1", "unit_price": "100.00", "tax_rate": "5", "tax_inclusive": false},
+        {"quantity": "1", "unit_price": "200.00", "tax_rate": "18", "tax_inclusive": false},
+        {"quantity": "1", "unit_price": "300.00", "tax_rate": "40", "tax_inclusive": false}
+      ],
+      "expected": {"gross_amount": "600.00", "line_discount_amount": "0.00", "order_discount_amount": "60.00", "discount_amount": "60.00", "taxable_amount": "540.00", "cgst_amount": "72.45", "sgst_amount": "72.45", "igst_amount": "0.00", "cess_amount": "0.00", "round_off": "0.10", "net_amount": "685.00"},
+      "line_order_discounts": ["10.00", "20.00", "30.00"]
+    },
+    {
+      "id": "mixed-rates-inclusive-discount",
+      "description": "5%, 18%, and 40% inclusive MRPs receive a ten-percent discount",
+      "supplier_state": "33",
+      "place_of_supply": "33",
+      "order_discount": "36.30",
+      "apply_round_off": true,
+      "lines": [
+        {"quantity": "1", "unit_price": "105.00", "tax_rate": "5", "tax_inclusive": true},
+        {"quantity": "1", "unit_price": "118.00", "tax_rate": "18", "tax_inclusive": true},
+        {"quantity": "1", "unit_price": "140.00", "tax_rate": "40", "tax_inclusive": true}
+      ],
+      "expected": {"gross_amount": "363.00", "line_discount_amount": "0.00", "order_discount_amount": "36.30", "discount_amount": "36.30", "taxable_amount": "270.00", "cgst_amount": "28.35", "sgst_amount": "28.35", "igst_amount": "0.00", "cess_amount": "0.00", "round_off": "0.30", "net_amount": "327.00"},
+      "line_order_discounts": ["10.50", "11.80", "14.00"]
+    },
+    {
+      "id": "quantity-two-inclusive-interstate",
+      "description": "Two identical inclusive units aggregate before extraction",
+      "supplier_state": "33",
+      "place_of_supply": "29",
+      "order_discount": "0.00",
+      "apply_round_off": false,
+      "lines": [
+        {"quantity": "2", "unit_price": "59.00", "tax_rate": "18", "tax_inclusive": true}
+      ],
+      "expected": {"gross_amount": "118.00", "line_discount_amount": "0.00", "order_discount_amount": "0.00", "discount_amount": "0.00", "taxable_amount": "100.00", "cgst_amount": "0.00", "sgst_amount": "0.00", "igst_amount": "18.00", "cess_amount": "0.00", "round_off": "0.00", "net_amount": "118.00"}
+    },
+    {
+      "id": "line-and-order-discounts",
+      "description": "Line discounts precede a proportional order discount",
+      "supplier_state": "33",
+      "place_of_supply": "33",
+      "order_discount": "45.00",
+      "apply_round_off": true,
+      "lines": [
+        {"quantity": "2", "unit_price": "100.00", "tax_rate": "5", "line_discount": "20.00", "tax_inclusive": false},
+        {"quantity": "1", "unit_price": "300.00", "tax_rate": "18", "line_discount": "30.00", "tax_inclusive": false}
+      ],
+      "expected": {"gross_amount": "500.00", "line_discount_amount": "50.00", "order_discount_amount": "45.00", "discount_amount": "95.00", "taxable_amount": "405.00", "cgst_amount": "25.92", "sgst_amount": "25.92", "igst_amount": "0.00", "cess_amount": "0.00", "round_off": "0.16", "net_amount": "457.00"},
+      "line_order_discounts": ["18.00", "27.00"]
+    },
+    {
+      "id": "post-gst2-five-percent-history",
+      "description": "The example product moves from its old 12% mapping to 5%",
+      "invoice_date": "2025-09-25",
+      "supplier_state": "33",
+      "place_of_supply": "33",
+      "order_discount": "0.00",
+      "apply_round_off": false,
+      "lines": [
+        {"quantity": "1", "unit_price": "1000.00", "tax_rate": "5", "tax_inclusive": false}
+      ],
+      "expected": {"gross_amount": "1000.00", "line_discount_amount": "0.00", "order_discount_amount": "0.00", "discount_amount": "0.00", "taxable_amount": "1000.00", "cgst_amount": "25.00", "sgst_amount": "25.00", "igst_amount": "0.00", "cess_amount": "0.00", "round_off": "0.00", "net_amount": "1050.00"}
+    }
+  ]
+}

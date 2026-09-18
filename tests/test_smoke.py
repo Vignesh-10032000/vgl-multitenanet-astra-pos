@@ -1,8 +1,9 @@
 """Phase 1A infrastructure smoke tests.
 
-These cover only the scaffold: health endpoint, request-id middleware,
+These retain coverage of the scaffold: health endpoint, request-id middleware,
 RFC 7807 errors, security headers, the fail-closed endpoint guard, the
-rollback fixture, and production config validation. No domain logic exists yet.
+rollback fixture, and production config validation. Domain schema coverage
+lives in the Phase 1B test modules.
 """
 
 from __future__ import annotations
