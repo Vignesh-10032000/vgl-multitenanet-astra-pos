@@ -4,12 +4,31 @@ from __future__ import annotations
 
 from flask import Blueprint
 
-from vglpos.routes.auth import auth_bp
+from vglpos.api.v1.auth import auth_bp
+from vglpos.api.v1.customers import customers_bp
+from vglpos.api.v1.openapi import openapi_bp
+from vglpos.api.v1.products import products_bp
+from vglpos.api.v1.reports import reports_bp
+from vglpos.api.v1.sales import sales_bp
+from vglpos.api.v1.settings import settings_bp
+from vglpos.api.v1.shifts import shifts_bp
+from vglpos.api.v1.sync import sync_bp
 from vglpos.routes.health import health_bp
 
 # Every blueprint the factory registers. New blueprints are added here, never
 # ad hoc inside create_app, so the route surface is reviewable in one place.
-BLUEPRINTS: tuple[Blueprint, ...] = (health_bp, auth_bp)
+BLUEPRINTS: tuple[Blueprint, ...] = (
+    health_bp,
+    auth_bp,
+    sales_bp,
+    products_bp,
+    customers_bp,
+    shifts_bp,
+    reports_bp,
+    sync_bp,
+    settings_bp,
+    openapi_bp,
+)
 
 # Rule 5: endpoints listed here are the ONLY ones served without a permission
 # decorator. Each entry documents why it is genuinely public.

@@ -85,6 +85,19 @@ class CheckoutCommand:
     client_total: object | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class QuoteCommand:
+    """Carry a server-priced cart without payment or persistence facts."""
+
+    company_id: int
+    branch_id: int
+    lines: tuple[CheckoutLineCommand, ...] | list[CheckoutLineCommand]
+    customer_id: int | None = None
+    business_date: date = field(default_factory=date.today)
+    order_discount: object = ZERO
+    apply_round_off: bool = True
+
+
 class CheckoutService:
     """Persist a fully server-priced sale as one atomic transaction."""
 
@@ -134,12 +147,79 @@ class CheckoutService:
             self.session.rollback()
             raise ValidationError(str(exc)) from exc
 
+    def checkout_batch(
+        self, commands: tuple[CheckoutCommand, ...] | list[CheckoutCommand]
+    ) -> tuple[Sale, ...]:
+        """Commit an offline batch once so one invalid sale rolls back the entire push."""
+        if not 1 <= len(commands) <= 100:
+            raise ValidationError("Offline push must contain between 1 and 100 sales.")
+        identifiers = [command.offline_uuid for command in commands]
+        if any(identifier is None for identifier in identifiers):
+            raise ValidationError("Every offline sale requires offline_uuid.")
+        if len(set(identifiers)) != len(identifiers):
+            raise ValidationError("Offline batch contains duplicate offline_uuid values.")
+        sales: list[Sale] = []
+        try:
+            for command in commands:
+                assert command.offline_uuid is not None
+                existing = SaleRepository(self.session, command.company_id).find_by_offline_uuid(
+                    command.offline_uuid
+                )
+                sales.append(existing if existing is not None else self._build_checkout(command))
+            self.session.commit()
+            for sale in sales:
+                self.session.refresh(sale)
+            return tuple(sales)
+        except IntegrityError as exc:
+            self.session.rollback()
+            raise CheckoutError("Offline batch conflicted with another transaction.") from exc
+        except ServiceError:
+            self.session.rollback()
+            raise
+        except ValueError as exc:
+            self.session.rollback()
+            raise ValidationError(str(exc)) from exc
+
+    def quote(self, cmd: QuoteCommand) -> TaxResult:
+        """Compute authoritative cart totals without flushing or committing any state."""
+        if not cmd.company_id or not 1 <= len(cmd.lines) <= 200:
+            raise ValidationError("Quote requires a company and between 1 and 200 lines.")
+        branch = self._require_branch(cmd.company_id, cmd.branch_id)
+        requested = self._aggregate_quantities(cmd.lines)
+        products = self._load_products(cmd.company_id, tuple(requested), for_update=False)
+        self._check_stock(products, requested)
+        rates = self._load_rates(cmd.company_id, products, cmd.business_date)
+        customer = self._load_customer(cmd.company_id, cmd.customer_id)
+        place_of_supply = (
+            state_code_from_gstin(customer.gstin)
+            if customer is not None and customer.gstin is not None
+            else branch.state_code
+        )
+        lines = [
+            TaxLineInput(
+                quantity=line.quantity,
+                unit_price=products[line.product_id].selling_price,
+                tax_rate=rates[products[line.product_id].tax_rate_id].rate,
+                cess_rate=rates[products[line.product_id].tax_rate_id].cess_rate,
+                line_discount=line.line_discount,
+                tax_inclusive=products[line.product_id].is_tax_inclusive,
+            )
+            for line in cmd.lines
+        ]
+        return TaxEngine.compute(
+            lines,
+            supplier_state=branch.state_code,
+            place_of_supply=place_of_supply,
+            order_discount=to_decimal(cmd.order_discount),
+            apply_round_off=cmd.apply_round_off,
+        )
+
     def _build_checkout(self, cmd: CheckoutCommand) -> Sale:
         if not 1 <= len(cmd.lines) <= 200:
             raise ValidationError("Checkout must contain between 1 and 200 lines.")
         branch = self._require_context(cmd)
         requested = self._aggregate_quantities(cmd.lines)
-        products = self._lock_products(cmd.company_id, tuple(requested))
+        products = self._load_products(cmd.company_id, tuple(requested), for_update=True)
         self._check_stock(products, requested)
         rates = self._load_rates(cmd.company_id, products, cmd.business_date)
         customer = self._load_customer(cmd.company_id, cmd.customer_id)
@@ -243,16 +323,7 @@ class CheckoutService:
         return sale
 
     def _require_context(self, cmd: CheckoutCommand) -> Branch:
-        branch = self.session.scalar(
-            select(Branch).where(
-                Branch.id == cmd.branch_id,
-                Branch.company_id == cmd.company_id,
-                Branch.deleted_at.is_(None),
-                Branch.is_active.is_(True),
-            )
-        )
-        if branch is None:
-            raise EntityNotFoundError("Branch was not found.")
+        branch = self._require_branch(cmd.company_id, cmd.branch_id)
         terminal = self.session.scalar(
             select(Terminal.id).where(
                 Terminal.id == cmd.terminal_id,
@@ -290,6 +361,19 @@ class CheckoutService:
                 raise EntityNotFoundError("Open shift was not found.")
         return branch
 
+    def _require_branch(self, company_id: int, branch_id: int) -> Branch:
+        branch = self.session.scalar(
+            select(Branch).where(
+                Branch.id == branch_id,
+                Branch.company_id == company_id,
+                Branch.deleted_at.is_(None),
+                Branch.is_active.is_(True),
+            )
+        )
+        if branch is None:
+            raise EntityNotFoundError("Branch was not found.")
+        return branch
+
     @staticmethod
     def _aggregate_quantities(
         lines: tuple[CheckoutLineCommand, ...] | list[CheckoutLineCommand],
@@ -309,18 +393,18 @@ class CheckoutService:
             )
         return quantities
 
-    def _lock_products(self, company_id: int, product_ids: tuple[int, ...]) -> dict[int, Product]:
-        statement = (
-            select(Product)
-            .where(
-                Product.company_id == company_id,
-                Product.id.in_(sorted(product_ids)),
-                Product.deleted_at.is_(None),
-                Product.is_active.is_(True),
-            )
-            .order_by(Product.id)
-            .with_for_update()
+    def _load_products(
+        self, company_id: int, product_ids: tuple[int, ...], *, for_update: bool
+    ) -> dict[int, Product]:
+        statement = select(Product).where(
+            Product.company_id == company_id,
+            Product.id.in_(sorted(product_ids)),
+            Product.deleted_at.is_(None),
+            Product.is_active.is_(True),
         )
+        statement = statement.order_by(Product.id)
+        if for_update:
+            statement = statement.with_for_update()
         products = {product.id: product for product in self.session.scalars(statement)}
         missing = sorted(set(product_ids) - products.keys())
         if missing:

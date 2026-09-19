@@ -58,6 +58,9 @@ class BaseConfig(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRES: int = 900  # seconds
     JWT_REFRESH_TOKEN_EXPIRES: int = 604_800  # seconds (7 days)
     MFA_ISSUER_NAME: str = "VGL POS"
+    WHATSAPP_WEBHOOK_URL: str = ""
+    WHATSAPP_API_TOKEN: str = ""
+    PUBLIC_RECEIPT_BASE_URL: str = ""
 
     DATABASE_URL: str = ""
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -106,6 +109,9 @@ class BaseConfig(BaseSettings):
             "JWT_ACCESS_TOKEN_EXPIRES": self.JWT_ACCESS_TOKEN_EXPIRES,
             "JWT_REFRESH_TOKEN_EXPIRES": self.JWT_REFRESH_TOKEN_EXPIRES,
             "MFA_ISSUER_NAME": self.MFA_ISSUER_NAME,
+            "WHATSAPP_WEBHOOK_URL": self.WHATSAPP_WEBHOOK_URL,
+            "WHATSAPP_API_TOKEN": self.WHATSAPP_API_TOKEN,
+            "PUBLIC_RECEIPT_BASE_URL": self.PUBLIC_RECEIPT_BASE_URL,
             "CACHE_TYPE": self.CACHE_TYPE,
             "CACHE_REDIS_URL": self.REDIS_URL,
             "CACHE_DEFAULT_TIMEOUT": self.CACHE_DEFAULT_TIMEOUT,

@@ -9,10 +9,18 @@ from decimal import Decimal
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
-from vglpos.domain.models import Customer, Sale, SaleItem, SalePayment
+from vglpos.domain.models import (
+    Customer,
+    Product,
+    Sale,
+    SaleItem,
+    SalePayment,
+    StockBatch,
+    StockLedger,
+)
 from vglpos.security.audit import record_audit_event
 from vglpos.services.exceptions import ValidationError
-from vglpos.utils.money import ZERO, money
+from vglpos.utils.money import ZERO, money, qty
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,6 +81,23 @@ class Gstr1Row:
     igst_amount: Decimal
     cess_amount: Decimal
     invoice_value: Decimal
+
+
+@dataclass(frozen=True, slots=True)
+class InventoryValuationRow:
+    product_id: int
+    sku: str
+    name: str
+    quantity: Decimal
+    unit_cost: Decimal
+    value: Decimal
+
+
+@dataclass(frozen=True, slots=True)
+class InventoryValuation:
+    method: str
+    items: tuple[InventoryValuationRow, ...]
+    total_value: Decimal
 
 
 class ReportService:
@@ -227,6 +252,7 @@ class ReportService:
         end_date: date,
         *,
         b2cl_threshold: Decimal = Decimal("100000.00"),
+        branch_id: int | None = None,
     ) -> tuple[Gstr1Row, ...]:
         """Classify B2B, B2C-large, and B2C-small invoices in one query."""
         self._validate_date_range(start_date, end_date)
@@ -268,6 +294,8 @@ class ReportService:
             )
             .order_by(Sale.business_date, Sale.invoice_number)
         )
+        if branch_id is not None:
+            statement = statement.where(Sale.branch_id == branch_id)
         return tuple(
             Gstr1Row(
                 table=row[0],
@@ -314,6 +342,107 @@ class ReportService:
             },
         )
         self.session.commit()
+
+    def inventory_valuation(
+        self, *, method: str, branch_id: int | None = None
+    ) -> InventoryValuation:
+        """Value stock without silently treating incomplete batch history as FIFO."""
+        normalized = method.strip().upper()
+        if normalized == "WEIGHTED_AVERAGE":
+            rows = self._weighted_valuation(branch_id)
+        elif normalized == "FIFO":
+            rows = self._fifo_valuation(branch_id)
+        else:
+            raise ValidationError("Valuation method must be WEIGHTED_AVERAGE or FIFO.")
+        return InventoryValuation(
+            method=normalized,
+            items=rows,
+            total_value=money(sum((row.value for row in rows), ZERO)),
+        )
+
+    def _weighted_valuation(self, branch_id: int | None) -> tuple[InventoryValuationRow, ...]:
+        rows: list[InventoryValuationRow] = []
+        for product in self._inventory_products():
+            quantity = self._product_quantity(product, branch_id)
+            if quantity == 0:
+                continue
+            rows.append(
+                InventoryValuationRow(
+                    product_id=product.id,
+                    sku=product.sku,
+                    name=product.name,
+                    quantity=quantity,
+                    unit_cost=money(product.cost_price),
+                    value=money(quantity * product.cost_price),
+                )
+            )
+        return tuple(rows)
+
+    def _fifo_valuation(self, branch_id: int | None) -> tuple[InventoryValuationRow, ...]:
+        rows: list[InventoryValuationRow] = []
+        for product in self._inventory_products():
+            expected_quantity = self._product_quantity(product, branch_id)
+            if expected_quantity == 0:
+                continue
+            statement = select(StockBatch.quantity_available, StockBatch.cost_price).where(
+                StockBatch.company_id == self.company_id,
+                StockBatch.product_id == product.id,
+                StockBatch.deleted_at.is_(None),
+                StockBatch.is_active.is_(True),
+                StockBatch.quantity_available > 0,
+            )
+            if branch_id is not None:
+                statement = statement.where(StockBatch.branch_id == branch_id)
+            batches = tuple(self.session.execute(statement))
+            batch_quantity = qty(sum((row.quantity_available for row in batches), Decimal("0")))
+            if batch_quantity != expected_quantity:
+                raise ValidationError(
+                    f"FIFO valuation requires complete batch coverage for product {product.id}."
+                )
+            value = money(
+                sum(
+                    (row.quantity_available * row.cost_price for row in batches),
+                    Decimal("0"),
+                )
+            )
+            rows.append(
+                InventoryValuationRow(
+                    product_id=product.id,
+                    sku=product.sku,
+                    name=product.name,
+                    quantity=batch_quantity,
+                    unit_cost=money(value / batch_quantity),
+                    value=value,
+                )
+            )
+        return tuple(rows)
+
+    def _inventory_products(self) -> tuple[Product, ...]:
+        products = tuple(
+            self.session.scalars(
+                select(Product)
+                .where(
+                    Product.company_id == self.company_id,
+                    Product.deleted_at.is_(None),
+                    Product.is_inventory_tracked.is_(True),
+                )
+                .order_by(Product.id)
+            )
+        )
+        return products
+
+    def _product_quantity(self, product: Product, branch_id: int | None) -> Decimal:
+        if branch_id is None:
+            return qty(product.on_hand)
+        balance = self.session.scalar(
+            select(func.coalesce(func.sum(StockLedger.quantity), Decimal("0"))).where(
+                StockLedger.company_id == self.company_id,
+                StockLedger.branch_id == branch_id,
+                StockLedger.product_id == product.id,
+                StockLedger.deleted_at.is_(None),
+            )
+        )
+        return qty(balance or Decimal("0"))
 
     @staticmethod
     def _validate_date_range(start_date: date, end_date: date) -> None:

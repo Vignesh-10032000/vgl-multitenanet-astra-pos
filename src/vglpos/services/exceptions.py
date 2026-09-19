@@ -21,6 +21,13 @@ class ValidationError(ServiceError):
     error_type = "validation-error"
 
 
+class RequestValidationError(ValidationError):
+    """Reject syntactically invalid HTTP input with the API-standard status."""
+
+    status_code = 422
+    error_type = "request-validation-error"
+
+
 class EntityNotFoundError(ServiceError):
     """Hide whether an identifier exists outside the active tenant."""
 

@@ -13,6 +13,10 @@ class ProductRepository(BaseRepository[Product]):
 
     model = Product
 
+    def find_by_sku(self, sku: str) -> Product | None:
+        """Resolve one normalized tenant SKU through its unique index."""
+        return self.session.scalar(self._base_query().where(Product.sku == sku.strip()))
+
     def find_by_barcode(self, barcode: str, *, for_update: bool = False) -> Product | None:
         """Resolve primary or alternate barcode in one indexed database lookup."""
         alternate = exists(

@@ -42,6 +42,8 @@ class CloseShiftCommand:
     counted_cash: object
     user_id: int
     notes: str | None = None
+    branch_id: int | None = None
+    terminal_id: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +56,8 @@ class CashMovementCommand:
     amount: object
     reason: str
     user_id: int
+    branch_id: int | None = None
+    terminal_id: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,7 +132,12 @@ class ShiftService:
             raise ValidationError("Counted cash cannot be negative.")
         try:
             self._require_user(cmd.company_id, cmd.user_id)
-            shift = self._open_shift(cmd.company_id, cmd.shift_id)
+            shift = self._open_shift(
+                cmd.company_id,
+                cmd.shift_id,
+                branch_id=cmd.branch_id,
+                terminal_id=cmd.terminal_id,
+            )
             report = self._z_report(shift)
             shift.closing_cash_expected = report.expected_cash
             shift.closing_cash_counted = counted
@@ -178,7 +187,12 @@ class ShiftService:
             raise ValidationError("Cash movement amount must be greater than zero.")
         try:
             self._require_user(cmd.company_id, cmd.user_id)
-            self._open_shift(cmd.company_id, cmd.shift_id)
+            self._open_shift(
+                cmd.company_id,
+                cmd.shift_id,
+                branch_id=cmd.branch_id,
+                terminal_id=cmd.terminal_id,
+            )
             movement = CashMovement(
                 company_id=cmd.company_id,
                 shift_id=cmd.shift_id,
@@ -211,16 +225,24 @@ class ShiftService:
             raise EntityNotFoundError("Shift was not found.")
         return self._z_report(shift)
 
-    def _open_shift(self, company_id: int, shift_id: int) -> Shift:
-        shift = self.session.scalar(
-            select(Shift)
-            .where(
-                Shift.id == shift_id,
-                Shift.company_id == company_id,
-                Shift.deleted_at.is_(None),
-            )
-            .with_for_update()
+    def _open_shift(
+        self,
+        company_id: int,
+        shift_id: int,
+        *,
+        branch_id: int | None = None,
+        terminal_id: int | None = None,
+    ) -> Shift:
+        statement = select(Shift).where(
+            Shift.id == shift_id,
+            Shift.company_id == company_id,
+            Shift.deleted_at.is_(None),
         )
+        if branch_id is not None:
+            statement = statement.where(Shift.branch_id == branch_id)
+        if terminal_id is not None:
+            statement = statement.where(Shift.terminal_id == terminal_id)
+        shift = self.session.scalar(statement.with_for_update())
         if shift is None:
             raise EntityNotFoundError("Shift was not found.")
         if shift.status != "OPEN":

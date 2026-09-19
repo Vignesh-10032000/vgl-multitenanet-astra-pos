@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from decimal import Decimal
+from uuid import uuid4
 
 import pytest
 from flask import Flask
@@ -33,6 +34,7 @@ def _login(client: FlaskClient, context: IdentityContext) -> dict[str, object]:
             "branch_id": context.branch.id,
             "terminal_id": context.terminal.id,
         },
+        headers={"Idempotency-Key": str(uuid4())},
     )
     assert response.status_code == 200, response.get_data(as_text=True)
     body = response.get_json()

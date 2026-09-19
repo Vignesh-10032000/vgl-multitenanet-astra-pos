@@ -41,6 +41,7 @@ class InventoryService:
         unit_cost: object | None = None,
         *,
         notes: str | None = None,
+        allow_deleted: bool = False,
     ) -> StockLedger:
         """Atomically update stock with SQL arithmetic and append its balance snapshot."""
         if product.company_id != self.company_id:
@@ -78,8 +79,9 @@ class InventoryService:
         statement = update(Product).where(
             Product.id == product.id,
             Product.company_id == self.company_id,
-            Product.deleted_at.is_(None),
         )
+        if not allow_deleted:
+            statement = statement.where(Product.deleted_at.is_(None))
         if product.is_inventory_tracked and delta < ZERO_QTY and not product.allow_negative_stock:
             statement = statement.where(Product.on_hand + delta >= Product.reserved_quantity)
         new_balance = self.session.scalar(
