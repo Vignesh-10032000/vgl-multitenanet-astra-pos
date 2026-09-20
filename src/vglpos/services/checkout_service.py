@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from sqlalchemy import select, update
@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from vglpos.domain.enums import DocType, PaymentMethod, SupplyType
+from vglpos.domain.events import SaleCompleted
 from vglpos.domain.models import (
     Branch,
     Customer,
@@ -25,6 +26,7 @@ from vglpos.domain.models import (
     User,
 )
 from vglpos.repositories import SaleRepository
+from vglpos.services.event_dispatcher import publish_event
 from vglpos.services.exceptions import (
     CheckoutError,
     EntityNotFoundError,
@@ -126,6 +128,14 @@ class CheckoutService:
             sale = self._build_checkout(cmd)
             self.session.commit()
             self.session.refresh(sale)
+            publish_event(
+                SaleCompleted(
+                    company_id=cmd.company_id,
+                    branch_id=cmd.branch_id,
+                    sale_id=sale.id,
+                    occurred_at=datetime.now(UTC),
+                )
+            )
             return sale
         except IntegrityError as exc:
             self.session.rollback()
@@ -159,16 +169,31 @@ class CheckoutService:
         if len(set(identifiers)) != len(identifiers):
             raise ValidationError("Offline batch contains duplicate offline_uuid values.")
         sales: list[Sale] = []
+        completed_events: list[SaleCompleted] = []
         try:
             for command in commands:
                 assert command.offline_uuid is not None
                 existing = SaleRepository(self.session, command.company_id).find_by_offline_uuid(
                     command.offline_uuid
                 )
-                sales.append(existing if existing is not None else self._build_checkout(command))
+                if existing is not None:
+                    sales.append(existing)
+                else:
+                    sale = self._build_checkout(command)
+                    sales.append(sale)
+                    completed_events.append(
+                        SaleCompleted(
+                            company_id=command.company_id,
+                            branch_id=command.branch_id,
+                            sale_id=sale.id,
+                            occurred_at=datetime.now(UTC),
+                        )
+                    )
             self.session.commit()
             for sale in sales:
                 self.session.refresh(sale)
+            for event in completed_events:
+                publish_event(event)
             return tuple(sales)
         except IntegrityError as exc:
             self.session.rollback()

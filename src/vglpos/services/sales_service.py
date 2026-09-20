@@ -10,11 +10,13 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from vglpos.domain.events import SaleUpdated
 from vglpos.domain.models import Customer, Product, Sale, SaleItem, SalePayment
 from vglpos.repositories.base import CursorPage
 from vglpos.repositories.documents import SaleRepository
 from vglpos.security.override_service import OverrideApprovalService
 from vglpos.services.checkout_service import LOYALTY_EARN_DIVISOR
+from vglpos.services.event_dispatcher import publish_event
 from vglpos.services.exceptions import ConflictError, EntityNotFoundError, ValidationError
 from vglpos.services.inventory_service import InventoryService
 from vglpos.utils.money import ZERO, money, qty
@@ -134,6 +136,14 @@ class SalesService:
         try:
             self.session.commit()
             self.session.refresh(sale)
+            publish_event(
+                SaleUpdated(
+                    company_id=self.company_id,
+                    branch_id=sale.branch_id,
+                    sale_id=sale.id,
+                    occurred_at=datetime.now(UTC),
+                )
+            )
             return sale
         except IntegrityError as exc:
             self.session.rollback()

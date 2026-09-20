@@ -273,7 +273,14 @@ def test_required_str_enums_exist() -> None:
 
 
 def test_required_domain_events_are_frozen_dataclasses() -> None:
-    for name in ("SaleCompleted", "StockDepleted", "ShiftClosed", "PriceOverridden"):
+    for name in (
+        "SaleCompleted",
+        "SaleUpdated",
+        "ProductUpdated",
+        "StockDepleted",
+        "ShiftClosed",
+        "PriceOverridden",
+    ):
         event_type = getattr(events, name)
         assert is_dataclass(event_type)
         assert event_type.__dataclass_params__.frozen is True

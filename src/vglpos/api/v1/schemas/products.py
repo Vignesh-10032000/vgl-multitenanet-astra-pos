@@ -21,6 +21,10 @@ class ProductQuery(CursorQuery):
     barcode: str | None = Field(default=None, min_length=1, max_length=64)
 
 
+class ProductLookupQuery(RequestModel):
+    barcode: str = Field(min_length=1, max_length=64)
+
+
 class ProductCreateRequest(RequestModel):
     sku: str = Field(min_length=1, max_length=100)
     name: str = Field(min_length=1, max_length=255)

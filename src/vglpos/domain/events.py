@@ -18,6 +18,25 @@ class SaleCompleted:
 
 
 @dataclass(frozen=True, slots=True)
+class SaleUpdated:
+    """Records a committed sale change that invalidates dashboard aggregates."""
+
+    company_id: int
+    branch_id: int
+    sale_id: int
+    occurred_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class ProductUpdated:
+    """Records a committed catalogue mutation for cache invalidation."""
+
+    company_id: int
+    product_id: int
+    occurred_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
 class StockDepleted:
     """Records that a branch/product stock balance reached zero."""
 

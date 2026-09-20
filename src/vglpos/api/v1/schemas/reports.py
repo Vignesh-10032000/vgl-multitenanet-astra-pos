@@ -6,6 +6,8 @@ from datetime import date
 from decimal import Decimal
 from typing import Literal
 
+from pydantic import Field
+
 from vglpos.api.v1.schemas.common import RequestModel, ResponseModel
 
 
@@ -16,6 +18,10 @@ class DailySummaryQuery(RequestModel):
 class DateRangeQuery(RequestModel):
     start_date: date
     end_date: date
+
+
+class RevenueQuery(RequestModel):
+    days: int = Field(default=7, ge=1, le=3660)
 
 
 class InventoryValuationQuery(RequestModel):
@@ -33,6 +39,16 @@ class DailySummaryResponse(ResponseModel):
     cess_amount: Decimal
     round_off: Decimal
     net_amount: Decimal
+
+
+class RevenuePointResponse(ResponseModel):
+    business_date: date
+    total_bills: int
+    net_amount: Decimal
+
+
+class RevenueSeriesResponse(ResponseModel):
+    items: list[RevenuePointResponse]
 
 
 class Gstr1RowResponse(ResponseModel):

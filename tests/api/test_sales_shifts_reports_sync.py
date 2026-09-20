@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import date
 from decimal import Decimal
 from types import SimpleNamespace
 from uuid import uuid4
@@ -264,6 +265,13 @@ def test_reports_success_and_validation_failures(
     assert summary.status_code == 200
     assert summary.get_json()["net_amount"] == "0.00"
 
+    revenue = api_client.get("/api/v1/reports/revenue?days=7", headers=auth_headers)
+    assert revenue.status_code == 200
+    points = revenue.get_json()["items"]
+    assert len(points) == 7
+    assert points[-1]["business_date"] == date.today().isoformat()
+    assert all(point["net_amount"] == "0.00" for point in points)
+
     missing_date = api_client.get("/api/v1/reports/daily-summary", headers=auth_headers)
     assert missing_date.status_code == 422
 
@@ -321,6 +329,29 @@ def test_inventory_valuation_uses_branch_ledger_quantity(
     )
     assert response.status_code == 200
     assert response.get_json()["items"][0]["quantity"] == "5.000"
+
+
+def test_checkout_invalidates_cached_daily_summary(
+    api_client: FlaskClient,
+    auth_headers: dict[str, str],
+    mutation_headers: Callable[..., dict[str, str]],
+    checkout_payload: dict[str, object],
+) -> None:
+    endpoint = f"/api/v1/reports/daily-summary?on_date={date.today().isoformat()}"
+    initial = api_client.get(endpoint, headers=auth_headers)
+    assert initial.status_code == 200
+    assert initial.get_json()["total_bills"] == 0
+
+    checkout = api_client.post(
+        "/api/v1/sales/checkout",
+        headers=mutation_headers(),
+        json={**checkout_payload, "business_date": date.today().isoformat()},
+    )
+    assert checkout.status_code == 201
+
+    refreshed = api_client.get(endpoint, headers=auth_headers)
+    assert refreshed.status_code == 200
+    assert refreshed.get_json()["total_bills"] == 1
 
 
 def test_offline_push_is_atomic_and_replay_safe(

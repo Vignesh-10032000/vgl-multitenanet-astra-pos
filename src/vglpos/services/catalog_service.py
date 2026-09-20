@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -10,9 +11,11 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from vglpos.domain.events import ProductUpdated
 from vglpos.domain.models import Category, HsnCode, Product, ProductPriceHistory, TaxRate
 from vglpos.repositories.base import CursorPage
 from vglpos.repositories.catalog import ProductRepository
+from vglpos.services.event_dispatcher import publish_event
 from vglpos.services.exceptions import ConflictError, EntityNotFoundError, ValidationError
 from vglpos.utils.money import money, qty
 
@@ -72,6 +75,13 @@ class CatalogService:
             raise EntityNotFoundError("Product was not found.")
         return product
 
+    def lookup_by_barcode(self, barcode: str) -> Product:
+        """Resolve one barcode with the repository's single indexed statement."""
+        product = self.repository.find_by_barcode(barcode.strip())
+        if product is None:
+            raise EntityNotFoundError("Product was not found.")
+        return product
+
     def create_product(self, cmd: CreateProductCommand) -> Product:
         """Validate references and commit one new zero-stock catalogue item."""
         if cmd.company_id != self.company_id or not cmd.user_id:
@@ -96,6 +106,13 @@ class CatalogService:
             self.repository.add(product)
             self.session.commit()
             self.session.refresh(product)
+            publish_event(
+                ProductUpdated(
+                    company_id=self.company_id,
+                    product_id=product.id,
+                    occurred_at=datetime.now(UTC),
+                )
+            )
             return product
         except IntegrityError as exc:
             self.session.rollback()
@@ -141,6 +158,13 @@ class CatalogService:
         try:
             self.session.commit()
             self.session.refresh(product)
+            publish_event(
+                ProductUpdated(
+                    company_id=self.company_id,
+                    product_id=product.id,
+                    occurred_at=datetime.now(UTC),
+                )
+            )
             return product
         except IntegrityError as exc:
             self.session.rollback()
@@ -155,6 +179,13 @@ class CatalogService:
         except LookupError as exc:
             raise EntityNotFoundError("Product was not found.") from exc
         self.session.commit()
+        publish_event(
+            ProductUpdated(
+                company_id=self.company_id,
+                product_id=product.id,
+                occurred_at=datetime.now(UTC),
+            )
+        )
         return product
 
     def _validate_references(self, values: dict[str, Any]) -> None:

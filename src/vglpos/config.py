@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
+from celery.schedules import crontab
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.pool import StaticPool
@@ -131,6 +132,20 @@ class BaseConfig(BaseSettings):
                 "timezone": "UTC",
                 "enable_utc": True,
                 "broker_connection_retry_on_startup": True,
+                "imports": (
+                    "vglpos.tasks.receipts",
+                    "vglpos.tasks.maintenance",
+                ),
+                "beat_schedule": {
+                    "refresh-daily-sales-summary": {
+                        "task": "vglpos.refresh_daily_sales_summary",
+                        "schedule": 300.0,
+                    },
+                    "reconcile-customer-counters-nightly": {
+                        "task": "vglpos.reconcile_customer_counters",
+                        "schedule": crontab(hour=2, minute=15),
+                    },
+                },
             },
         }
 

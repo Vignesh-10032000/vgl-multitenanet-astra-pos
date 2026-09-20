@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import exists, func, or_, select
+from sqlalchemy import func, or_, select
 
 from vglpos.domain.models import Product, ProductBarcode
 from vglpos.repositories.base import BaseRepository
@@ -19,15 +19,27 @@ class ProductRepository(BaseRepository[Product]):
 
     def find_by_barcode(self, barcode: str, *, for_update: bool = False) -> Product | None:
         """Resolve primary or alternate barcode in one indexed database lookup."""
-        alternate = exists(
-            select(ProductBarcode.id).where(
+        primary_id = (
+            select(Product.id)
+            .where(
+                Product.company_id == self.company_id,
+                Product.deleted_at.is_(None),
+                Product.barcode == barcode,
+            )
+            .limit(1)
+            .scalar_subquery()
+        )
+        alternate_id = (
+            select(ProductBarcode.product_id)
+            .where(
                 ProductBarcode.company_id == self.company_id,
                 ProductBarcode.deleted_at.is_(None),
-                ProductBarcode.product_id == Product.id,
                 ProductBarcode.barcode == barcode,
             )
+            .limit(1)
+            .scalar_subquery()
         )
-        statement = self._base_query().where(or_(Product.barcode == barcode, alternate))
+        statement = self._base_query().where(Product.id == func.coalesce(primary_id, alternate_id))
         if for_update:
             statement = statement.with_for_update()
         return self.session.scalar(statement)

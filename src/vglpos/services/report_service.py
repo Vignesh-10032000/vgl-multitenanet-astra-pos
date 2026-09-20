@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
-from sqlalchemy import case, func, select
+from sqlalchemy import Date, Integer, Numeric, case, column, func, select, table
 from sqlalchemy.orm import Session
 
 from vglpos.domain.models import (
@@ -21,6 +21,23 @@ from vglpos.domain.models import (
 from vglpos.security.audit import record_audit_event
 from vglpos.services.exceptions import ValidationError
 from vglpos.utils.money import ZERO, money, qty
+
+_DAILY_SALES_SUMMARY = table(
+    "mv_daily_sales_summary",
+    column("company_id", Integer),
+    column("branch_id", Integer),
+    column("business_date", Date),
+    column("total_bills", Integer),
+    column("total_gross", Numeric(14, 2)),
+    column("total_discount", Numeric(14, 2)),
+    column("total_taxable", Numeric(14, 2)),
+    column("total_cgst", Numeric(14, 2)),
+    column("total_sgst", Numeric(14, 2)),
+    column("total_igst", Numeric(14, 2)),
+    column("total_cess", Numeric(14, 2)),
+    column("total_round_off", Numeric(14, 2)),
+    column("total_net", Numeric(14, 2)),
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,26 +127,25 @@ class ReportService:
         self.company_id = company_id
 
     def daily_summary(self, on_date: date, *, branch_id: int | None = None) -> DailySummary:
-        """Aggregate one day in a single query and never commit read-only work."""
+        """Read one day from the concurrently refreshed dashboard summary view."""
+        summary = _DAILY_SALES_SUMMARY.c
         statement = select(
-            func.count(Sale.id),
-            func.coalesce(func.sum(Sale.gross_amount), ZERO),
-            func.coalesce(func.sum(Sale.discount_amount), ZERO),
-            func.coalesce(func.sum(Sale.taxable_amount), ZERO),
-            func.coalesce(func.sum(Sale.cgst_amount), ZERO),
-            func.coalesce(func.sum(Sale.sgst_amount), ZERO),
-            func.coalesce(func.sum(Sale.igst_amount), ZERO),
-            func.coalesce(func.sum(Sale.cess_amount), ZERO),
-            func.coalesce(func.sum(Sale.round_off), ZERO),
-            func.coalesce(func.sum(Sale.net_amount), ZERO),
+            func.coalesce(func.sum(summary.total_bills), 0),
+            func.coalesce(func.sum(summary.total_gross), ZERO),
+            func.coalesce(func.sum(summary.total_discount), ZERO),
+            func.coalesce(func.sum(summary.total_taxable), ZERO),
+            func.coalesce(func.sum(summary.total_cgst), ZERO),
+            func.coalesce(func.sum(summary.total_sgst), ZERO),
+            func.coalesce(func.sum(summary.total_igst), ZERO),
+            func.coalesce(func.sum(summary.total_cess), ZERO),
+            func.coalesce(func.sum(summary.total_round_off), ZERO),
+            func.coalesce(func.sum(summary.total_net), ZERO),
         ).where(
-            Sale.company_id == self.company_id,
-            Sale.business_date == on_date,
-            Sale.sale_status == "COMPLETED",
-            Sale.deleted_at.is_(None),
+            summary.company_id == self.company_id,
+            summary.business_date == on_date,
         )
         if branch_id is not None:
-            statement = statement.where(Sale.branch_id == branch_id)
+            statement = statement.where(summary.branch_id == branch_id)
         row = self.session.execute(statement).one()
         return DailySummary(
             total_bills=int(row[0]),
@@ -167,9 +183,22 @@ class ReportService:
         )
         if branch_id is not None:
             statement = statement.where(Sale.branch_id == branch_id)
-        return tuple(
-            RevenuePoint(business_date=row[0], total_bills=int(row[1]), net_amount=money(row[2]))
+        rows = {
+            row[0]: RevenuePoint(
+                business_date=row[0], total_bills=int(row[1]), net_amount=money(row[2])
+            )
             for row in self.session.execute(statement)
+        }
+        return tuple(
+            rows.get(
+                start_date + timedelta(days=offset),
+                RevenuePoint(
+                    business_date=start_date + timedelta(days=offset),
+                    total_bills=0,
+                    net_amount=ZERO,
+                ),
+            )
+            for offset in range((end_date - start_date).days + 1)
         )
 
     def top_products(
@@ -361,88 +390,133 @@ class ReportService:
         )
 
     def _weighted_valuation(self, branch_id: int | None) -> tuple[InventoryValuationRow, ...]:
-        rows: list[InventoryValuationRow] = []
-        for product in self._inventory_products():
-            quantity = self._product_quantity(product, branch_id)
-            if quantity == 0:
-                continue
-            rows.append(
-                InventoryValuationRow(
-                    product_id=product.id,
-                    sku=product.sku,
-                    name=product.name,
-                    quantity=quantity,
-                    unit_cost=money(product.cost_price),
-                    value=money(quantity * product.cost_price),
-                )
+        if branch_id is None:
+            statement = select(
+                Product.id,
+                Product.sku,
+                Product.name,
+                Product.on_hand,
+                Product.cost_price,
             )
+        else:
+            balances = (
+                select(
+                    StockLedger.product_id.label("product_id"),
+                    func.sum(StockLedger.quantity).label("quantity"),
+                )
+                .where(
+                    StockLedger.company_id == self.company_id,
+                    StockLedger.branch_id == branch_id,
+                    StockLedger.deleted_at.is_(None),
+                )
+                .group_by(StockLedger.product_id)
+                .subquery()
+            )
+            statement = select(
+                Product.id,
+                Product.sku,
+                Product.name,
+                func.coalesce(balances.c.quantity, Decimal("0")),
+                Product.cost_price,
+            ).outerjoin(balances, balances.c.product_id == Product.id)
+        statement = statement.where(
+            Product.company_id == self.company_id,
+            Product.deleted_at.is_(None),
+            Product.is_inventory_tracked.is_(True),
+        ).order_by(Product.id)
+        rows = []
+        for row in self.session.execute(statement):
+            quantity = qty(row[3])
+            if quantity != 0:
+                rows.append(
+                    InventoryValuationRow(
+                        product_id=row[0],
+                        sku=row[1],
+                        name=row[2],
+                        quantity=quantity,
+                        unit_cost=money(row[4]),
+                        value=money(quantity * row[4]),
+                    )
+                )
         return tuple(rows)
 
     def _fifo_valuation(self, branch_id: int | None) -> tuple[InventoryValuationRow, ...]:
-        rows: list[InventoryValuationRow] = []
-        for product in self._inventory_products():
-            expected_quantity = self._product_quantity(product, branch_id)
-            if expected_quantity == 0:
+        batches = select(
+            StockBatch.product_id.label("product_id"),
+            func.sum(StockBatch.quantity_available).label("quantity"),
+            func.sum(StockBatch.quantity_available * StockBatch.cost_price).label("value"),
+        ).where(
+            StockBatch.company_id == self.company_id,
+            StockBatch.deleted_at.is_(None),
+            StockBatch.is_active.is_(True),
+            StockBatch.quantity_available > 0,
+        )
+        if branch_id is not None:
+            batches = batches.where(StockBatch.branch_id == branch_id)
+        batch_totals = batches.group_by(StockBatch.product_id).subquery()
+
+        if branch_id is None:
+            statement = select(
+                Product.id,
+                Product.sku,
+                Product.name,
+                Product.on_hand,
+                func.coalesce(batch_totals.c.quantity, Decimal("0")),
+                func.coalesce(batch_totals.c.value, Decimal("0")),
+            )
+        else:
+            balances = (
+                select(
+                    StockLedger.product_id.label("product_id"),
+                    func.sum(StockLedger.quantity).label("quantity"),
+                )
+                .where(
+                    StockLedger.company_id == self.company_id,
+                    StockLedger.branch_id == branch_id,
+                    StockLedger.deleted_at.is_(None),
+                )
+                .group_by(StockLedger.product_id)
+                .subquery()
+            )
+            statement = select(
+                Product.id,
+                Product.sku,
+                Product.name,
+                func.coalesce(balances.c.quantity, Decimal("0")),
+                func.coalesce(batch_totals.c.quantity, Decimal("0")),
+                func.coalesce(batch_totals.c.value, Decimal("0")),
+            ).outerjoin(balances, balances.c.product_id == Product.id)
+        statement = (
+            statement.outerjoin(batch_totals, batch_totals.c.product_id == Product.id)
+            .where(
+                Product.company_id == self.company_id,
+                Product.deleted_at.is_(None),
+                Product.is_inventory_tracked.is_(True),
+            )
+            .order_by(Product.id)
+        )
+        rows = []
+        for row in self.session.execute(statement):
+            expected = qty(row[3])
+            if expected == 0:
                 continue
-            statement = select(StockBatch.quantity_available, StockBatch.cost_price).where(
-                StockBatch.company_id == self.company_id,
-                StockBatch.product_id == product.id,
-                StockBatch.deleted_at.is_(None),
-                StockBatch.is_active.is_(True),
-                StockBatch.quantity_available > 0,
-            )
-            if branch_id is not None:
-                statement = statement.where(StockBatch.branch_id == branch_id)
-            batches = tuple(self.session.execute(statement))
-            batch_quantity = qty(sum((row.quantity_available for row in batches), Decimal("0")))
-            if batch_quantity != expected_quantity:
+            batch_quantity = qty(row[4])
+            if batch_quantity != expected:
                 raise ValidationError(
-                    f"FIFO valuation requires complete batch coverage for product {product.id}."
+                    f"FIFO valuation requires complete batch coverage for product {row[0]}."
                 )
-            value = money(
-                sum(
-                    (row.quantity_available * row.cost_price for row in batches),
-                    Decimal("0"),
-                )
-            )
+            value = money(row[5])
             rows.append(
                 InventoryValuationRow(
-                    product_id=product.id,
-                    sku=product.sku,
-                    name=product.name,
+                    product_id=row[0],
+                    sku=row[1],
+                    name=row[2],
                     quantity=batch_quantity,
                     unit_cost=money(value / batch_quantity),
                     value=value,
                 )
             )
         return tuple(rows)
-
-    def _inventory_products(self) -> tuple[Product, ...]:
-        products = tuple(
-            self.session.scalars(
-                select(Product)
-                .where(
-                    Product.company_id == self.company_id,
-                    Product.deleted_at.is_(None),
-                    Product.is_inventory_tracked.is_(True),
-                )
-                .order_by(Product.id)
-            )
-        )
-        return products
-
-    def _product_quantity(self, product: Product, branch_id: int | None) -> Decimal:
-        if branch_id is None:
-            return qty(product.on_hand)
-        balance = self.session.scalar(
-            select(func.coalesce(func.sum(StockLedger.quantity), Decimal("0"))).where(
-                StockLedger.company_id == self.company_id,
-                StockLedger.branch_id == branch_id,
-                StockLedger.product_id == product.id,
-                StockLedger.deleted_at.is_(None),
-            )
-        )
-        return qty(balance or Decimal("0"))
 
     @staticmethod
     def _validate_date_range(start_date: date, end_date: date) -> None:

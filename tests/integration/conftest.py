@@ -15,7 +15,7 @@ from alembic import command
 from alembic.config import Config
 from flask import Flask, g, jsonify
 from flask.testing import FlaskClient
-from sqlalchemy import Engine, create_engine, select
+from sqlalchemy import Engine, create_engine, select, text
 from sqlalchemy.orm import Session
 
 from vglpos.app import create_app
@@ -247,6 +247,28 @@ def service_engine(tmp_path: Path) -> Engine:
         connect_args={"check_same_thread": False, "timeout": 30},
     )
     Base.metadata.create_all(engine)
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                CREATE VIEW mv_daily_sales_summary AS
+                SELECT company_id, branch_id, business_date,
+                       COUNT(id) AS total_bills,
+                       SUM(gross_amount) AS total_gross,
+                       SUM(discount_amount) AS total_discount,
+                       SUM(taxable_amount) AS total_taxable,
+                       SUM(cgst_amount) AS total_cgst,
+                       SUM(sgst_amount) AS total_sgst,
+                       SUM(igst_amount) AS total_igst,
+                       SUM(cess_amount) AS total_cess,
+                       SUM(round_off) AS total_round_off,
+                       SUM(net_amount) AS total_net
+                FROM sales
+                WHERE sale_status = 'COMPLETED' AND deleted_at IS NULL
+                GROUP BY company_id, branch_id, business_date
+                """
+            )
+        )
     try:
         yield engine
     finally:

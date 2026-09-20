@@ -10,6 +10,8 @@ from vglpos.api.v1.schemas.reports import (
     Gstr1RowResponse,
     InventoryValuationResponse,
     InventoryValuationRowResponse,
+    RevenuePointResponse,
+    RevenueSeriesResponse,
 )
 from vglpos.api.v1.schemas.sales import (
     QuoteLineResponse,
@@ -21,7 +23,12 @@ from vglpos.api.v1.schemas.sales import (
 )
 from vglpos.api.v1.schemas.shifts import CashMovementResponse, ShiftResponse
 from vglpos.services.customer_service import CustomerDetail
-from vglpos.services.report_service import DailySummary, Gstr1Row, InventoryValuation
+from vglpos.services.report_service import (
+    DailySummary,
+    Gstr1Row,
+    InventoryValuation,
+    RevenuePoint,
+)
 from vglpos.services.sales_service import SaleDetail
 from vglpos.services.tax_engine import TaxResult
 
@@ -97,6 +104,10 @@ def cash_movement_response(movement: object) -> CashMovementResponse:
 
 def daily_summary_response(summary: DailySummary) -> DailySummaryResponse:
     return DailySummaryResponse.model_validate(summary)
+
+
+def revenue_series_response(rows: tuple[RevenuePoint, ...]) -> RevenueSeriesResponse:
+    return RevenueSeriesResponse(items=[RevenuePointResponse.model_validate(row) for row in rows])
 
 
 def gstr1_response(rows: tuple[Gstr1Row, ...]) -> Gstr1Response:

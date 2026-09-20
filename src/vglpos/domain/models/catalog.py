@@ -122,6 +122,14 @@ class Product(TenantEntity):
         ),
         Index("idx_products_company_category", "company_id", "category_id"),
         Index(
+            "idx_products_company_created",
+            "company_id",
+            "created_at",
+            "id",
+            postgresql_where=text("deleted_at IS NULL"),
+            sqlite_where=text("deleted_at IS NULL"),
+        ),
+        Index(
             "idx_products_barcode",
             "company_id",
             "barcode",

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date, timedelta
+
 from flask import Blueprint, Response, g
 from sqlalchemy.orm import Session
 
@@ -14,14 +16,18 @@ from vglpos.api.v1.schemas.reports import (
     Gstr1Response,
     InventoryValuationQuery,
     InventoryValuationResponse,
+    RevenueQuery,
+    RevenueSeriesResponse,
 )
 from vglpos.api.v1.serializers import (
     daily_summary_response,
     gstr1_response,
     inventory_valuation_response,
+    revenue_series_response,
 )
 from vglpos.extensions import db, limiter
 from vglpos.security.decorators import require_permission
+from vglpos.services.cache_service import dashboard_key, get_mapping, set_mapping
 from vglpos.services.report_service import ReportService
 
 reports_bp = Blueprint("reports", __name__, url_prefix="/api/v1/reports")
@@ -41,11 +47,36 @@ def _user_rate_key() -> str:
 )
 def daily_summary() -> tuple[Response, int]:
     query = parse_query(DailySummaryQuery)
+    key = dashboard_key(company_id=g.company_id, branch_id=g.branch_id, on_date=query.on_date)
+    cached = get_mapping(key)
+    if cached is not None:
+        return model_response(DailySummaryResponse.model_validate(cached))
     with Session(db.engine) as session:
         summary = ReportService(session, g.company_id).daily_summary(
             query.on_date, branch_id=g.branch_id
         )
-        return model_response(daily_summary_response(summary))
+        result = daily_summary_response(summary)
+        set_mapping(key, result.model_dump(mode="json"))
+        return model_response(result)
+
+
+@reports_bp.get("/revenue")
+@require_permission("report.view")
+@limiter.limit("20 per minute", key_func=_user_rate_key)
+@documented(
+    summary="Get a gap-filled daily revenue series",
+    query_model=RevenueQuery,
+    response_model=RevenueSeriesResponse,
+)
+def revenue() -> tuple[Response, int]:
+    query = parse_query(RevenueQuery)
+    end_date = date.today()
+    start_date = end_date - timedelta(days=query.days - 1)
+    with Session(db.engine) as session:
+        rows = ReportService(session, g.company_id).revenue_series(
+            start_date, end_date, branch_id=g.branch_id
+        )
+        return model_response(revenue_series_response(rows))
 
 
 @reports_bp.get("/gstr1")

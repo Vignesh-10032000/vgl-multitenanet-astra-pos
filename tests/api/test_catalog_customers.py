@@ -43,6 +43,54 @@ def test_product_catalogue_etag_and_decimal_strings(
     assert cached.headers["ETag"] == response.headers["ETag"]
 
 
+def test_product_barcode_lookup_and_validation(
+    api_client: FlaskClient,
+    auth_headers: dict[str, str],
+    mutation_headers: Callable[..., dict[str, str]],
+    api_identity: IdentityContext,
+) -> None:
+    barcode = f"API-LOOKUP-{api_identity.product.id}"
+    updated = api_client.put(
+        f"/api/v1/products/{api_identity.product.id}",
+        headers=mutation_headers(),
+        json={"barcode": barcode},
+    )
+    assert updated.status_code == 200
+    found = api_client.get(
+        f"/api/v1/products/lookup?barcode={barcode}",
+        headers=auth_headers,
+    )
+    assert found.status_code == 200
+    assert found.get_json()["id"] == api_identity.product.id
+
+    missing = api_client.get("/api/v1/products/lookup?barcode=unknown", headers=auth_headers)
+    assert missing.status_code == 404
+    invalid = api_client.get("/api/v1/products/lookup", headers=auth_headers)
+    assert invalid.status_code == 422
+
+
+def test_product_update_invalidates_cached_catalogue(
+    api_client: FlaskClient,
+    auth_headers: dict[str, str],
+    mutation_headers: Callable[..., dict[str, str]],
+    api_identity: IdentityContext,
+) -> None:
+    initial = api_client.get("/api/v1/products", headers=auth_headers)
+    assert initial.status_code == 200
+    assert initial.get_json()["items"][0]["name"] != "Updated Through Event"
+
+    updated = api_client.put(
+        f"/api/v1/products/{api_identity.product.id}",
+        headers=mutation_headers(),
+        json={"name": "Updated Through Event"},
+    )
+    assert updated.status_code == 200
+
+    refreshed = api_client.get("/api/v1/products", headers=auth_headers)
+    assert refreshed.status_code == 200
+    assert refreshed.get_json()["items"][0]["name"] == "Updated Through Event"
+
+
 def test_product_create_update_delete_and_failures(
     api_client: FlaskClient,
     mutation_headers: Callable[..., dict[str, str]],

@@ -24,6 +24,14 @@ class Customer(TenantEntity):
             sqlite_where=text("deleted_at IS NULL"),
         ),
         Index("idx_customers_company_name", "company_id", "name"),
+        Index(
+            "idx_customers_company_created",
+            "company_id",
+            "created_at",
+            "id",
+            postgresql_where=text("deleted_at IS NULL"),
+            sqlite_where=text("deleted_at IS NULL"),
+        ),
     )
 
     phone: Mapped[str] = mapped_column(String(20), nullable=False)

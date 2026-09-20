@@ -13,6 +13,7 @@ from vglpos.api.v1.openapi import documented
 from vglpos.api.v1.schemas.common import StatusResponse
 from vglpos.api.v1.schemas.products import (
     ProductCreateRequest,
+    ProductLookupQuery,
     ProductPageResponse,
     ProductQuery,
     ProductResponse,
@@ -21,6 +22,7 @@ from vglpos.api.v1.schemas.products import (
 from vglpos.api.v1.serializers import product_response
 from vglpos.extensions import db
 from vglpos.security.decorators import require_permission
+from vglpos.services.cache_service import catalogue_key, get_mapping, set_mapping
 from vglpos.services.catalog_service import (
     CatalogService,
     CreateProductCommand,
@@ -50,6 +52,17 @@ def _etag_response(page: ProductPageResponse) -> tuple[Response, int]:
 )
 def list_products() -> tuple[Response, int]:
     query = parse_query(ProductQuery)
+    key = catalogue_key(
+        company_id=g.company_id,
+        branch_id=g.branch_id,
+        cursor=query.cursor,
+        limit=query.limit,
+        query=query.q,
+        barcode=query.barcode,
+    )
+    cached = get_mapping(key)
+    if cached is not None:
+        return _etag_response(ProductPageResponse.model_validate(cached))
     with Session(db.engine) as session:
         page = CatalogService(session, g.company_id).list_products(
             cursor=query.cursor, limit=query.limit, query=query.q, barcode=query.barcode
@@ -57,7 +70,22 @@ def list_products() -> tuple[Response, int]:
         result = ProductPageResponse(
             items=[product_response(item) for item in page.items], next_cursor=page.next_cursor
         )
+        set_mapping(key, result.model_dump(mode="json"))
         return _etag_response(result)
+
+
+@products_bp.get("/lookup")
+@require_permission("product.view")
+@documented(
+    summary="Look up a product by barcode",
+    query_model=ProductLookupQuery,
+    response_model=ProductResponse,
+)
+def lookup_product() -> tuple[Response, int]:
+    query = parse_query(ProductLookupQuery)
+    with Session(db.engine) as session:
+        product = CatalogService(session, g.company_id).lookup_by_barcode(query.barcode)
+        return model_response(product_response(product))
 
 
 @products_bp.post("")

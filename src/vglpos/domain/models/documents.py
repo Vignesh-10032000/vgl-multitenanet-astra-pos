@@ -83,6 +83,24 @@ class Sale(TenantEntity):
         ),
         Index("idx_sales_branch_business_date", "branch_id", "business_date"),
         Index("idx_sales_customer", "customer_id"),
+        Index(
+            "idx_sales_company_branch_created",
+            "company_id",
+            "branch_id",
+            "created_at",
+            "id",
+            postgresql_where=text("deleted_at IS NULL"),
+            sqlite_where=text("deleted_at IS NULL"),
+        ),
+        Index(
+            "idx_sales_company_branch_status_date",
+            "company_id",
+            "branch_id",
+            "sale_status",
+            "business_date",
+            postgresql_where=text("deleted_at IS NULL"),
+            sqlite_where=text("deleted_at IS NULL"),
+        ),
     )
 
     branch_id: Mapped[int] = mapped_column(
