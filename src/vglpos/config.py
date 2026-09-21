@@ -56,6 +56,7 @@ class BaseConfig(BaseSettings):
 
     SECRET_KEY: str = ""
     JWT_SECRET_KEY: str = ""
+    OFFLINE_SYNC_SIGNING_SECRET: str = ""
     JWT_ACCESS_TOKEN_EXPIRES: int = 900  # seconds
     JWT_REFRESH_TOKEN_EXPIRES: int = 604_800  # seconds (7 days)
     MFA_ISSUER_NAME: str = "VGL POS"
@@ -107,6 +108,7 @@ class BaseConfig(BaseSettings):
             "SQLALCHEMY_DATABASE_URI": self.DATABASE_URL,
             "SQLALCHEMY_ENGINE_OPTIONS": self._engine_options(),
             "JWT_SECRET_KEY": self.JWT_SECRET_KEY,
+            "OFFLINE_SYNC_SIGNING_SECRET": self.OFFLINE_SYNC_SIGNING_SECRET,
             "JWT_ACCESS_TOKEN_EXPIRES": self.JWT_ACCESS_TOKEN_EXPIRES,
             "JWT_REFRESH_TOKEN_EXPIRES": self.JWT_REFRESH_TOKEN_EXPIRES,
             "MFA_ISSUER_NAME": self.MFA_ISSUER_NAME,
@@ -163,6 +165,7 @@ class DevelopmentConfig(BaseConfig):
     TESTING: bool = Field(default=False, validation_alias="VGLPOS_DEVELOPMENT_TESTING")
     SECRET_KEY: str = "dev-only-secret-key-not-for-production"
     JWT_SECRET_KEY: str = "dev-only-jwt-key-not-for-production"
+    OFFLINE_SYNC_SIGNING_SECRET: str = "dev-only-offline-sync-key-not-for-production"
     DATABASE_URL: str = "postgresql+psycopg://vglpos:vglpos@localhost:5432/vglpos_dev"
 
 
@@ -198,6 +201,7 @@ class TestingConfig(BaseConfig):
     DEBUG: bool = False
     SECRET_KEY: str = "testing-only-secret-key-not-for-production"
     JWT_SECRET_KEY: str = "testing-only-jwt-key-not-for-production"
+    OFFLINE_SYNC_SIGNING_SECRET: str = "testing-only-offline-sync-key-not-for-production"
     DATABASE_URL: str = Field(
         default="sqlite+pysqlite:///:memory:", validation_alias="TEST_DATABASE_URL"
     )
@@ -229,7 +233,7 @@ class ProductionConfig(BaseConfig):
     def _refuse_missing_or_default_values(self) -> ProductionConfig:
         """Reject empty, short, or known-default secrets and database URLs."""
         problems: list[str] = []
-        for name in ("SECRET_KEY", "JWT_SECRET_KEY"):
+        for name in ("SECRET_KEY", "JWT_SECRET_KEY", "OFFLINE_SYNC_SIGNING_SECRET"):
             value = getattr(self, name).strip()
             lowered = value.lower()
             if lowered in _INSECURE_SECRET_VALUES or any(

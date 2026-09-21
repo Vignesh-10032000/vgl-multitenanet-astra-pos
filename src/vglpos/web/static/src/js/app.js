@@ -39,16 +39,36 @@ function initializeNavigation() {
 }
 
 function initializeConnectivity() {
-  const dot = document.querySelector(".status-dot");
-  const label = dot?.nextElementSibling;
-  const render = () => {
+  const dot = document.querySelector("#connectivity-status .status-dot");
+  const label = document.querySelector("#connectivity-label");
+  const badge = document.querySelector("#sync-queue-count");
+  const render = (detail = {}) => {
     if (!dot || !label) return;
-    dot.dataset.offline = String(!navigator.onLine);
-    label.textContent = navigator.onLine ? t("status.online") : t("status.offline");
+    const online = detail.online ?? navigator.onLine;
+    const queued = detail.total || 0;
+    dot.dataset.offline = String(!online);
+    dot.dataset.syncing = String(Boolean(detail.syncing));
+    if (detail.syncing) {
+      label.textContent = t("status.syncing", {
+        current: detail.syncing,
+        total: detail.syncTotal,
+      });
+    } else if (!online) {
+      label.textContent = queued
+        ? t("status.offline_queued", { count: queued })
+        : t("status.offline");
+    } else {
+      label.textContent = queued
+        ? t("status.online_queued", { count: queued })
+        : t("status.online");
+    }
+    if (badge) {
+      badge.textContent = String(queued);
+      badge.classList.toggle("is-hidden", queued === 0);
+    }
   };
-  addEventListener("online", render);
-  addEventListener("offline", render);
   render();
+  document.addEventListener("vgl:sync-status", (event) => render(event.detail));
 }
 
 async function initialize() {
@@ -68,6 +88,11 @@ async function initialize() {
   if (session) {
     populateUser(session);
     applyPermissions(session);
+    import("./offline.js")
+      .then(({ initializeOffline }) => initializeOffline(session))
+      .catch((error) => {
+        showToast(error.message, { tone: "warning", duration: 8000 });
+      });
   }
 
   document.querySelector("#theme-toggle")?.addEventListener("click", () => {
@@ -78,6 +103,9 @@ async function initialize() {
   });
   document.querySelector("#logout-button")?.addEventListener("click", logout);
   document.addEventListener("vgl:session-expired", () => openDialog("#session-expired-dialog"));
+  document.addEventListener("vgl:offline-error", (event) => {
+    showToast(event.detail.message, { tone: "warning", duration: 8000 });
+  });
   document.dispatchEvent(new CustomEvent("vgl:app-ready", { detail: { session } }));
   return session;
 }

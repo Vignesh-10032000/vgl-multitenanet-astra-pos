@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy import func, or_, select
 
 from vglpos.domain.models import Product, ProductBarcode
@@ -79,3 +81,22 @@ class ProductRepository(BaseRepository[Product]):
                 )
             ).order_by(Product.name, Product.id)
         return tuple(self.session.scalars(statement.limit(limit)))
+
+    def catalog_changes(
+        self, *, since: datetime | None, through: datetime, limit: int
+    ) -> tuple[tuple[Product, ...], bool]:
+        """Return live rows and tombstones changed inside one stable sync window."""
+        if limit < 1 or limit > 50000:
+            raise ValueError("limit must be between 1 and 50000.")
+        statement = select(Product).where(
+            Product.company_id == self.company_id,
+            Product.updated_at <= through,
+        )
+        if since is not None:
+            statement = statement.where(Product.updated_at > since)
+        rows = list(
+            self.session.scalars(
+                statement.order_by(Product.updated_at, Product.id).limit(limit + 1)
+            )
+        )
+        return tuple(rows[:limit]), len(rows) > limit

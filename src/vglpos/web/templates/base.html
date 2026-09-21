@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="#0f766e">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" href="{{ url_for('static', filename='icons/vgl-pos.svg') }}" type="image/svg+xml">
     <title>{% block title %}VGL POS{% endblock %}</title>
     <link
       rel="preload"
@@ -50,13 +52,14 @@
             <a href="/products" data-nav="products" data-permission="product.view"><i data-lucide="package-search"></i><span data-i18n="nav.products">Products</span></a>
             <a href="/customers" data-nav="customers" data-permission="customer.view"><i data-lucide="users"></i><span data-i18n="nav.customers">Customers</span></a>
             <a href="/sales" data-nav="sales" data-permission="sale.view"><i data-lucide="receipt-text"></i><span data-i18n="nav.sales">Sales</span></a>
+            <a href="/sync-queue" data-nav="sync-queue" data-permission="sale.create"><i data-lucide="cloud-upload"></i><span data-i18n="nav.sync_queue">Sync queue</span><span class="nav-badge is-hidden" id="sync-queue-count">0</span></a>
             <a href="/reports" data-nav="reports" data-permission="report.view"><i data-lucide="chart-no-axes-combined"></i><span data-i18n="nav.reports">Reports</span></a>
             <a href="/settings" data-nav="settings"><i data-lucide="settings"></i><span data-i18n="nav.settings">Settings</span></a>
           </nav>
-          <div class="side-nav-footer">
+          <a class="side-nav-footer" href="/sync-queue" id="connectivity-status">
             <span class="status-dot" aria-hidden="true"></span>
-            <span data-i18n="status.online">Online</span>
-          </div>
+            <span id="connectivity-label" data-i18n="status.online">Online</span>
+          </a>
         </aside>
         <section class="workspace">
           <header class="topbar">
@@ -88,6 +91,10 @@
     {% endif %}
 
     <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="false"></div>
+    <div class="update-prompt" id="app-update-prompt" role="status" hidden>
+      <span data-i18n="status.update_ready">A new version is ready.</span>
+      <button class="button button-secondary" type="button" data-i18n="status.reload">Reload safely</button>
+    </div>
     <dialog id="session-expired-dialog" class="dialog dialog-small" aria-labelledby="session-expired-title">
       <div class="dialog-header">
         <h2 id="session-expired-title" data-i18n="session.expired_title">Session expired</h2>

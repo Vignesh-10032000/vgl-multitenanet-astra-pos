@@ -25,6 +25,11 @@ class ProductLookupQuery(RequestModel):
     barcode: str = Field(min_length=1, max_length=64)
 
 
+class CatalogDeltaQuery(RequestModel):
+    since: datetime | None = None
+    limit: int = Field(default=10000, ge=1, le=50000)
+
+
 class CategoryResponse(ResponseModel):
     id: int
     name: str
@@ -116,3 +121,15 @@ class ProductResponse(ResponseModel):
 class ProductPageResponse(ResponseModel):
     items: list[ProductResponse]
     next_cursor: str | None
+
+
+class CatalogProductResponse(ProductResponse):
+    tax_rate: Decimal
+    cess_rate: Decimal
+    deleted_at: datetime | None
+
+
+class CatalogDeltaResponse(ResponseModel):
+    items: list[CatalogProductResponse]
+    synced_at: datetime
+    truncated: bool

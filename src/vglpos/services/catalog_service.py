@@ -41,6 +41,20 @@ class ProductPage:
     next_cursor: str | None
 
 
+@dataclass(frozen=True, slots=True)
+class CatalogRecord:
+    product: Product
+    tax_rate: Decimal
+    cess_rate: Decimal
+
+
+@dataclass(frozen=True, slots=True)
+class CatalogDelta:
+    items: tuple[CatalogRecord, ...]
+    synced_at: datetime
+    truncated: bool
+
+
 class CatalogService:
     """Own catalogue validation and persistence without HTTP dependencies."""
 
@@ -80,6 +94,40 @@ class CatalogService:
             .order_by(Category.name, Category.id)
         )
         return tuple(self.session.scalars(statement))
+
+    def catalog_delta(self, *, since: datetime | None, limit: int) -> CatalogDelta:
+        """Return one tenant's changed products with tax facts required offline."""
+        synced_at = datetime.now(UTC)
+        products, truncated = self.repository.catalog_changes(
+            since=since,
+            through=synced_at,
+            limit=limit,
+        )
+        rate_ids = {product.tax_rate_id for product in products}
+        rates = {
+            rate.id: rate
+            for rate in self.session.scalars(
+                select(TaxRate).where(
+                    TaxRate.company_id == self.company_id,
+                    TaxRate.id.in_(rate_ids),
+                )
+            )
+        }
+        missing = sorted(rate_ids - rates.keys())
+        if missing:
+            raise EntityNotFoundError(f"Tax rates were not found: {missing}.")
+        return CatalogDelta(
+            items=tuple(
+                CatalogRecord(
+                    product=product,
+                    tax_rate=rates[product.tax_rate_id].rate,
+                    cess_rate=rates[product.tax_rate_id].cess_rate,
+                )
+                for product in products
+            ),
+            synced_at=synced_at,
+            truncated=truncated,
+        )
 
     def get_product(self, product_id: int) -> Product:
         """Hide cross-tenant identifiers behind the same 404 response."""

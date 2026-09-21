@@ -58,5 +58,12 @@ PUBLIC_ENDPOINTS: frozenset[str] = frozenset(
         "web.reports",
         "web.settings",
         "web.receipt",
+        "web.offline_receipt",
+        "web.sync_queue",
+        # PWA metadata and worker code contain no tenant data. They must remain
+        # fetchable by the browser outside an authenticated fetch context.
+        "web.web_manifest",
+        "web.pwa_assets",
+        "web.service_worker",
     }
 )

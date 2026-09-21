@@ -7,6 +7,7 @@
     "build": "vite build",
     "dev": "vite",
     "test": "node --test tests/frontend/*.test.js",
+    "test:tax-parity": "node --test tests/frontend/tax-parity.test.js",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium"
   },

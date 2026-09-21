@@ -7,7 +7,7 @@ from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from vglpos.api.v1.schemas.common import Money, Qty, RequestModel, ResponseModel
 
@@ -60,6 +60,30 @@ class OfflineCheckoutRequest(CheckoutRequest):
 
 class OfflinePushRequest(RequestModel):
     sales: list[OfflineCheckoutRequest] = Field(min_length=1, max_length=100)
+
+
+class OfflineOperationRequest(RequestModel):
+    uuid: UUID
+    sale: OfflineCheckoutRequest
+    signature: str = Field(pattern=r"^[A-Za-z0-9_-]{43}$")
+
+    @model_validator(mode="after")
+    def _matching_uuid(self) -> OfflineOperationRequest:
+        if self.uuid != self.sale.offline_uuid:
+            raise ValueError("Operation UUID must match sale.offline_uuid")
+        return self
+
+
+class OfflineBatchRequest(RequestModel):
+    operations: list[OfflineOperationRequest] = Field(min_length=1, max_length=100)
+
+
+class OfflineBootstrapResponse(ResponseModel):
+    terminal_code: str
+    supplier_state: str
+    signing_key: str
+    signing_algorithm: Literal["HMAC-SHA-256"] = "HMAC-SHA-256"
+    outbox_limit: int = 500
 
 
 class VoidSaleRequest(RequestModel):
@@ -133,6 +157,18 @@ class SaleDetailResponse(SaleResponse):
 class SalePageResponse(ResponseModel):
     items: list[SaleResponse]
     next_cursor: str | None
+
+
+class OfflineOperationResult(ResponseModel):
+    uuid: UUID
+    status: Literal["synced", "retry", "failed"]
+    sale: SaleResponse | None = None
+    error_type: str | None = None
+    detail: str | None = None
+
+
+class OfflineBatchResponse(ResponseModel):
+    results: list[OfflineOperationResult]
 
 
 class QuoteLineResponse(ResponseModel):

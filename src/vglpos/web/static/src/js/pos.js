@@ -1,19 +1,5 @@
 import "../css/pos.css";
 
-import { del, get, set } from "idb-keyval";
-import {
-  CreditCard,
-  Delete,
-  LockKeyhole,
-  Package,
-  Plus,
-  Scale,
-  Search,
-  SearchX,
-  ShoppingCart,
-  Trash2,
-  UserPlus,
-} from "lucide";
 
 import { decimalCompare, localDateIso, scaledInteger } from "./data.js";
 import { whenAppReady } from "./app.js";
@@ -37,20 +23,6 @@ import {
   showToast,
 } from "./ui.js";
 
-registerIcons({
-  CreditCard,
-  Delete,
-  LockKeyhole,
-  Package,
-  Plus,
-  Scale,
-  Search,
-  SearchX,
-  ShoppingCart,
-  Trash2,
-  UserPlus,
-});
-
 const state = {
   products: [],
   categories: [],
@@ -67,14 +39,39 @@ const state = {
   quoteSequence: 0,
   lastBarcode: null,
   lastBarcodeAt: 0,
+  usingOfflineQuote: false,
 };
 
 let cartKey = "";
 let holdsKey = "";
 let quoteController = null;
 let audioContext = null;
+let offlinePromise = null;
+let offlineDatabasePromise = null;
+let taxEnginePromise = null;
+let keyValuePromise = null;
 const scheduleQuote = debounce(requestQuote, 150);
 const schedulePaymentPreview = debounce(requestPaymentPreview, 150);
+
+function offlineApi() {
+  offlinePromise ||= import("./offline.js");
+  return offlinePromise;
+}
+
+function offlineDatabase() {
+  offlineDatabasePromise ||= import("./offline-db.js");
+  return offlineDatabasePromise;
+}
+
+function taxEngine() {
+  taxEnginePromise ||= import("./tax-engine.js");
+  return taxEnginePromise;
+}
+
+function keyValueStore() {
+  keyValuePromise ||= import("idb-keyval");
+  return keyValuePromise;
+}
 
 function exactQuantity(value) {
   const match = String(value ?? "").trim().match(/^(\d{1,9})(?:\.(\d{0,3}))?$/);
@@ -104,11 +101,12 @@ function cartRecord() {
 
 async function persistCart() {
   if (!cartKey) return;
+  const database = await offlineDatabase();
   if (!state.cart.length) {
-    await del(cartKey);
+    await database.deleteCart(cartKey);
     return;
   }
-  await set(cartKey, cartRecord());
+  await database.saveCart(cartKey, cartRecord());
 }
 
 function persistSoon() {
@@ -205,6 +203,13 @@ function productTile(product, index) {
   const stock = document.createElement("span");
   stock.textContent = `${formatQuantity(product.on_hand)} ${product.uom}`;
   meta.append(price, stock);
+  if (product.stock_unverified
+      && decimalCompare(product.on_hand, product.low_stock_threshold) <= 0) {
+    const warning = document.createElement("small");
+    warning.className = "stock-unverified";
+    warning.textContent = t("pos.stock_unverified");
+    meta.append(warning);
+  }
   button.append(visual, copy, meta);
   return button;
 }
@@ -442,6 +447,43 @@ function clearCart({ offerUndo = true } = {}) {
   }
 }
 
+async function localQuote() {
+  const facts = await (await offlineApi()).getOfflineFacts();
+  if (!facts?.supplier_state) {
+    throw new Error("Reconnect this terminal once before offline billing.");
+  }
+  const customerValue = document.querySelector("#pos-customer").value;
+  const customer = customerValue
+    ? state.customers.find((item) => item.id === Number.parseInt(customerValue, 10))
+    : null;
+  return (await taxEngine()).computeTax({
+    lines: state.cart.map((item) => ({
+      quantity: item.quantity,
+      unit_price: item.product.selling_price,
+      tax_rate: item.product.tax_rate,
+      cess_rate: item.product.cess_rate,
+      line_discount: "0.00",
+      tax_inclusive: item.product.is_tax_inclusive,
+    })),
+    supplier_state: facts.supplier_state,
+    place_of_supply: customer?.state_code || facts.supplier_state,
+    order_discount: document.querySelector("#order-discount").value.trim() || "0.00",
+    apply_round_off: true,
+  });
+}
+
+async function useLocalQuote(sequence) {
+  const quote = await localQuote();
+  if (sequence !== state.quoteSequence) return;
+  state.quote = quote;
+  state.usingOfflineQuote = true;
+  renderCart();
+  if (document.querySelector("#payment-dialog").open) {
+    document.querySelector("#payment-total").textContent = formatMoney(quote.net_amount);
+    schedulePaymentPreview();
+  }
+}
+
 async function requestQuote() {
   const sequence = ++state.quoteSequence;
   if (!state.cart.length) {
@@ -451,6 +493,16 @@ async function requestQuote() {
   }
   quoteController?.abort();
   quoteController = new AbortController();
+  if (!navigator.onLine) {
+    try {
+      await useLocalQuote(sequence);
+    } catch (error) {
+      state.quote = null;
+      renderCart();
+      showToast(`${t("pos.quote_failed")}: ${error.message}`, { tone: "danger" });
+    }
+    return;
+  }
   try {
     const quote = await apiJson("/api/v1/sales/quote", {
       method: "POST",
@@ -459,6 +511,7 @@ async function requestQuote() {
     });
     if (sequence !== state.quoteSequence) return;
     state.quote = quote;
+    state.usingOfflineQuote = false;
     renderCart();
     if (document.querySelector("#payment-dialog").open) {
       document.querySelector("#payment-total").textContent = formatMoney(quote.net_amount);
@@ -466,6 +519,14 @@ async function requestQuote() {
     }
   } catch (error) {
     if (error.name === "AbortError") return;
+    if (!navigator.onLine || error instanceof TypeError) {
+      try {
+        await useLocalQuote(sequence);
+        return;
+      } catch (offlineError) {
+        error = offlineError;
+      }
+    }
     state.quote = null;
     renderCart();
     showToast(`${t("pos.quote_failed")}: ${error.message}`, { tone: "danger" });
@@ -475,19 +536,35 @@ async function requestQuote() {
 async function loadProducts(query = "") {
   const grid = document.querySelector("#pos-product-grid");
   grid.setAttribute("aria-busy", "true");
+  const cached = await (await offlineApi()).cachedReferenceData();
   try {
     const parameters = new URLSearchParams({ limit: "200" });
     if (query) parameters.set("q", query);
     const page = await apiJson(`/api/v1/products?${parameters}`);
-    state.products = page.items;
+    const cachedById = new Map(cached.products.map((product) => [product.id, product]));
+    state.products = page.items.map((product) => ({
+      ...product,
+      tax_rate: cachedById.get(product.id)?.tax_rate,
+      cess_rate: cachedById.get(product.id)?.cess_rate,
+    }));
     renderProducts();
   } catch (error) {
-    grid.setAttribute("aria-busy", "false");
-    showToast(`${t("errors.products")}: ${error.message}`, { tone: "danger" });
+    state.products = query
+      ? cached.products.filter((product) => {
+          const needle = query.toLocaleLowerCase();
+          return [product.name, product.name_en, product.name_ta, product.sku, product.barcode]
+            .some((value) => String(value || "").toLocaleLowerCase().includes(needle));
+        })
+      : cached.products;
+    renderProducts();
+    if (!state.products.length) {
+      showToast(`${t("errors.products")}: ${error.message}`, { tone: "danger" });
+    }
   }
 }
 
 async function loadReferenceData() {
+  const cached = await (await offlineApi()).cachedReferenceData();
   try {
     const [categories, customers] = await Promise.all([
       apiJson("/api/v1/products/categories"),
@@ -495,21 +572,26 @@ async function loadReferenceData() {
     ]);
     state.categories = categories.items;
     state.customers = customers.items;
-    renderCategories();
-    const select = document.querySelector("#pos-customer");
-    state.customers.forEach((customer) => {
-      const option = document.createElement("option");
-      option.value = String(customer.id);
-      option.textContent = customer.gstin ? `${customer.name} · GSTIN` : customer.name;
-      select.append(option);
-    });
   } catch (error) {
-    showToast(`${t("pos.reference_failed")}: ${error.message}`, { tone: "warning" });
+    state.categories = [];
+    state.customers = cached.customers;
+    if (!state.customers.length) {
+      showToast(`${t("pos.reference_failed")}: ${error.message}`, { tone: "warning" });
+    }
   }
+  renderCategories();
+  const select = document.querySelector("#pos-customer");
+  select.querySelectorAll("option:not(:first-child)").forEach((option) => option.remove());
+  state.customers.forEach((customer) => {
+    const option = document.createElement("option");
+    option.value = String(customer.id);
+    option.textContent = customer.gstin ? `${customer.name} · GSTIN` : customer.name;
+    select.append(option);
+  });
 }
 
 async function restoreCart() {
-  const saved = await get(cartKey);
+  const saved = await (await offlineDatabase()).loadCart(cartKey);
   if (!saved?.cart?.length) return;
   state.cart = saved.cart;
   state.saleUuid = saved.saleUuid || crypto.randomUUID();
@@ -533,6 +615,17 @@ async function processBarcode(barcode) {
     setScannerStatus("pos.scan_added", "is-scanning");
     window.setTimeout(() => setScannerStatus("pos.scanner_ready"), 1000);
   } catch (error) {
+    const cached = (await (await offlineApi()).cachedReferenceData()).products.find(
+      (product) => product.barcode === barcode,
+    );
+    if (cached) {
+      if (!state.products.some((item) => item.id === cached.id)) state.products.push(cached);
+      selectProduct(cached);
+      playTone("hit");
+      setScannerStatus("pos.scan_added", "is-scanning");
+      window.setTimeout(() => setScannerStatus("pos.scanner_ready"), 1000);
+      return;
+    }
     playTone("miss");
     setScannerStatus("pos.scan_unknown", "is-miss");
     showToast(t("pos.unknown_barcode", { barcode }), {
@@ -663,6 +756,16 @@ async function requestPaymentPreview() {
   state.paymentPreview = null;
   renderPaymentPreview();
   if (!state.quote || !payments.length) return;
+  if (!navigator.onLine || state.usingOfflineQuote) {
+    try {
+      state.paymentPreview = (await taxEngine()).computePaymentPreview(state.quote, payments);
+      document.querySelector("#payment-error").textContent = "";
+    } catch (error) {
+      document.querySelector("#payment-error").textContent = error.message;
+    }
+    renderPaymentPreview();
+    return;
+  }
   try {
     state.paymentPreview = await apiJson("/api/v1/sales/payment-preview", {
       method: "POST",
@@ -670,7 +773,17 @@ async function requestPaymentPreview() {
     });
     document.querySelector("#payment-error").textContent = "";
   } catch (error) {
-    document.querySelector("#payment-error").textContent = error.message;
+    if (!navigator.onLine || error instanceof TypeError) {
+      try {
+        state.paymentPreview = (await taxEngine()).computePaymentPreview(state.quote, payments);
+        state.usingOfflineQuote = true;
+        document.querySelector("#payment-error").textContent = "";
+      } catch (offlineError) {
+        document.querySelector("#payment-error").textContent = offlineError.message;
+      }
+    } else {
+      document.querySelector("#payment-error").textContent = error.message;
+    }
   }
   renderPaymentPreview();
 }
@@ -690,6 +803,26 @@ function openPayment() {
   document.querySelector("[data-payment-amount]")?.focus();
 }
 
+async function saveOfflineCheckout(payload) {
+  const offline = await offlineApi();
+  const provisionalNumber = await offline.nextProvisionalNumber();
+  await offline.queueOfflineSale({
+    payload,
+    quote: state.quote,
+    provisionalNumber,
+    cart: state.cart,
+  });
+  localStorage.setItem("vglpos.lastReceiptPath", `/receipt/offline/${state.saleUuid}`);
+  state.cart = [];
+  await (await offlineDatabase()).deleteCart(cartKey);
+  closeDialog("#payment-dialog");
+  showToast(t("pos.offline_saved", { invoice: provisionalNumber }), {
+    tone: "warning",
+    duration: 8000,
+  });
+  location.href = `/receipt/offline/${payload.offline_uuid}?paper=${localStorage.getItem("vglpos.paper") || "80"}`;
+}
+
 async function completeSale() {
   if (!state.paymentPreview || scaledInteger(state.paymentPreview.balance_due, 2) !== 0n) return;
   const button = document.querySelector("#complete-sale");
@@ -702,17 +835,35 @@ async function completeSale() {
     offline_uuid: state.saleUuid,
     notes: null,
   };
+  if (!navigator.onLine || state.usingOfflineQuote) {
+    try {
+      await saveOfflineCheckout(payload);
+    } catch (error) {
+      document.querySelector("#payment-error").textContent = error.message;
+      button.disabled = false;
+    }
+    return;
+  }
   try {
     const sale = await apiJson("/api/v1/sales/checkout", {
       method: "POST",
       body: JSON.stringify(payload),
     });
     localStorage.setItem("vglpos.lastSaleId", String(sale.id));
+    localStorage.setItem("vglpos.lastReceiptPath", `/receipt/${sale.id}`);
     state.cart = [];
-    await del(cartKey);
+    await (await offlineDatabase()).deleteCart(cartKey);
     closeDialog("#payment-dialog");
     location.href = `/receipt/${sale.id}?paper=${localStorage.getItem("vglpos.paper") || "80"}`;
   } catch (error) {
+    if (!navigator.onLine || error instanceof TypeError) {
+      try {
+        await saveOfflineCheckout(payload);
+        return;
+      } catch (offlineError) {
+        error = offlineError;
+      }
+    }
     document.querySelector("#payment-error").textContent = error.message;
     button.disabled = false;
   }
@@ -723,6 +874,7 @@ async function holdBill() {
     showToast(t("pos.nothing_to_hold"), { tone: "warning" });
     return;
   }
+  const { get, set } = await keyValueStore();
   const holds = await get(holdsKey) || [];
   holds.unshift({ id: crypto.randomUUID(), createdAt: new Date().toISOString(), ...cartRecord() });
   await set(holdsKey, holds.slice(0, 20));
@@ -731,6 +883,7 @@ async function holdBill() {
 }
 
 async function showHeldBills() {
+  const { get } = await keyValueStore();
   const holds = await get(holdsKey) || [];
   const list = document.querySelector("#held-list");
   clearChildren(list);
@@ -764,6 +917,7 @@ async function restoreHeldBill(id) {
     showToast(t("pos.hold_current_first"), { tone: "warning" });
     return;
   }
+  const { get, set } = await keyValueStore();
   const holds = await get(holdsKey) || [];
   const hold = holds.find((item) => item.id === id);
   if (!hold) return;
@@ -781,6 +935,11 @@ async function closeShift(event) {
   const form = event.currentTarget;
   const error = document.querySelector("#shift-close-error");
   error.textContent = "";
+  const summary = await (await offlineDatabase()).outboxSummary();
+  if (summary.total && !form.elements.queue_acknowledged.checked) {
+    error.textContent = t("pos.shift_queue_warning", { count: summary.total });
+    return;
+  }
   setBusy(form, true);
   try {
     const shift = await apiJson("/api/v1/shifts/close", {
@@ -801,6 +960,17 @@ async function closeShift(event) {
   }
 }
 
+async function openShiftClose() {
+  const summary = await (await offlineDatabase()).outboxSummary();
+  const warning = document.querySelector("#shift-queue-warning");
+  warning.classList.toggle("is-hidden", summary.total === 0);
+  document.querySelector("#shift-queue-message").textContent = summary.total
+    ? t("pos.shift_queue_warning", { count: summary.total })
+    : "";
+  warning.querySelector("input").checked = false;
+  openDialog("#shift-close-dialog");
+}
+
 function runShortcut(key) {
   const focusedItem = state.focusedProductId || state.cart[0]?.product_id;
   if (key === "F1") openDialog("#help-dialog");
@@ -812,10 +982,10 @@ function runShortcut(key) {
   else if (key === "F7") document.querySelector("#order-discount").focus();
   else if (key === "F8" && focusedItem) document.querySelector(`[data-quantity-input="${focusedItem}"]`)?.focus();
   else if (key === "F9") {
-    const saleId = localStorage.getItem("vglpos.lastSaleId");
-    if (saleId) location.href = `/receipt/${saleId}?print=1`;
+    const receiptPath = localStorage.getItem("vglpos.lastReceiptPath");
+    if (receiptPath) location.href = `${receiptPath}?print=1`;
     else showToast(t("pos.no_last_receipt"), { tone: "warning" });
-  } else if (key === "F10") openDialog("#shift-close-dialog");
+  } else if (key === "F10") openShiftClose();
 }
 
 function initializeKeyboard() {
@@ -938,15 +1108,23 @@ function initializeEvents() {
 }
 
 async function initializePos(session) {
+  registerIcons((await import("./pos-icons.js")).posIcons);
   cartKey = `vglpos.cart.${session.user.company_id}.${session.user.id}.${session.user.branch_id || 0}.${session.user.terminal_id || 0}`;
   holdsKey = `${cartKey}.holds`;
   initializeEvents();
   initializeKeyboard();
   initializeScanner();
+  if (navigator.onLine) {
+    try {
+      await (await offlineApi()).syncReferenceData();
+    } catch {
+      await (await offlineApi()).publishStatus();
+    }
+  }
   await Promise.all([loadProducts(), loadReferenceData()]);
   await restoreCart();
   if (new URLSearchParams(location.search).get("shiftClose") === "1") {
-    openDialog("#shift-close-dialog");
+    openShiftClose();
   }
 }
 

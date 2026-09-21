@@ -3,6 +3,19 @@
   margin: 0;
 }
 
+.provisional-banner {
+  margin: -0.25rem -0.25rem 0.75rem;
+  padding: 0.5rem;
+  border: 2px solid currentColor;
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.provisional-note {
+  font-weight: 600;
+}
+
 @media print {
   html,
   body,

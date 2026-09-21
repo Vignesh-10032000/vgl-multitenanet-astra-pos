@@ -22,7 +22,9 @@ export default defineConfig({
         sales: resolve(sourceRoot, "js/sales.js"),
         reports: resolve(sourceRoot, "js/reports.js"),
         settings: resolve(sourceRoot, "js/settings.js"),
-        receipt: resolve(sourceRoot, "js/receipt.js")
+        receipt: resolve(sourceRoot, "js/receipt.js"),
+        offlineReceipt: resolve(sourceRoot, "js/offline-receipt.js"),
+        syncQueue: resolve(sourceRoot, "js/sync-queue.js")
       },
       output: {
         entryFileNames: "assets/[name]-[hash].js",

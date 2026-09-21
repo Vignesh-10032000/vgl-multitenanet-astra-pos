@@ -12,6 +12,8 @@ from vglpos.api.v1.idempotency import idempotent
 from vglpos.api.v1.openapi import documented
 from vglpos.api.v1.schemas.common import StatusResponse
 from vglpos.api.v1.schemas.products import (
+    CatalogDeltaQuery,
+    CatalogDeltaResponse,
     CategoryListResponse,
     CategoryResponse,
     ProductCreateRequest,
@@ -21,7 +23,7 @@ from vglpos.api.v1.schemas.products import (
     ProductResponse,
     ProductUpdateRequest,
 )
-from vglpos.api.v1.serializers import product_response
+from vglpos.api.v1.serializers import catalog_product_response, product_response
 from vglpos.extensions import db
 from vglpos.security.decorators import require_permission
 from vglpos.services.cache_service import catalogue_key, get_mapping, set_mapping
@@ -91,6 +93,29 @@ def list_products() -> tuple[Response, int]:
         )
         set_mapping(key, result.model_dump(mode="json"))
         return _etag_response(result)
+
+
+@products_bp.get("/catalog")
+@require_permission("product.view")
+@documented(
+    summary="Delta-sync the offline product catalogue",
+    query_model=CatalogDeltaQuery,
+    response_model=CatalogDeltaResponse,
+)
+def catalog_delta() -> tuple[Response, int]:
+    query = parse_query(CatalogDeltaQuery)
+    with Session(db.engine) as session:
+        delta = CatalogService(session, g.company_id).catalog_delta(
+            since=query.since,
+            limit=query.limit,
+        )
+        return model_response(
+            CatalogDeltaResponse(
+                items=[catalog_product_response(item) for item in delta.items],
+                synced_at=delta.synced_at,
+                truncated=delta.truncated,
+            )
+        )
 
 
 @products_bp.get("/lookup")

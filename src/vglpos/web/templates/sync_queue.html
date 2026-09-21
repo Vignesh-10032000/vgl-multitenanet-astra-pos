@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Offline sync queue · VGL POS{% endblock %}
+{% block page_title %}<span data-i18n="queue.title">Offline sync queue</span>{% endblock %}
+{% block content %}
+  <section class="queue-panel" aria-labelledby="queue-heading">
+    <div class="queue-toolbar">
+      <div>
+        <h2 id="queue-heading" data-i18n="queue.title">Offline sync queue</h2>
+        <p data-i18n="queue.subtitle">Every unsynced bill remains on this terminal until the server accepts it.</p>
+      </div>
+      <button class="button button-secondary" id="refresh-queue" type="button"><i data-lucide="refresh-cw"></i><span data-i18n="queue.refresh">Refresh queue</span></button>
+    </div>
+    <div class="queue-list" id="queue-list" aria-live="polite" aria-busy="true"></div>
+    <div class="empty-state is-hidden" id="queue-empty"><i data-lucide="cloud-check"></i><h2 data-i18n="queue.empty">All offline bills are synchronized.</h2></div>
+  </section>
+{% endblock %}
+{% block scripts %}
+  {% set bundle = vite_entry('js/sync-queue.js') %}
+  <script type="module" src="{{ bundle.script }}" defer></script>
+{% endblock %}

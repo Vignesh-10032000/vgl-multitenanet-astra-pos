@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from vglpos.api.v1.schemas.customers import CustomerDetailResponse, CustomerResponse
-from vglpos.api.v1.schemas.products import ProductResponse
+from vglpos.api.v1.schemas.products import CatalogProductResponse, ProductResponse
 from vglpos.api.v1.schemas.reports import (
     DailySummaryResponse,
     Gstr1Response,
@@ -23,6 +23,7 @@ from vglpos.api.v1.schemas.sales import (
     SaleResponse,
 )
 from vglpos.api.v1.schemas.shifts import CashMovementResponse, ShiftResponse
+from vglpos.services.catalog_service import CatalogRecord
 from vglpos.services.checkout_service import PaymentPreview
 from vglpos.services.customer_service import CustomerDetail
 from vglpos.services.report_service import (
@@ -38,6 +39,16 @@ from vglpos.utils.money import ZERO, money
 
 def product_response(product: object) -> ProductResponse:
     return ProductResponse.model_validate(product)
+
+
+def catalog_product_response(record: CatalogRecord) -> CatalogProductResponse:
+    """Attach effective GST facts and tombstone state to an offline catalogue row."""
+    return CatalogProductResponse(
+        **product_response(record.product).model_dump(),
+        tax_rate=record.tax_rate,
+        cess_rate=record.cess_rate,
+        deleted_at=record.product.deleted_at,
+    )
 
 
 def customer_response(customer: object) -> CustomerResponse:

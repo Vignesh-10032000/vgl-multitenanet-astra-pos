@@ -87,7 +87,7 @@ def test_db_session_executes_inside_savepoint_transaction(
 def test_production_config_refuses_missing_secrets(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    for name in ("SECRET_KEY", "JWT_SECRET_KEY", "DATABASE_URL"):
+    for name in ("SECRET_KEY", "JWT_SECRET_KEY", "OFFLINE_SYNC_SIGNING_SECRET", "DATABASE_URL"):
         monkeypatch.delenv(name, raising=False)
     with pytest.raises(ValidationError):
         ProductionConfig(_env_file=None)
@@ -108,6 +108,7 @@ def test_production_config_refuses_known_default_secrets(
 def test_production_config_accepts_strong_values(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SECRET_KEY", "k" * 48)
     monkeypatch.setenv("JWT_SECRET_KEY", "j" * 48)
+    monkeypatch.setenv("OFFLINE_SYNC_SIGNING_SECRET", "o" * 48)
     monkeypatch.setenv(
         "DATABASE_URL", "postgresql+psycopg://pos:example-strong-password@db.internal:5432/pos"
     )

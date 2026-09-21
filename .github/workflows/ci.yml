@@ -29,6 +29,9 @@ jobs:
       - name: Frontend unit and asset-budget tests
         run: npm test
 
+      - name: Offline Python-JavaScript tax parity
+        run: npm run test:tax-parity
+
       - name: npm audit
         run: npm audit --audit-level=high
 
@@ -59,7 +62,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Browser billing and receipt gate
-        run: npx playwright test tests/e2e/billing.spec.ts
+        run: npx playwright test tests/e2e/billing.spec.ts tests/e2e/offline.spec.ts
 
       - name: Export pinned requirements for audit
         run: uv export --no-emit-project --format requirements-txt -o .audit-requirements.txt
@@ -99,6 +102,7 @@ jobs:
       REDIS_URL: redis://127.0.0.1:6379/0
       SECRET_KEY: nightly-performance-secret-key-not-for-real-deployments
       JWT_SECRET_KEY: nightly-performance-jwt-key-not-for-real-deployments
+      OFFLINE_SYNC_SIGNING_SECRET: nightly-offline-sync-key-not-for-real-deployments
       RATELIMIT_ENABLED: "false"
       VGLPOS_ALLOW_PERFORMANCE_SEED: "1"
       PERF_LOGIN_CODE: PERF
