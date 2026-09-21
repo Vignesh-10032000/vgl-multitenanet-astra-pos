@@ -17,6 +17,9 @@ build/
 instance/
 
 # Tool caches / test output
+node_modules/
+test-results/
+playwright-report/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -25,6 +28,7 @@ instance/
 .coverage.*
 htmlcov/
 .audit-requirements.txt
+src/vglpos/web/static/dist/
 
 # OS / editor noise
 .DS_Store

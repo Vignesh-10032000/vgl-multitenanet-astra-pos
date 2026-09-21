@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · VGL POS{% endblock %}
+{% block page_title %}<span data-i18n="dashboard.title">Today at a glance</span>{% endblock %}
+{% block content %}
+  <section class="metric-grid" aria-label="Daily performance" id="dashboard-metrics">
+    {% for key, icon in [('net', 'indian-rupee'), ('bills', 'receipt'), ('tax', 'landmark'), ('discount', 'badge-percent')] %}
+      <article class="metric-card skeleton-host" data-metric="{{ key }}">
+        <div class="metric-icon"><i data-lucide="{{ icon }}"></i></div>
+        <div><p data-i18n="dashboard.{{ key }}">{{ key }}</p><strong class="skeleton-line metric-value">—</strong></div>
+      </article>
+    {% endfor %}
+  </section>
+  <section class="dashboard-grid">
+    <article class="panel chart-panel">
+      <div class="section-heading">
+        <div><p class="eyebrow" data-i18n="dashboard.seven_days">Last 7 days</p><h2 data-i18n="dashboard.revenue">Revenue</h2></div>
+        <a class="text-button" href="/reports"><span data-i18n="common.view_report">View report</span><i data-lucide="arrow-up-right"></i></a>
+      </div>
+      <div class="chart-frame bar-chart" id="revenue-chart" aria-label="Seven-day revenue chart"></div>
+    </article>
+    <article class="panel action-panel">
+      <div class="section-heading"><div><p class="eyebrow" data-i18n="dashboard.counter">Counter</p><h2 data-i18n="dashboard.quick_actions">Quick actions</h2></div></div>
+      <div class="action-list">
+        <a href="/pos" class="action-link" data-permission="sale.create"><i data-lucide="scan-line"></i><span><strong data-i18n="dashboard.new_bill">Start a new bill</strong><small data-i18n="dashboard.new_bill_hint">Open scanner-first billing</small></span><i data-lucide="chevron-right"></i></a>
+        <a href="/products" class="action-link" data-permission="product.view"><i data-lucide="package-search"></i><span><strong data-i18n="dashboard.find_stock">Find stock</strong><small data-i18n="dashboard.find_stock_hint">Search catalogue and levels</small></span><i data-lucide="chevron-right"></i></a>
+        <button type="button" class="action-link" id="day-close-button" data-permission="shift.close"><i data-lucide="lock-keyhole"></i><span><strong data-i18n="dashboard.day_close">Close shift</strong><small data-i18n="dashboard.day_close_hint">Enter a blind cash count</small></span><i data-lucide="chevron-right"></i></button>
+      </div>
+    </article>
+  </section>
+  <section class="panel table-panel">
+    <div class="section-heading"><div><p class="eyebrow" data-i18n="dashboard.activity">Activity</p><h2 data-i18n="dashboard.recent_sales">Recent sales</h2></div><a href="/sales" class="text-button" data-i18n="common.view_all">View all</a></div>
+    <div class="table-scroll"><table><thead><tr><th data-i18n="sales.invoice">Invoice</th><th data-i18n="sales.time">Time</th><th data-i18n="sales.method">Method</th><th data-i18n="sales.status">Status</th><th class="numeric" data-i18n="sales.amount">Amount</th></tr></thead><tbody id="recent-sales"><tr><td colspan="5"><div class="table-skeleton"></div></td></tr></tbody></table></div>
+  </section>
+{% endblock %}
+{% block scripts %}
+  {% set bundle = vite_entry('js/dashboard.js') %}
+  {% for stylesheet in bundle.styles %}<link rel="stylesheet" href="{{ stylesheet }}">{% endfor %}
+  <script type="module" src="{{ bundle.script }}" defer></script>
+{% endblock %}

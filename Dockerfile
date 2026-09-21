@@ -1,5 +1,14 @@
 # syntax=docker/dockerfile:1
 
+# ---------- web asset stage ----------
+FROM node:24-alpine AS web-builder
+
+WORKDIR /app
+COPY package.json package-lock.json vite.config.js ./
+RUN --mount=type=cache,target=/root/.npm npm ci
+COPY src/vglpos/web/static/src ./src/vglpos/web/static/src
+RUN npm run build
+
 # ---------- build stage ----------
 FROM python:3.12-slim AS builder
 COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /uvx /bin/
@@ -16,6 +25,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 
 COPY src ./src
+COPY --from=web-builder /app/src/vglpos/web/static/dist ./src/vglpos/web/static/dist
 COPY alembic.ini ./
 COPY migrations ./migrations
 RUN --mount=type=cache,target=/root/.cache/uv \

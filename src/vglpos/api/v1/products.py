@@ -12,6 +12,8 @@ from vglpos.api.v1.idempotency import idempotent
 from vglpos.api.v1.openapi import documented
 from vglpos.api.v1.schemas.common import StatusResponse
 from vglpos.api.v1.schemas.products import (
+    CategoryListResponse,
+    CategoryResponse,
     ProductCreateRequest,
     ProductLookupQuery,
     ProductPageResponse,
@@ -30,6 +32,23 @@ from vglpos.services.catalog_service import (
 )
 
 products_bp = Blueprint("products", __name__, url_prefix="/api/v1/products")
+
+
+@products_bp.get("/categories")
+@require_permission("product.view")
+@documented(
+    summary="List active product categories",
+    response_model=CategoryListResponse,
+)
+def list_categories() -> tuple[Response, int]:
+    """Expose localized category labels through the catalogue service."""
+    with Session(db.engine) as session:
+        categories = CatalogService(session, g.company_id).list_categories()
+        return model_response(
+            CategoryListResponse(
+                items=[CategoryResponse.model_validate(category) for category in categories]
+            )
+        )
 
 
 def _etag_response(page: ProductPageResponse) -> tuple[Response, int]:

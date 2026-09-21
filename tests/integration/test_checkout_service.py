@@ -141,3 +141,45 @@ def test_change_must_be_covered_by_cash_tender(
 
     with pytest.raises(InvalidPaymentError, match="non-cash"):
         CheckoutService(service_session).checkout(command)
+
+
+def test_payment_preview_reports_exact_balance_and_cash_change(
+    service_session: Session, service_context: ServiceContext
+) -> None:
+    service = CheckoutService(service_session)
+
+    balance = service.preview_payment(
+        _command(
+            service_context,
+            payments=[PaymentCommand("CASH", "100.00")],
+        )
+    )
+    change = service.preview_payment(
+        _command(
+            service_context,
+            payments=[
+                PaymentCommand("UPI", "18.00", "UPI-REFERENCE"),
+                PaymentCommand("CASH", "200.00"),
+            ],
+        )
+    )
+
+    assert balance.quote.net_amount == Decimal("118.00")
+    assert balance.amount_received == Decimal("100.00")
+    assert balance.balance_due == Decimal("18.00")
+    assert balance.change_due == Decimal("0.00")
+    assert change.amount_received == Decimal("218.00")
+    assert change.balance_due == Decimal("0.00")
+    assert change.change_due == Decimal("100.00")
+
+
+def test_payment_preview_rejects_change_funded_by_non_cash(
+    service_session: Session, service_context: ServiceContext
+) -> None:
+    command = _command(
+        service_context,
+        payments=[PaymentCommand("UPI", "120.00", "UPI-REFERENCE")],
+    )
+
+    with pytest.raises(InvalidPaymentError, match="non-cash"):
+        CheckoutService(service_session).preview_payment(command)

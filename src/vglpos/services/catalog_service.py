@@ -68,6 +68,19 @@ class CatalogService:
         page: CursorPage[Product] = self.repository.list(cursor=cursor, limit=limit)
         return ProductPage(items=page.items, next_cursor=page.next_cursor)
 
+    def list_categories(self) -> tuple[Category, ...]:
+        """Return active tenant categories for the billing filter strip."""
+        statement = (
+            select(Category)
+            .where(
+                Category.company_id == self.company_id,
+                Category.deleted_at.is_(None),
+                Category.is_active.is_(True),
+            )
+            .order_by(Category.name, Category.id)
+        )
+        return tuple(self.session.scalars(statement))
+
     def get_product(self, product_id: int) -> Product:
         """Hide cross-tenant identifiers behind the same 404 response."""
         product = self.repository.get(product_id)
@@ -88,6 +101,10 @@ class CatalogService:
             raise ValidationError("Authenticated company and user are required.")
         values = dict(cmd.values)
         values["sku"] = str(values["sku"]).strip()
+        values["name"] = str(values["name"]).strip()
+        values["name_en"] = str(values.get("name_en") or values["name"]).strip()
+        if values.get("name_ta") is not None:
+            values["name_ta"] = str(values["name_ta"]).strip()
         self._validate_references(values)
         self._validate_prices(values)
         if self.repository.find_by_sku(values["sku"]) is not None:
@@ -124,6 +141,9 @@ class CatalogService:
             raise ValidationError("Authenticated company and user are required.")
         product = self.get_product(cmd.product_id)
         values = dict(cmd.values)
+        for field in ("name", "name_en", "name_ta"):
+            if values.get(field) is not None:
+                values[field] = str(values[field]).strip()
         self._validate_references(values)
         candidate = {
             "cost_price": values.get("cost_price", product.cost_price),

@@ -25,9 +25,23 @@ class ProductLookupQuery(RequestModel):
     barcode: str = Field(min_length=1, max_length=64)
 
 
+class CategoryResponse(ResponseModel):
+    id: int
+    name: str
+    name_en: str | None
+    name_ta: str | None
+    icon: str | None
+
+
+class CategoryListResponse(ResponseModel):
+    items: list[CategoryResponse]
+
+
 class ProductCreateRequest(RequestModel):
     sku: str = Field(min_length=1, max_length=100)
     name: str = Field(min_length=1, max_length=255)
+    name_en: str | None = Field(default=None, min_length=1, max_length=255)
+    name_ta: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
     category_id: int | None = Field(default=None, gt=0)
     hsn_id: int | None = Field(default=None, gt=0)
@@ -39,6 +53,7 @@ class ProductCreateRequest(RequestModel):
     mrp: Money
     is_tax_inclusive: bool = False
     is_inventory_tracked: bool = True
+    is_weighed: bool = False
     low_stock_threshold: NonNegativeQty = Decimal("5.000")
     allow_negative_stock: bool = False
     is_active: bool = True
@@ -46,6 +61,8 @@ class ProductCreateRequest(RequestModel):
 
 class ProductUpdateRequest(RequestModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
+    name_en: str | None = Field(default=None, min_length=1, max_length=255)
+    name_ta: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
     category_id: int | None = Field(default=None, gt=0)
     hsn_id: int | None = Field(default=None, gt=0)
@@ -57,6 +74,7 @@ class ProductUpdateRequest(RequestModel):
     mrp: Money | None = None
     is_tax_inclusive: bool | None = None
     is_inventory_tracked: bool | None = None
+    is_weighed: bool | None = None
     low_stock_threshold: NonNegativeQty | None = None
     allow_negative_stock: bool | None = None
     is_active: bool | None = None
@@ -72,6 +90,8 @@ class ProductResponse(ResponseModel):
     id: int
     sku: str
     name: str
+    name_en: str | None
+    name_ta: str | None
     description: str | None
     category_id: int | None
     hsn_id: int | None
@@ -83,6 +103,7 @@ class ProductResponse(ResponseModel):
     mrp: Decimal
     is_tax_inclusive: bool
     is_inventory_tracked: bool
+    is_weighed: bool
     low_stock_threshold: Decimal
     on_hand: Decimal
     reserved_quantity: Decimal

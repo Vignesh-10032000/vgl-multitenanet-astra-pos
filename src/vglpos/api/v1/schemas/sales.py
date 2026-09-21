@@ -43,8 +43,12 @@ class QuoteRequest(RequestModel):
     apply_round_off: bool = True
 
 
+class PaymentPreviewRequest(QuoteRequest):
+    payments: list[PaymentRequest] = Field(min_length=1, max_length=5)
+
+
 class CheckoutRequest(QuoteRequest):
-    payments: list[PaymentRequest] = Field(min_length=1, max_length=10)
+    payments: list[PaymentRequest] = Field(min_length=1, max_length=5)
     shift_id: int | None = Field(default=None, gt=0)
     offline_uuid: UUID | None = None
     notes: str | None = Field(default=None, max_length=1000)
@@ -71,6 +75,10 @@ class ReceiptDispatchRequest(RequestModel):
 class SaleLineResponse(ResponseModel):
     id: int
     product_id: int
+    sku: str
+    name: str
+    name_en: str | None
+    name_ta: str | None
     line_number: int
     quantity: Decimal
     unit_price: Decimal
@@ -154,6 +162,12 @@ class QuoteResponse(ResponseModel):
     cess_amount: Decimal
     round_off: Decimal
     net_amount: Decimal
+
+
+class PaymentPreviewResponse(QuoteResponse):
+    amount_received: Decimal
+    change_due: Decimal
+    balance_due: Decimal
 
 
 class OfflinePushResponse(ResponseModel):

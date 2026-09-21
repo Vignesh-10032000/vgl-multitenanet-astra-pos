@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Sales · VGL POS{% endblock %}
+{% block page_title %}<span data-i18n="sales.title">Sales register</span>{% endblock %}
+{% block content %}
+  <section class="toolbar filter-toolbar" aria-label="Sales filters">
+    <label><span data-i18n="common.from">From</span><input id="sales-from" type="date"></label>
+    <label><span data-i18n="common.to">To</span><input id="sales-to" type="date"></label>
+    <label><span data-i18n="sales.status">Status</span><select id="sales-status"><option value="" data-i18n="common.all">All</option><option value="COMPLETED">Completed</option><option value="CANCELLED">Cancelled</option><option value="PARTIALLY_RETURNED">Partially returned</option><option value="RETURNED">Returned</option></select></label>
+    <button class="button button-secondary filter-apply" type="button" id="sales-apply"><i data-lucide="list-filter"></i><span data-i18n="common.apply">Apply</span></button>
+  </section>
+  <section class="panel table-panel">
+    <div class="table-scroll"><table><thead><tr><th data-i18n="sales.invoice">Invoice</th><th data-i18n="sales.date">Date</th><th data-i18n="sales.method">Method</th><th data-i18n="sales.status">Status</th><th class="numeric" data-i18n="sales.tax">Tax</th><th class="numeric" data-i18n="sales.amount">Amount</th><th><span class="sr-only" data-i18n="common.actions">Actions</span></th></tr></thead><tbody id="sales-rows"><tr><td colspan="7"><div class="table-skeleton"></div></td></tr></tbody></table></div>
+    <div class="empty-state is-hidden" id="sales-empty"><i data-lucide="receipt-text"></i><h2 data-i18n="sales.empty_title">No sales in this period</h2><p data-i18n="sales.empty_body">Change the date range or start a new bill.</p><a class="button button-primary" href="/pos"><i data-lucide="scan-line"></i><span data-i18n="dashboard.new_bill">Start a new bill</span></a></div>
+    <div class="pagination"><button class="button button-secondary" id="sales-more" type="button"><span data-i18n="common.load_more">Load more</span><i data-lucide="chevron-down"></i></button></div>
+  </section>
+{% endblock %}
+{% block scripts %}
+  {% set bundle = vite_entry('js/sales.js') %}
+  {% for stylesheet in bundle.styles %}<link rel="stylesheet" href="{{ stylesheet }}">{% endfor %}
+  <script type="module" src="{{ bundle.script }}" defer></script>
+{% endblock %}

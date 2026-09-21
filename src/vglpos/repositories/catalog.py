@@ -56,14 +56,26 @@ class ProductRepository(BaseRepository[Product]):
         if dialect == "postgresql":
             rank = func.greatest(
                 func.similarity(Product.name, term),
+                func.similarity(func.coalesce(Product.name_en, ""), term),
+                func.similarity(func.coalesce(Product.name_ta, ""), term),
                 func.similarity(Product.sku, term),
             )
             statement = statement.where(
-                or_(Product.name.op("%")(term), Product.sku.op("%")(term))
+                or_(
+                    Product.name.op("%")(term),
+                    Product.name_en.op("%")(term),
+                    Product.name_ta.op("%")(term),
+                    Product.sku.op("%")(term),
+                )
             ).order_by(rank.desc(), Product.id)
         else:
             pattern = f"%{term}%"
             statement = statement.where(
-                or_(Product.name.ilike(pattern), Product.sku.ilike(pattern))
+                or_(
+                    Product.name.ilike(pattern),
+                    Product.name_en.ilike(pattern),
+                    Product.name_ta.ilike(pattern),
+                    Product.sku.ilike(pattern),
+                )
             ).order_by(Product.name, Product.id)
         return tuple(self.session.scalars(statement.limit(limit)))

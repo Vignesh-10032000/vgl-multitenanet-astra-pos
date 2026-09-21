@@ -14,6 +14,7 @@ from vglpos.api.v1.schemas.reports import (
     RevenueSeriesResponse,
 )
 from vglpos.api.v1.schemas.sales import (
+    PaymentPreviewResponse,
     QuoteLineResponse,
     QuoteResponse,
     SaleDetailResponse,
@@ -22,6 +23,7 @@ from vglpos.api.v1.schemas.sales import (
     SaleResponse,
 )
 from vglpos.api.v1.schemas.shifts import CashMovementResponse, ShiftResponse
+from vglpos.services.checkout_service import PaymentPreview
 from vglpos.services.customer_service import CustomerDetail
 from vglpos.services.report_service import (
     DailySummary,
@@ -31,6 +33,7 @@ from vglpos.services.report_service import (
 )
 from vglpos.services.sales_service import SaleDetail
 from vglpos.services.tax_engine import TaxResult
+from vglpos.utils.money import ZERO, money
 
 
 def product_response(product: object) -> ProductResponse:
@@ -49,7 +52,29 @@ def sale_detail_response(detail: SaleDetail) -> SaleDetailResponse:
     base = sale_response(detail.sale).model_dump()
     return SaleDetailResponse(
         **base,
-        items=[SaleLineResponse.model_validate(item) for item in detail.items],
+        items=[
+            SaleLineResponse(
+                id=item.id,
+                product_id=item.product_id,
+                sku=detail.products[item.product_id].sku,
+                name=detail.products[item.product_id].name,
+                name_en=detail.products[item.product_id].name_en,
+                name_ta=detail.products[item.product_id].name_ta,
+                line_number=item.line_number,
+                quantity=item.quantity,
+                unit_price=item.unit_price,
+                gross_amount=item.gross_amount,
+                discount_amount=item.discount_amount,
+                taxable_amount=item.taxable_amount,
+                tax_rate=item.tax_rate,
+                cgst_amount=item.cgst_amount,
+                sgst_amount=item.sgst_amount,
+                igst_amount=item.igst_amount,
+                cess_amount=item.cess_amount,
+                total_amount=item.total_amount,
+            )
+            for item in detail.items
+        ],
         payments=[SalePaymentResponse.model_validate(payment) for payment in detail.payments],
     )
 
@@ -94,6 +119,16 @@ def quote_response(result: TaxResult) -> QuoteResponse:
     )
 
 
+def payment_preview_response(preview: PaymentPreview) -> PaymentPreviewResponse:
+    """Combine exact quote and tender facts without client-side arithmetic."""
+    return PaymentPreviewResponse(
+        **quote_response(preview.quote).model_dump(),
+        amount_received=preview.amount_received,
+        change_due=preview.change_due,
+        balance_due=preview.balance_due,
+    )
+
+
 def shift_response(shift: object) -> ShiftResponse:
     return ShiftResponse.model_validate(shift)
 
@@ -107,7 +142,11 @@ def daily_summary_response(summary: DailySummary) -> DailySummaryResponse:
 
 
 def revenue_series_response(rows: tuple[RevenuePoint, ...]) -> RevenueSeriesResponse:
-    return RevenueSeriesResponse(items=[RevenuePointResponse.model_validate(row) for row in rows])
+    return RevenueSeriesResponse(
+        items=[RevenuePointResponse.model_validate(row) for row in rows],
+        total_bills=sum(row.total_bills for row in rows),
+        net_amount=money(sum((row.net_amount for row in rows), ZERO)),
+    )
 
 
 def gstr1_response(rows: tuple[Gstr1Row, ...]) -> Gstr1Response:

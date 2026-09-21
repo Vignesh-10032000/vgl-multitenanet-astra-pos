@@ -49,6 +49,8 @@ class RevenuePointResponse(ResponseModel):
 
 class RevenueSeriesResponse(ResponseModel):
     items: list[RevenuePointResponse]
+    total_bills: int
+    net_amount: Decimal
 
 
 class Gstr1RowResponse(ResponseModel):

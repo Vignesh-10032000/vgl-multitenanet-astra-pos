@@ -28,8 +28,25 @@ def test_all_migrations_upgrade_downgrade_and_reupgrade(
         "idx_sales_company_branch_created",
         "idx_sales_company_branch_status_date",
     }.issubset({index["name"] for index in inspect(engine).get_indexes("sales")})
+    assert {"name_en", "name_ta", "is_weighed"}.issubset(
+        {column["name"] for column in inspect(engine).get_columns("products")}
+    )
+    assert {"name_en", "name_ta"}.issubset(
+        {column["name"] for column in inspect(engine).get_columns("categories")}
+    )
     engine.dispose()
     command.check(config)
+
+    command.downgrade(config, "0013")
+    engine = create_engine(database_url)
+    assert {"name_en", "name_ta", "is_weighed"}.isdisjoint(
+        {column["name"] for column in inspect(engine).get_columns("products")}
+    )
+    assert {"name_en", "name_ta"}.isdisjoint(
+        {column["name"] for column in inspect(engine).get_columns("categories")}
+    )
+    engine.dispose()
+    command.upgrade(config, "head")
 
     command.downgrade(config, "0012")
     engine = create_engine(database_url)

@@ -14,6 +14,7 @@ from vglpos.api.v1.settings import settings_bp
 from vglpos.api.v1.shifts import shifts_bp
 from vglpos.api.v1.sync import sync_bp
 from vglpos.routes.health import health_bp
+from vglpos.web.routes import web_bp
 
 # Every blueprint the factory registers. New blueprints are added here, never
 # ad hoc inside create_app, so the route surface is reviewable in one place.
@@ -28,6 +29,7 @@ BLUEPRINTS: tuple[Blueprint, ...] = (
     sync_bp,
     settings_bp,
     openapi_bp,
+    web_bp,
 )
 
 # Rule 5: endpoints listed here are the ONLY ones served without a permission
@@ -45,5 +47,16 @@ PUBLIC_ENDPOINTS: frozenset[str] = frozenset(
         # Flask's built-in static-file endpoint: assets contain no data and must
         # load on the login page, i.e. before any session exists.
         "static",
+        # Browser routes render data-free application shells. All tenant data
+        # still crosses permission-protected /api/v1 endpoints with a JWT.
+        "web.login",
+        "web.dashboard",
+        "web.pos",
+        "web.products",
+        "web.customers",
+        "web.sales",
+        "web.reports",
+        "web.settings",
+        "web.receipt",
     }
 )

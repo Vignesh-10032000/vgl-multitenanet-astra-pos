@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Customers · VGL POS{% endblock %}
+{% block page_title %}<span data-i18n="customers.title">Customers</span>{% endblock %}
+{% block content %}
+  <section class="toolbar" aria-label="Customer tools">
+    <label class="search-field"><i data-lucide="search"></i><span class="sr-only" data-i18n="customers.search">Search customers</span><input id="customer-search" type="search" autocomplete="off" data-i18n-placeholder="customers.search_placeholder" placeholder="Search name or phone"></label>
+    <button type="button" class="button button-primary" id="customer-add" data-permission="customer.create"><i data-lucide="user-plus"></i><span data-i18n="customers.add">Add customer</span></button>
+  </section>
+  <section class="panel table-panel">
+    <div class="table-scroll"><table><thead><tr><th data-i18n="customers.customer">Customer</th><th data-i18n="customers.phone">Phone</th><th data-i18n="customers.gstin">GSTIN</th><th class="numeric" data-i18n="customers.orders">Orders</th><th class="numeric" data-i18n="customers.spent">Total spent</th><th class="numeric" data-i18n="customers.balance">Balance</th></tr></thead><tbody id="customer-rows"><tr><td colspan="6"><div class="table-skeleton"></div></td></tr></tbody></table></div>
+    <div class="empty-state is-hidden" id="customers-empty"><i data-lucide="users-round"></i><h2 data-i18n="customers.empty_title">No customers found</h2><p data-i18n="customers.empty_body">Create a customer when a shopper wants a named or GST invoice.</p><button class="button button-primary" type="button" id="customer-empty-add"><i data-lucide="user-plus"></i><span data-i18n="customers.add">Add customer</span></button></div>
+    <div class="pagination"><button class="button button-secondary" id="customers-more" type="button"><span data-i18n="common.load_more">Load more</span><i data-lucide="chevron-down"></i></button></div>
+  </section>
+  <dialog id="customer-dialog" class="dialog" aria-labelledby="customer-dialog-title">
+    <form id="customer-form" method="dialog">
+      <div class="dialog-header"><h2 id="customer-dialog-title" data-i18n="customers.add_title">Add customer</h2><button class="icon-button" type="button" data-dialog-close title="Close" aria-label="Close"><i data-lucide="x"></i></button></div>
+      <div class="dialog-body form-stack">
+        <div class="field-grid"><label><span data-i18n="customers.name">Name</span><input name="name" maxlength="255" required autofocus></label><label><span data-i18n="customers.phone">Phone</span><input name="phone" inputmode="tel" maxlength="20" required></label></div>
+        <div class="field-grid"><label><span data-i18n="customers.email">Email</span><input name="email" type="email" maxlength="255"></label><label><span data-i18n="customers.gstin">GSTIN</span><input name="gstin" maxlength="15" minlength="15"></label></div>
+        <div class="field-grid"><label><span data-i18n="customers.state_code">State code</span><input name="state_code" value="33" pattern="[0-9]{2}" maxlength="2" required></label><label><span data-i18n="customers.credit_limit">Credit limit</span><input name="credit_limit" inputmode="decimal" value="0.00" required></label></div>
+        <label><span data-i18n="customers.address">Address</span><textarea name="address" rows="3"></textarea></label>
+        <p class="form-error" id="customer-form-error" role="alert"></p>
+      </div>
+      <div class="dialog-actions"><button class="button button-secondary" type="button" data-dialog-close data-i18n="common.cancel">Cancel</button><button class="button button-primary" type="submit"><i data-lucide="save"></i><span data-i18n="common.save">Save</span></button></div>
+    </form>
+  </dialog>
+{% endblock %}
+{% block scripts %}
+  {% set bundle = vite_entry('js/customers.js') %}
+  {% for stylesheet in bundle.styles %}<link rel="stylesheet" href="{{ stylesheet }}">{% endfor %}
+  <script type="module" src="{{ bundle.script }}" defer></script>
+{% endblock %}

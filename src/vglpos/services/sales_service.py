@@ -27,6 +27,7 @@ class SaleDetail:
     sale: Sale
     items: tuple[SaleItem, ...]
     payments: tuple[SalePayment, ...]
+    products: dict[int, Product]
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,10 +85,24 @@ class SalesService:
     def sale_detail(self, sale_id: int) -> SaleDetail:
         """Return an invoice aggregate or the same 404 for foreign tenant IDs."""
         sale = self._get_sale(sale_id)
+        items = self.repository.items(sale.id)
+        product_ids = tuple(item.product_id for item in items)
+        products = {
+            product.id: product
+            for product in self.session.scalars(
+                select(Product).where(
+                    Product.company_id == self.company_id,
+                    Product.id.in_(product_ids),
+                )
+            )
+        }
+        if len(products) != len(set(product_ids)):
+            raise EntityNotFoundError("Sale product was not found.")
         return SaleDetail(
             sale=sale,
-            items=self.repository.items(sale.id),
+            items=items,
             payments=self.repository.payments(sale.id),
+            products=products,
         )
 
     def cancel_sale(self, cmd: CancelSaleCommand) -> Sale:

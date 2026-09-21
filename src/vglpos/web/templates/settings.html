@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Settings · VGL POS{% endblock %}
+{% block page_title %}<span data-i18n="settings.title">Settings</span>{% endblock %}
+{% block content %}
+  <div class="settings-layout">
+    <nav class="tabs" aria-label="Settings sections">
+      <button type="button" class="tab is-active" data-tab-target="workstation"><i data-lucide="monitor-cog"></i><span data-i18n="settings.workstation">Workstation</span></button>
+      <button type="button" class="tab" data-tab-target="store"><i data-lucide="store"></i><span data-i18n="settings.store">Store profile</span></button>
+      <button type="button" class="tab" data-tab-target="security"><i data-lucide="shield-check"></i><span data-i18n="settings.security">Security</span></button>
+    </nav>
+    <section class="settings-content">
+      <form id="workstation-settings" class="settings-section" data-tab-panel="workstation">
+        <div class="section-heading"><div><p class="eyebrow" data-i18n="settings.this_device">This device</p><h2 data-i18n="settings.receipt_display">Receipt and display</h2></div></div>
+        <div class="setting-row"><div><strong data-i18n="settings.language">Language</strong><p data-i18n="settings.language_hint">Used for navigation, billing and dates.</p></div><div class="segmented" role="group" aria-label="Language"><button type="button" data-locale-value="en" class="is-active">English</button><button type="button" data-locale-value="ta">தமிழ்</button></div></div>
+        <div class="setting-row"><div><strong data-i18n="settings.theme">Theme</strong><p data-i18n="settings.theme_hint">Choose the most comfortable counter contrast.</p></div><div class="segmented" role="group" aria-label="Theme"><button type="button" data-theme-value="light" class="is-active"><i data-lucide="sun"></i><span data-i18n="settings.light">Light</span></button><button type="button" data-theme-value="dark"><i data-lucide="moon"></i><span data-i18n="settings.dark">Dark</span></button></div></div>
+        <div class="setting-row"><div><strong data-i18n="settings.paper">Receipt paper</strong><p data-i18n="settings.paper_hint">Used by the print action after checkout.</p></div><div class="segmented" role="group" aria-label="Receipt paper"><button type="button" data-paper-value="58">58 mm</button><button type="button" data-paper-value="80" class="is-active">80 mm</button><button type="button" data-paper-value="a5">A5</button></div></div>
+        <div class="setting-row"><div><strong data-i18n="settings.sound">Scanner sounds</strong><p data-i18n="settings.sound_hint">Play distinct tones for recognised and unknown barcodes.</p></div><label class="switch"><input id="scanner-sounds" type="checkbox" checked><span aria-hidden="true"></span><span class="sr-only" data-i18n="settings.sound">Scanner sounds</span></label></div>
+        <div class="settings-actions"><button type="submit" class="button button-primary"><i data-lucide="save"></i><span data-i18n="common.save">Save</span></button></div>
+      </form>
+      <form id="store-settings" class="settings-section is-hidden" data-tab-panel="store" data-permission="settings.manage">
+        <div class="section-heading"><div><p class="eyebrow" data-i18n="settings.legal_details">Legal details</p><h2 data-i18n="settings.store_profile">Store profile</h2></div></div>
+        <div class="form-stack"><div class="field-grid"><label><span data-i18n="settings.company_name">Company name</span><input name="name" maxlength="255" required></label><label><span data-i18n="settings.legal_name">Legal name</span><input name="legal_name" maxlength="255" required></label></div><div class="field-grid"><label><span>GSTIN</span><input name="gstin" maxlength="15"></label><label><span data-i18n="customers.phone">Phone</span><input name="phone" maxlength="20" required></label></div><div class="field-grid"><label><span data-i18n="settings.address_line1">Address line 1</span><input name="address_line1" maxlength="255" required></label><label><span data-i18n="settings.address_line2">Address line 2</span><input name="address_line2" maxlength="255"></label></div><div class="field-grid field-grid-three"><label><span data-i18n="settings.city">City</span><input name="city" maxlength="100" required></label><label><span data-i18n="settings.state">State</span><input name="state" maxlength="100" required></label><label><span data-i18n="settings.postal_code">Postal code</span><input name="postal_code" maxlength="10" required></label></div><p class="form-error" id="store-form-error" role="alert"></p></div>
+        <div class="settings-actions"><button type="submit" class="button button-primary"><i data-lucide="save"></i><span data-i18n="common.save">Save</span></button></div>
+      </form>
+      <section class="settings-section is-hidden" data-tab-panel="security">
+        <div class="section-heading"><div><p class="eyebrow" data-i18n="settings.session">Session</p><h2 data-i18n="settings.counter_security">Counter security</h2></div></div>
+        <div class="setting-row"><div><strong data-i18n="settings.lock_counter">Lock this counter</strong><p data-i18n="settings.lock_hint">Keep the active shift open and require the cashier PIN to resume.</p></div><button class="button button-secondary" id="lock-counter" type="button"><i data-lucide="lock-keyhole"></i><span data-i18n="settings.lock">Lock</span></button></div>
+        <div class="setting-row"><div><strong data-i18n="settings.sign_out">Sign out</strong><p data-i18n="settings.sign_out_hint">Revoke this session on the server.</p></div><button class="button button-danger" id="settings-logout" type="button"><i data-lucide="log-out"></i><span data-i18n="settings.sign_out">Sign out</span></button></div>
+      </section>
+    </section>
+  </div>
+{% endblock %}
+{% block scripts %}
+  {% set bundle = vite_entry('js/settings.js') %}
+  {% for stylesheet in bundle.styles %}<link rel="stylesheet" href="{{ stylesheet }}">{% endfor %}
+  <script type="module" src="{{ bundle.script }}" defer></script>
+{% endblock %}

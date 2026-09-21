@@ -100,6 +100,16 @@ class QuoteCommand:
     apply_round_off: bool = True
 
 
+@dataclass(frozen=True, slots=True)
+class PaymentPreview:
+    """Server-authoritative quote and tender balance without persistence."""
+
+    quote: TaxResult
+    amount_received: Decimal
+    change_due: Decimal
+    balance_due: Decimal
+
+
 class CheckoutService:
     """Persist a fully server-priced sale as one atomic transaction."""
 
@@ -238,6 +248,30 @@ class CheckoutService:
             order_discount=to_decimal(cmd.order_discount),
             apply_round_off=cmd.apply_round_off,
         )
+
+    def preview_payment(self, cmd: CheckoutCommand) -> PaymentPreview:
+        """Price a cart and validate tender composition without creating a sale."""
+        result = self.quote(
+            QuoteCommand(
+                company_id=cmd.company_id,
+                branch_id=cmd.branch_id,
+                lines=cmd.lines,
+                customer_id=cmd.customer_id,
+                business_date=cmd.business_date,
+                order_discount=cmd.order_discount,
+                apply_round_off=cmd.apply_round_off,
+            )
+        )
+        payments = self._normalize_payments(cmd)
+        amount_received = money(sum((amount for _, amount, _ in payments), ZERO))
+        change_due = money(max(ZERO, amount_received - result.net_amount))
+        balance_due = money(max(ZERO, result.net_amount - amount_received))
+        cash_tendered = money(
+            sum((amount for method, amount, _ in payments if method == "CASH"), ZERO)
+        )
+        if change_due > cash_tendered:
+            raise InvalidPaymentError("Change cannot be funded by a non-cash payment.")
+        return PaymentPreview(result, amount_received, change_due, balance_due)
 
     def _build_checkout(self, cmd: CheckoutCommand) -> Sale:
         if not 1 <= len(cmd.lines) <= 200:
@@ -488,6 +522,22 @@ class CheckoutService:
     def _payments(
         self, cmd: CheckoutCommand, result: TaxResult
     ) -> tuple[tuple[str, Decimal, str | None], ...]:
+        normalized = self._normalize_payments(cmd)
+        tendered = money(sum((payment[1] for payment in normalized), ZERO))
+        if tendered < result.net_amount:
+            raise InvalidPaymentError("Tendered amount is less than the payable amount.")
+        change = money(tendered - result.net_amount)
+        cash_tendered = money(
+            sum((amount for method, amount, _ in normalized if method == "CASH"), ZERO)
+        )
+        if change > cash_tendered:
+            raise InvalidPaymentError("Change cannot be funded by a non-cash payment.")
+        return normalized
+
+    def _normalize_payments(
+        self, cmd: CheckoutCommand
+    ) -> tuple[tuple[str, Decimal, str | None], ...]:
+        """Normalize tender rows once for previews and committed checkouts."""
         raw_payments = list(cmd.payments)
         if not raw_payments and cmd.amount_paid is not None and cmd.payment_method is not None:
             raw_payments = [PaymentCommand(cmd.payment_method, cmd.amount_paid)]
@@ -507,15 +557,6 @@ class CheckoutService:
             if amount <= ZERO:
                 raise InvalidPaymentError("Payment amount must be greater than zero.")
             normalized.append((method, amount, payment.reference_number))
-        tendered = money(sum((payment[1] for payment in normalized), ZERO))
-        if tendered < result.net_amount:
-            raise InvalidPaymentError("Tendered amount is less than the payable amount.")
-        change = money(tendered - result.net_amount)
-        cash_tendered = money(
-            sum((amount for method, amount, _ in normalized if method == "CASH"), ZERO)
-        )
-        if change > cash_tendered:
-            raise InvalidPaymentError("Change cannot be funded by a non-cash payment.")
         return tuple(normalized)
 
     def _add_sale_lines(

@@ -124,6 +124,7 @@ def test_seed_reference_is_complete_and_idempotent(
         assert role_permissions["CASHIER"] == {
             "sale.create",
             "sale.view",
+            "product.view",
             "return.create",
             "shift.open",
             "shift.close",

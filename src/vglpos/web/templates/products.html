@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Products · VGL POS{% endblock %}
+{% block page_title %}<span data-i18n="products.title">Product catalogue</span>{% endblock %}
+{% block content %}
+  <section class="toolbar" aria-label="Catalogue tools">
+    <label class="search-field"><i data-lucide="search"></i><span class="sr-only" data-i18n="products.search">Search products</span><input id="product-search" type="search" autocomplete="off" data-i18n-placeholder="products.search_placeholder" placeholder="Search name, SKU or barcode"></label>
+    <div class="toolbar-actions">
+      <button type="button" class="button button-secondary" id="product-refresh" title="Refresh"><i data-lucide="refresh-cw"></i><span data-i18n="common.refresh">Refresh</span></button>
+      <button type="button" class="button button-primary" id="product-add" data-permission="product.create"><i data-lucide="plus"></i><span data-i18n="products.add">Add product</span></button>
+    </div>
+  </section>
+  <section class="panel table-panel">
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th data-i18n="products.item">Item</th><th data-i18n="products.sku">SKU</th><th data-i18n="products.barcode">Barcode</th><th data-i18n="products.stock">Stock</th><th class="numeric" data-i18n="products.price">Price</th><th data-i18n="common.status">Status</th><th><span class="sr-only" data-i18n="common.actions">Actions</span></th></tr></thead>
+        <tbody id="product-rows"><tr><td colspan="7"><div class="table-skeleton"></div></td></tr></tbody>
+      </table>
+    </div>
+    <div class="empty-state is-hidden" id="products-empty"><i data-lucide="package-open"></i><h2 data-i18n="products.empty_title">No products yet</h2><p data-i18n="products.empty_body">Add the first item or import your catalogue from CSV.</p><button class="button button-primary" type="button" id="product-empty-add"><i data-lucide="plus"></i><span data-i18n="products.add">Add product</span></button></div>
+    <div class="pagination"><button class="button button-secondary" id="products-more" type="button"><span data-i18n="common.load_more">Load more</span><i data-lucide="chevron-down"></i></button></div>
+  </section>
+
+  <dialog id="product-dialog" class="dialog dialog-wide" aria-labelledby="product-dialog-title">
+    <form id="product-form" method="dialog">
+      <div class="dialog-header"><div><p class="eyebrow" data-i18n="products.catalogue_record">Catalogue record</p><h2 id="product-dialog-title" data-i18n="products.add_title">Add product</h2></div><button class="icon-button" type="button" data-dialog-close title="Close" aria-label="Close"><i data-lucide="x"></i></button></div>
+      <div class="dialog-body form-stack">
+        <div class="field-grid">
+          <label><span data-i18n="products.name_en">English name</span><input name="name_en" maxlength="255" required></label>
+          <label><span data-i18n="products.name_ta">Tamil name</span><input name="name_ta" maxlength="255" lang="ta"></label>
+        </div>
+        <div class="field-grid field-grid-three">
+          <label><span data-i18n="products.sku">SKU</span><input name="sku" maxlength="100" required></label>
+          <label><span data-i18n="products.barcode">Barcode</span><input name="barcode" maxlength="64"></label>
+          <label><span data-i18n="products.uom">Unit</span><select name="uom"><option value="UNIT">Unit</option><option value="KG">kg</option><option value="LITRE">Litre</option></select></label>
+        </div>
+        <div class="field-grid field-grid-three">
+          <label><span data-i18n="products.cost_price">Cost price</span><input name="cost_price" inputmode="decimal" value="0.00" required></label>
+          <label><span data-i18n="products.selling_price">Selling price</span><input name="selling_price" inputmode="decimal" required></label>
+          <label><span data-i18n="products.mrp">MRP</span><input name="mrp" inputmode="decimal" required></label>
+        </div>
+        <div class="field-grid field-grid-three">
+          <label><span data-i18n="products.tax_rate_id">Tax rate ID</span><input name="tax_rate_id" type="number" min="1" required></label>
+          <label><span data-i18n="products.category_id">Category ID</span><input name="category_id" type="number" min="1"></label>
+          <label><span data-i18n="products.low_stock">Low-stock level</span><input name="low_stock_threshold" inputmode="decimal" value="5.000" required></label>
+        </div>
+        <div class="check-grid">
+          <label class="check-control"><input name="is_tax_inclusive" type="checkbox"><span data-i18n="products.tax_inclusive">Price includes GST</span></label>
+          <label class="check-control"><input name="is_inventory_tracked" type="checkbox" checked><span data-i18n="products.track_stock">Track inventory</span></label>
+          <label class="check-control"><input name="is_weighed" type="checkbox"><span data-i18n="products.weighed">Sold by weight</span></label>
+        </div>
+        <p class="form-error" id="product-form-error" role="alert"></p>
+      </div>
+      <div class="dialog-actions"><button class="button button-secondary" type="button" data-dialog-close data-i18n="common.cancel">Cancel</button><button class="button button-primary" type="submit"><i data-lucide="save"></i><span data-i18n="common.save">Save</span></button></div>
+    </form>
+  </dialog>
+{% endblock %}
+{% block scripts %}
+  {% set bundle = vite_entry('js/products.js') %}
+  {% for stylesheet in bundle.styles %}<link rel="stylesheet" href="{{ stylesheet }}">{% endfor %}
+  <script type="module" src="{{ bundle.script }}" defer></script>
+{% endblock %}

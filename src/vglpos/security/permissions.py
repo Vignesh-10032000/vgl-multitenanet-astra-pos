@@ -70,6 +70,7 @@ STANDARD_ROLES: tuple[StandardRoleDefinition, ...] = (
             {
                 "sale.create",
                 "sale.view",
+                "product.view",
                 "return.create",
                 "shift.open",
                 "shift.close",

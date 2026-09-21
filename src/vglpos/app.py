@@ -20,6 +20,7 @@ from vglpos.extensions import cache, celery, db, jwt, limiter, migrate
 from vglpos.routes import BLUEPRINTS, PUBLIC_ENDPOINTS
 from vglpos.security.tokens import register_jwt_callbacks
 from vglpos.utils.logging import configure_logging
+from vglpos.web.assets import vite_entry
 
 
 def create_app(config_class: type[BaseConfig] | None = None) -> Flask:
@@ -31,7 +32,11 @@ def create_app(config_class: type[BaseConfig] | None = None) -> Flask:
     isolation impossible to guarantee.
     """
     settings = (config_class or get_config())()
-    app = Flask("vglpos")
+    app = Flask(
+        "vglpos",
+        template_folder="web/templates",
+        static_folder="web/static",
+    )
 
     # Config is applied before ANY extension touches the app. An extension
     # initialised first would silently keep default settings (P0-6).
@@ -47,6 +52,8 @@ def create_app(config_class: type[BaseConfig] | None = None) -> Flask:
 
     for blueprint in BLUEPRINTS:
         app.register_blueprint(blueprint)
+
+    app.jinja_env.globals["vite_entry"] = vite_entry
 
     register_cli(app)
 

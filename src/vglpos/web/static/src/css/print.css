@@ -1,0 +1,49 @@
+@page {
+  size: 80mm auto;
+  margin: 0;
+}
+
+@media print {
+  html,
+  body,
+  .receipt-shell {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    background: #fff;
+  }
+
+  .no-print,
+  .toast-region,
+  dialog {
+    display: none !important;
+  }
+
+  .invoice {
+    width: 80mm;
+    min-height: 0;
+    margin: 0;
+    padding: 4mm;
+    color: #000;
+    box-shadow: none;
+  }
+
+  .invoice.paper-58 {
+    width: 58mm;
+    padding: 3mm;
+  }
+
+  .invoice.paper-a5 {
+    width: 148mm;
+    min-height: 210mm;
+    padding: 10mm;
+  }
+
+  .invoice *,
+  .invoice-lines th,
+  .invoice-lines td {
+    background: transparent !important;
+    color: #000 !important;
+  }
+}

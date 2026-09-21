@@ -93,6 +93,8 @@ class Category(TenantEntity):
     )
 
     name: Mapped[str] = mapped_column(String(100), nullable=False)
+    name_en: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    name_ta: Mapped[str | None] = mapped_column(String(100), nullable=True)
     code: Mapped[str] = mapped_column(String(50), nullable=False)
     parent_id: Mapped[int | None] = mapped_column(
         BIGINT, ForeignKey("categories.id", ondelete="RESTRICT"), nullable=True
@@ -152,6 +154,8 @@ class Product(TenantEntity):
 
     sku: Mapped[str] = mapped_column(String(100), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    name_en: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    name_ta: Mapped[str | None] = mapped_column(String(255), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     category_id: Mapped[int | None] = mapped_column(
         BIGINT, ForeignKey("categories.id", ondelete="RESTRICT"), nullable=True
@@ -174,6 +178,9 @@ class Product(TenantEntity):
     )
     is_inventory_tracked: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=text("true"), nullable=False
+    )
+    is_weighed: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false"), nullable=False
     )
     low_stock_threshold: Mapped[Decimal] = mapped_column(
         Numeric(12, 3),

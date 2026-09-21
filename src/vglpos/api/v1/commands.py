@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from vglpos.api.v1.context import CounterContext
-from vglpos.api.v1.schemas.sales import CheckoutRequest, QuoteRequest
+from vglpos.api.v1.schemas.sales import CheckoutRequest, PaymentPreviewRequest, QuoteRequest
 from vglpos.services.checkout_service import (
     CheckoutCommand,
     CheckoutLineCommand,
@@ -40,6 +40,27 @@ def quote_command(body: QuoteRequest, context: CounterContext) -> QuoteCommand:
         company_id=context.company_id,
         branch_id=context.branch_id,
         lines=checkout_lines(body),
+        customer_id=body.customer_id,
+        business_date=body.business_date,
+        order_discount=body.order_discount,
+        apply_round_off=body.apply_round_off,
+    )
+
+
+def payment_preview_command(
+    body: PaymentPreviewRequest, context: CounterContext
+) -> CheckoutCommand:
+    """Build a non-persisting tender preview using checkout's exact command shape."""
+    return CheckoutCommand(
+        company_id=context.company_id,
+        branch_id=context.branch_id,
+        terminal_id=context.terminal_id,
+        cashier_id=context.user_id,
+        lines=checkout_lines(body),
+        payments=[
+            PaymentCommand(payment.method, payment.amount, payment.reference_number)
+            for payment in body.payments
+        ],
         customer_id=body.customer_id,
         business_date=body.business_date,
         order_discount=body.order_discount,

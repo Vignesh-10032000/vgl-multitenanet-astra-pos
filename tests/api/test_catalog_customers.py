@@ -43,6 +43,34 @@ def test_product_catalogue_etag_and_decimal_strings(
     assert cached.headers["ETag"] == response.headers["ETag"]
 
 
+def test_localized_weighed_product_and_categories_are_exposed(
+    api_client: FlaskClient,
+    auth_headers: dict[str, str],
+    mutation_headers: Callable[..., dict[str, str]],
+    api_identity: IdentityContext,
+) -> None:
+    updated = api_client.put(
+        f"/api/v1/products/{api_identity.product.id}",
+        headers=mutation_headers(),
+        json={
+            "name_en": "Loose rice",
+            "name_ta": "\u0b89\u0ba4\u0bbf\u0bb0\u0bbf \u0b85\u0bb0\u0bbf\u0b9a\u0bbf",
+            "is_weighed": True,
+        },
+    )
+    assert updated.status_code == 200
+    assert updated.get_json()["name_en"] == "Loose rice"
+    assert (
+        updated.get_json()["name_ta"]
+        == "\u0b89\u0ba4\u0bbf\u0bb0\u0bbf \u0b85\u0bb0\u0bbf\u0b9a\u0bbf"
+    )
+    assert updated.get_json()["is_weighed"] is True
+
+    categories = api_client.get("/api/v1/products/categories", headers=auth_headers)
+    assert categories.status_code == 200
+    assert isinstance(categories.get_json()["items"], list)
+
+
 def test_product_barcode_lookup_and_validation(
     api_client: FlaskClient,
     auth_headers: dict[str, str],

@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Billing · VGL POS{% endblock %}
+{% block page_title %}<span data-i18n="pos.title">Billing counter</span>{% endblock %}
+{% block styles %}
+  {% set bundle = vite_entry('js/pos.js') %}
+  {% for stylesheet in bundle.styles %}<link rel="stylesheet" href="{{ stylesheet }}">{% endfor %}
+{% endblock %}
+{% block content %}
+  <div class="pos-workspace">
+    <section class="product-browser" aria-labelledby="catalogue-title">
+      <div class="pos-search-row">
+        <label class="search-field pos-search"><i data-lucide="search"></i><span class="sr-only" data-i18n="pos.search">Search products</span><input id="pos-search" type="search" autocomplete="off" data-i18n-placeholder="pos.search_placeholder" placeholder="Search product, SKU or barcode"><kbd>F3</kbd></label>
+        <div class="scanner-status" id="scanner-status"><i data-lucide="scan-line"></i><span data-i18n="pos.scanner_ready">Scanner ready</span></div>
+      </div>
+      <div class="category-strip" id="category-strip" aria-label="Product categories">
+        <button type="button" class="category-button is-active" data-category-id=""><span data-i18n="common.all">All</span></button>
+      </div>
+      <div class="product-grid" id="pos-product-grid" aria-live="polite" aria-busy="true">
+        {% for _ in range(12) %}<div class="product-tile product-skeleton" aria-hidden="true"></div>{% endfor %}
+      </div>
+      <div class="empty-state is-hidden" id="pos-products-empty"><i data-lucide="search-x"></i><h2 data-i18n="pos.no_products">No matching products</h2><p data-i18n="pos.no_products_hint">Try another name, SKU or barcode.</p><a class="button button-secondary" href="/products"><i data-lucide="plus"></i><span data-i18n="products.add">Add product</span></a></div>
+    </section>
+
+    <aside class="cart-panel" aria-labelledby="cart-title">
+      <div class="cart-heading">
+        <div><p class="eyebrow" data-i18n="pos.current_bill">Current bill</p><h2 id="cart-title"><span data-i18n="pos.cart">Cart</span><span class="cart-count" id="cart-count">0</span></h2></div>
+        <button class="icon-button" id="clear-cart" type="button" title="Clear cart" aria-label="Clear cart"><i data-lucide="trash-2"></i></button>
+      </div>
+      <div class="cart-customer-row">
+        <label><span data-i18n="pos.customer">Customer</span><select id="pos-customer"><option value="" data-i18n="receipt.walk_in">Walk-in customer</option></select></label>
+        <a class="icon-button" href="/customers" title="Add customer" aria-label="Add customer" data-permission="customer.create"><i data-lucide="user-plus"></i></a>
+      </div>
+      <div class="cart-lines" id="cart-lines" aria-live="polite">
+        <div class="cart-empty" id="cart-empty"><i data-lucide="shopping-cart"></i><h3 data-i18n="pos.empty_cart">Cart is empty</h3><p data-i18n="pos.empty_cart_hint">Scan a barcode or select a product.</p></div>
+      </div>
+      <div class="cart-discount">
+        <label for="order-discount" data-i18n="pos.order_discount">Bill discount</label>
+        <span class="money-input"><span aria-hidden="true">₹</span><input id="order-discount" inputmode="decimal" value="0.00" aria-label="Bill discount"></span>
+      </div>
+      <dl class="cart-totals" aria-live="polite">
+        <div><dt data-i18n="pos.gross">Gross</dt><dd id="total-gross">₹0.00</dd></div>
+        <div><dt data-i18n="pos.discount">Discount</dt><dd id="total-discount">₹0.00</dd></div>
+        <div><dt data-i18n="pos.taxable">Taxable</dt><dd id="total-taxable">₹0.00</dd></div>
+        <div class="tax-row"><dt>CGST / SGST / IGST</dt><dd><span id="total-cgst">₹0.00</span> / <span id="total-sgst">₹0.00</span> / <span id="total-igst">₹0.00</span></dd></div>
+        <div><dt data-i18n="pos.cess">Cess</dt><dd id="total-cess">₹0.00</dd></div>
+        <div><dt data-i18n="pos.round_off">Round off</dt><dd id="total-round">₹0.00</dd></div>
+        <div class="cart-grand-total"><dt data-i18n="pos.total">Total</dt><dd id="total-net">₹0.00</dd></div>
+      </dl>
+      <button class="button button-primary pay-now" type="button" id="pay-button" disabled><i data-lucide="credit-card"></i><span data-i18n="pos.pay">Pay</span><kbd>F2</kbd></button>
+    </aside>
+  </div>
+
+  <div class="shortcut-strip" aria-label="Keyboard shortcuts">
+    <button type="button" data-shortcut="F1"><kbd>F1</kbd><span data-i18n="pos.help">Help</span></button>
+    <button type="button" data-shortcut="F2"><kbd>F2</kbd><span data-i18n="pos.pay">Pay</span></button>
+    <button type="button" data-shortcut="F3"><kbd>F3</kbd><span data-i18n="pos.search">Search</span></button>
+    <button type="button" data-shortcut="F4"><kbd>F4</kbd><span data-i18n="pos.hold">Hold</span></button>
+    <button type="button" data-shortcut="F5"><kbd>F5</kbd><span data-i18n="pos.recall">Recall</span></button>
+    <button type="button" data-shortcut="F6"><kbd>F6</kbd><span data-i18n="pos.customer">Customer</span></button>
+    <button type="button" data-shortcut="F7"><kbd>F7</kbd><span data-i18n="pos.discount">Discount</span></button>
+    <button type="button" data-shortcut="F8"><kbd>F8</kbd><span data-i18n="pos.quantity">Quantity</span></button>
+    <button type="button" data-shortcut="F9"><kbd>F9</kbd><span data-i18n="pos.reprint">Reprint</span></button>
+    <button type="button" data-shortcut="F10"><kbd>F10</kbd><span data-i18n="pos.shift_close">Shift close</span></button>
+  </div>
+
+  <dialog id="payment-dialog" class="dialog dialog-payment" aria-labelledby="payment-title">
+    <div class="dialog-header"><div><p class="eyebrow" data-i18n="pos.payment">Payment</p><h2 id="payment-title" data-i18n="pos.collect_payment">Collect payment</h2></div><button class="icon-button" type="button" data-dialog-close title="Close" aria-label="Close"><i data-lucide="x"></i></button></div>
+    <div class="payment-layout">
+      <section class="payment-entry">
+        <div class="payment-total"><span data-i18n="pos.amount_due">Amount due</span><strong id="payment-total">₹0.00</strong></div>
+        <div class="payment-rows" id="payment-rows"></div>
+        <button type="button" class="button button-secondary" id="add-payment-row"><i data-lucide="plus"></i><span data-i18n="pos.split_tender">Add split tender</span></button>
+        <div class="quick-cash" aria-label="Quick cash amounts">
+          <button type="button" data-cash="100">₹100</button><button type="button" data-cash="200">₹200</button><button type="button" data-cash="500">₹500</button><button type="button" data-cash="2000">₹2000</button><button type="button" data-cash="exact" data-i18n="pos.exact">Exact</button>
+        </div>
+      </section>
+      <aside class="payment-balance">
+        <dl><div><dt data-i18n="pos.received">Received</dt><dd id="payment-received">₹0.00</dd></div><div><dt data-i18n="pos.balance">Balance</dt><dd id="payment-balance">₹0.00</dd></div></dl>
+        <div class="change-due"><span data-i18n="pos.change_due">Change due</span><strong id="payment-change">₹0.00</strong></div>
+        <p class="form-error" id="payment-error" role="alert"></p>
+      </aside>
+    </div>
+    <div class="dialog-actions"><button class="button button-secondary" type="button" data-dialog-close data-i18n="common.cancel">Cancel</button><button class="button button-primary button-large" type="button" id="complete-sale" disabled><i data-lucide="check"></i><span data-i18n="pos.complete_sale">Complete sale</span></button></div>
+  </dialog>
+
+  <dialog id="weight-dialog" class="dialog dialog-keypad" aria-labelledby="weight-title">
+    <div class="dialog-header"><div><p class="eyebrow" data-i18n="pos.weighed_item">Weighed item</p><h2 id="weight-title">—</h2></div><button class="icon-button" type="button" data-dialog-close title="Close" aria-label="Close"><i data-lucide="x"></i></button></div>
+    <div class="dialog-body"><output class="keypad-display" id="weight-value">0.000</output><div class="numeric-keypad" id="weight-keypad"><button type="button" data-key="7">7</button><button type="button" data-key="8">8</button><button type="button" data-key="9">9</button><button type="button" data-key="4">4</button><button type="button" data-key="5">5</button><button type="button" data-key="6">6</button><button type="button" data-key="1">1</button><button type="button" data-key="2">2</button><button type="button" data-key="3">3</button><button type="button" data-key=".">.</button><button type="button" data-key="0">0</button><button type="button" data-key="backspace" aria-label="Backspace"><i data-lucide="delete"></i></button></div></div>
+    <div class="dialog-actions"><button class="button button-primary button-large" id="add-weight" type="button"><i data-lucide="scale"></i><span data-i18n="pos.add_weight">Add weight</span></button></div>
+  </dialog>
+
+  <dialog id="help-dialog" class="dialog dialog-wide" aria-labelledby="help-title">
+    <div class="dialog-header"><div><p class="eyebrow" data-i18n="pos.keyboard">Keyboard</p><h2 id="help-title" data-i18n="pos.shortcuts">Billing shortcuts</h2></div><button class="icon-button" type="button" data-dialog-close title="Close" aria-label="Close"><i data-lucide="x"></i></button></div>
+    <div class="dialog-body shortcut-help">
+      {% for key, label in [('F1','pos.help'),('F2','pos.pay'),('F3','pos.search'),('F4','pos.hold'),('F5','pos.recall'),('F6','pos.customer'),('F7','pos.discount'),('F8','pos.quantity'),('F9','pos.reprint'),('F10','pos.shift_close'),('Esc','pos.clear'),('+ / −','pos.adjust')] %}<div><kbd>{{ key }}</kbd><span data-i18n="{{ label }}">{{ label }}</span></div>{% endfor %}
+    </div>
+  </dialog>
+
+  <dialog id="holds-dialog" class="dialog" aria-labelledby="holds-title">
+    <div class="dialog-header"><h2 id="holds-title" data-i18n="pos.held_bills">Held bills</h2><button class="icon-button" type="button" data-dialog-close title="Close" aria-label="Close"><i data-lucide="x"></i></button></div>
+    <div class="dialog-body held-list" id="held-list"></div>
+  </dialog>
+
+  <dialog id="shift-close-dialog" class="dialog dialog-small" aria-labelledby="shift-close-title">
+    <form id="shift-close-form" method="dialog">
+      <div class="dialog-header"><div><p class="eyebrow" data-i18n="pos.blind_count">Blind cash count</p><h2 id="shift-close-title" data-i18n="pos.shift_close">Shift close</h2></div><button class="icon-button" type="button" data-dialog-close title="Close" aria-label="Close"><i data-lucide="x"></i></button></div>
+      <div class="dialog-body form-stack"><label><span data-i18n="pos.shift_id">Shift ID</span><input name="shift_id" type="number" min="1" required></label><label><span data-i18n="pos.counted_cash">Counted cash</span><input name="counted_cash" inputmode="decimal" required></label><label><span data-i18n="pos.notes">Notes</span><textarea name="notes" rows="2"></textarea></label><p class="form-error" id="shift-close-error" role="alert"></p></div>
+      <div class="dialog-actions"><button class="button button-secondary" type="button" data-dialog-close data-i18n="common.cancel">Cancel</button><button class="button button-primary" type="submit"><i data-lucide="lock-keyhole"></i><span data-i18n="pos.close_shift">Close shift</span></button></div>
+    </form>
+  </dialog>
+{% endblock %}
+{% block scripts %}
+  {% set bundle = vite_entry('js/pos.js') %}
+  <script type="module" src="{{ bundle.script }}" defer></script>
+{% endblock %}

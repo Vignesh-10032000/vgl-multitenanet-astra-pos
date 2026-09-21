@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#0f766e">
+    <title>{% block title %}VGL POS{% endblock %}</title>
+    <link
+      rel="preload"
+      href="{{ url_for('static', filename='fonts/inter-latin-400-normal.woff2') }}"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    >
+    <link
+      rel="preload"
+      href="{{ url_for('static', filename='fonts/inter-latin-600-normal.woff2') }}"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    >
+    {% set app_bundle = vite_entry('js/app.js') %}
+    {% for stylesheet in app_bundle.styles %}
+      <link rel="stylesheet" href="{{ stylesheet }}">
+    {% endfor %}
+    {% block styles %}{% endblock %}
+    <script type="module" src="{{ app_bundle.script }}" defer></script>
+  </head>
+  <body data-page="{{ page_name }}" data-shell="{{ shell }}"{% if shell != 'auth' %} data-auth-required="true"{% endif %}>
+    <a class="skip-link" href="#main-content" data-i18n="a11y.skip">Skip to content</a>
+    {% if shell == 'auth' %}
+      <main id="main-content" class="auth-shell">
+        {% block auth_content %}{% endblock %}
+      </main>
+    {% elif shell == 'receipt' %}
+      <main id="main-content" class="receipt-shell">
+        {% block receipt_content %}{% endblock %}
+      </main>
+    {% else %}
+      <div class="app-shell">
+        <aside class="side-nav" aria-label="Primary navigation">
+          <a class="brand" href="/" aria-label="VGL POS dashboard">
+            <span class="brand-mark" aria-hidden="true">V</span>
+            <span><strong>VGL POS</strong><small data-i18n="brand.subtitle">Retail operations</small></span>
+          </a>
+          <nav>
+            <a href="/" data-nav="dashboard" data-permission="report.view"><i data-lucide="layout-dashboard"></i><span data-i18n="nav.dashboard">Dashboard</span></a>
+            <a href="/pos" data-nav="pos" data-permission="sale.create"><i data-lucide="scan-line"></i><span data-i18n="nav.pos">Billing</span></a>
+            <a href="/products" data-nav="products" data-permission="product.view"><i data-lucide="package-search"></i><span data-i18n="nav.products">Products</span></a>
+            <a href="/customers" data-nav="customers" data-permission="customer.view"><i data-lucide="users"></i><span data-i18n="nav.customers">Customers</span></a>
+            <a href="/sales" data-nav="sales" data-permission="sale.view"><i data-lucide="receipt-text"></i><span data-i18n="nav.sales">Sales</span></a>
+            <a href="/reports" data-nav="reports" data-permission="report.view"><i data-lucide="chart-no-axes-combined"></i><span data-i18n="nav.reports">Reports</span></a>
+            <a href="/settings" data-nav="settings"><i data-lucide="settings"></i><span data-i18n="nav.settings">Settings</span></a>
+          </nav>
+          <div class="side-nav-footer">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span data-i18n="status.online">Online</span>
+          </div>
+        </aside>
+        <section class="workspace">
+          <header class="topbar">
+            <div>
+              <p class="eyebrow" id="page-context" data-i18n="brand.workspace">Store workspace</p>
+              <h1>{% block page_title %}{% endblock %}</h1>
+            </div>
+            <div class="topbar-actions">
+              <button class="icon-button" type="button" id="locale-toggle" title="Switch language" aria-label="Switch language">
+                <i data-lucide="languages"></i><span class="icon-button-label" id="locale-label">தமிழ்</span>
+              </button>
+              <button class="icon-button" type="button" id="theme-toggle" title="Change theme" aria-label="Change theme">
+                <i data-lucide="sun-moon"></i>
+              </button>
+              <div class="user-menu">
+                <span class="avatar" id="user-avatar" aria-hidden="true">U</span>
+                <span class="user-copy"><strong id="user-name">User</strong><small id="user-role">—</small></span>
+              </div>
+              <button class="icon-button" type="button" id="logout-button" title="Sign out" aria-label="Sign out">
+                <i data-lucide="log-out"></i>
+              </button>
+            </div>
+          </header>
+          <main id="main-content" class="page-content">
+            {% block content %}{% endblock %}
+          </main>
+        </section>
+      </div>
+    {% endif %}
+
+    <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="false"></div>
+    <dialog id="session-expired-dialog" class="dialog dialog-small" aria-labelledby="session-expired-title">
+      <div class="dialog-header">
+        <h2 id="session-expired-title" data-i18n="session.expired_title">Session expired</h2>
+      </div>
+      <div class="dialog-body">
+        <p data-i18n="session.expired_body">Sign in again to continue safely.</p>
+      </div>
+      <div class="dialog-actions">
+        <a class="button button-primary" href="/login" data-i18n="session.sign_in">Sign in</a>
+      </div>
+    </dialog>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

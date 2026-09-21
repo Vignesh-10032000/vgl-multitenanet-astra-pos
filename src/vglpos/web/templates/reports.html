@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Reports · VGL POS{% endblock %}
+{% block page_title %}<span data-i18n="reports.title">Reports</span>{% endblock %}
+{% block content %}
+  <section class="toolbar filter-toolbar" aria-label="Report filters">
+    <label><span data-i18n="reports.period">Period</span><select id="report-days"><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option><option value="365">1 year</option></select></label>
+    <label><span data-i18n="reports.valuation_method">Stock valuation</span><select id="valuation-method"><option value="WEIGHTED_AVERAGE">Weighted average</option><option value="FIFO">FIFO</option></select></label>
+    <button class="button button-secondary filter-apply" type="button" id="reports-refresh"><i data-lucide="refresh-cw"></i><span data-i18n="common.refresh">Refresh</span></button>
+    <button class="button button-primary" type="button" id="report-print"><i data-lucide="printer"></i><span data-i18n="common.print">Print</span></button>
+  </section>
+  <section class="metric-grid metric-grid-three">
+    <article class="metric-card"><div class="metric-icon"><i data-lucide="indian-rupee"></i></div><div><p data-i18n="reports.period_revenue">Period revenue</p><strong id="report-revenue">—</strong></div></article>
+    <article class="metric-card"><div class="metric-icon"><i data-lucide="receipt"></i></div><div><p data-i18n="reports.period_bills">Bills</p><strong id="report-bills">—</strong></div></article>
+    <article class="metric-card"><div class="metric-icon"><i data-lucide="warehouse"></i></div><div><p data-i18n="reports.stock_value">Stock value</p><strong id="stock-value">—</strong></div></article>
+  </section>
+  <section class="reports-grid">
+    <article class="panel chart-panel"><div class="section-heading"><div><p class="eyebrow" data-i18n="reports.trend">Trend</p><h2 data-i18n="reports.daily_revenue">Daily revenue</h2></div></div><div class="chart-frame bar-chart" id="report-revenue-chart" aria-label="Daily revenue chart"></div></article>
+    <article class="panel table-panel"><div class="section-heading"><div><p class="eyebrow" data-i18n="reports.inventory">Inventory</p><h2 data-i18n="reports.valuation">Valuation</h2></div></div><div class="table-scroll compact-table"><table><thead><tr><th data-i18n="products.item">Item</th><th class="numeric" data-i18n="products.stock">Stock</th><th class="numeric" data-i18n="reports.value">Value</th></tr></thead><tbody id="valuation-rows"><tr><td colspan="3"><div class="table-skeleton"></div></td></tr></tbody></table></div></article>
+  </section>
+  <section class="panel export-band" data-permission-all="report.gst,report.export">
+    <div><p class="eyebrow" data-i18n="reports.gst">GST</p><h2 data-i18n="reports.gstr1_title">GSTR-1 outward supplies</h2><p data-i18n="reports.gstr1_body">Generate the statutory invoice classification for a selected period.</p></div>
+    <div class="export-controls"><label><span data-i18n="common.from">From</span><input id="gstr-from" type="date"></label><label><span data-i18n="common.to">To</span><input id="gstr-to" type="date"></label><button class="button button-secondary" id="gstr-export" type="button"><i data-lucide="download"></i><span data-i18n="reports.export_json">Export JSON</span></button></div>
+  </section>
+{% endblock %}
+{% block scripts %}
+  {% set bundle = vite_entry('js/reports.js') %}
+  {% for stylesheet in bundle.styles %}<link rel="stylesheet" href="{{ stylesheet }}">{% endfor %}
+  <script type="module" src="{{ bundle.script }}" defer></script>
+{% endblock %}

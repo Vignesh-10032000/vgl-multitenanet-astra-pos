@@ -64,6 +64,8 @@ def test_quote_checkout_list_detail_and_cancel(
     detail = api_client.get(f"/api/v1/sales/{sale_id}", headers=auth_headers)
     assert detail.status_code == 200
     assert detail.get_json()["items"][0]["quantity"] == "1.000"
+    assert detail.get_json()["items"][0]["sku"] == api_identity.product.sku
+    assert detail.get_json()["items"][0]["name"] == api_identity.product.name
     assert detail.get_json()["payments"][0]["amount"] == "118.00"
 
     no_customer = api_client.post(
@@ -95,6 +97,49 @@ def test_quote_checkout_list_detail_and_cancel(
         },
     )
     assert repeated.status_code == 409
+
+
+def test_payment_preview_is_server_authoritative_and_limits_split_rows(
+    api_client: FlaskClient,
+    mutation_headers: Callable[..., dict[str, str]],
+    checkout_payload: dict[str, object],
+) -> None:
+    quote_payload = {key: value for key, value in checkout_payload.items() if key != "payments"}
+    balance = api_client.post(
+        "/api/v1/sales/payment-preview",
+        headers=mutation_headers(),
+        json={**quote_payload, "payments": [{"method": "CASH", "amount": "100.00"}]},
+    )
+    assert balance.status_code == 200
+    assert balance.get_json()["net_amount"] == "118.00"
+    assert balance.get_json()["amount_received"] == "100.00"
+    assert balance.get_json()["balance_due"] == "18.00"
+    assert balance.get_json()["change_due"] == "0.00"
+
+    change = api_client.post(
+        "/api/v1/sales/payment-preview",
+        headers=mutation_headers(),
+        json={**quote_payload, "payments": [{"method": "CASH", "amount": "200.00"}]},
+    )
+    assert change.status_code == 200
+    assert change.get_json()["change_due"] == "82.00"
+
+    too_many = api_client.post(
+        "/api/v1/sales/payment-preview",
+        headers=mutation_headers(),
+        json={
+            **quote_payload,
+            "payments": [{"method": "CASH", "amount": "20.00"}] * 6,
+        },
+    )
+    assert too_many.status_code == 422
+
+    non_cash_change = api_client.post(
+        "/api/v1/sales/payment-preview",
+        headers=mutation_headers(),
+        json={**quote_payload, "payments": [{"method": "UPI", "amount": "120.00"}]},
+    )
+    assert non_cash_change.status_code == 422
 
 
 def test_whatsapp_receipt_is_queued_for_the_stored_customer(
@@ -269,6 +314,8 @@ def test_reports_success_and_validation_failures(
     assert revenue.status_code == 200
     points = revenue.get_json()["items"]
     assert len(points) == 7
+    assert revenue.get_json()["total_bills"] == 0
+    assert revenue.get_json()["net_amount"] == "0.00"
     assert points[-1]["business_date"] == date.today().isoformat()
     assert all(point["net_amount"] == "0.00" for point in points)
 

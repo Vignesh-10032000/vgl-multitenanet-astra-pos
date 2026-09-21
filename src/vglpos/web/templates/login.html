@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Sign in · VGL POS{% endblock %}
+{% block auth_content %}
+  <section class="login-panel" aria-labelledby="login-title">
+    <div class="login-brand">
+      <span class="brand-mark brand-mark-large" aria-hidden="true">V</span>
+      <div><strong>VGL POS</strong><span data-i18n="brand.subtitle">Retail operations</span></div>
+    </div>
+    <div class="login-heading">
+      <p class="eyebrow" data-i18n="login.counter_access">Secure counter access</p>
+      <h1 id="login-title" data-i18n="login.title">Sign in to your store</h1>
+      <p data-i18n="login.subtitle">Use the company code provided by your administrator.</p>
+    </div>
+    <form id="login-form" class="form-stack" novalidate>
+      <label>
+        <span data-i18n="login.company_code">Company code</span>
+        <input name="company_code" autocomplete="organization" maxlength="50" required autofocus>
+      </label>
+      <label>
+        <span data-i18n="login.username">Username</span>
+        <input name="username" autocomplete="username" maxlength="100" required>
+      </label>
+      <label>
+        <span data-i18n="login.password">Password</span>
+        <span class="input-action">
+          <input name="password" type="password" autocomplete="current-password" maxlength="1024" required>
+          <button type="button" id="password-toggle" class="icon-button" title="Show password" aria-label="Show password"><i data-lucide="eye"></i></button>
+        </span>
+      </label>
+      <div class="field-grid">
+        <label>
+          <span data-i18n="login.branch_optional">Branch ID (optional)</span>
+          <input name="branch_id" type="number" min="1" inputmode="numeric">
+        </label>
+        <label>
+          <span data-i18n="login.terminal_optional">Terminal ID (optional)</span>
+          <input name="terminal_id" type="number" min="1" inputmode="numeric">
+        </label>
+      </div>
+      <label class="is-hidden" id="mfa-field">
+        <span data-i18n="login.mfa">6-digit authentication code</span>
+        <input name="mfa_code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code">
+      </label>
+      <p class="form-error" id="login-error" role="alert"></p>
+      <button class="button button-primary button-large" type="submit">
+        <span data-i18n="login.submit">Sign in</span><i data-lucide="arrow-right"></i>
+      </button>
+    </form>
+    <div class="login-footer">
+      <button class="text-button" type="button" id="login-locale"><i data-lucide="languages"></i><span>தமிழ்</span></button>
+      <span data-i18n="login.secure_notice">Encrypted, tenant-isolated session</span>
+    </div>
+  </section>
+  <aside class="login-visual" aria-label="Point of sale preview">
+    <div class="counter-preview">
+      <div class="preview-header"><span></span><span></span><span></span></div>
+      <div class="preview-body">
+        <div class="preview-products"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="preview-cart"><b></b><span></span><span></span><span></span><strong></strong></div>
+      </div>
+    </div>
+    <div class="visual-caption">
+      <p class="eyebrow" data-i18n="login.preview_eyebrow">Built for the checkout rush</p>
+      <h2 data-i18n="login.preview_title">Scan, collect, complete.</h2>
+      <p data-i18n="login.preview_body">Fast keyboard billing with authoritative GST totals from the server.</p>
+    </div>
+  </aside>
+{% endblock %}
+{% block scripts %}
+  {% set bundle = vite_entry('js/login.js') %}
+  {% for stylesheet in bundle.styles %}<link rel="stylesheet" href="{{ stylesheet }}">{% endfor %}
+  <script type="module" src="{{ bundle.script }}" defer></script>
+{% endblock %}

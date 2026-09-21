@@ -5,13 +5,15 @@ from __future__ import annotations
 from flask import Blueprint, Response, current_app, g
 from sqlalchemy.orm import Session
 
-from vglpos.api.v1.commands import checkout_command, quote_command
+from vglpos.api.v1.commands import checkout_command, payment_preview_command, quote_command
 from vglpos.api.v1.context import counter_context
 from vglpos.api.v1.http import model_response, parse_body, parse_query
 from vglpos.api.v1.idempotency import idempotent
 from vglpos.api.v1.openapi import documented
 from vglpos.api.v1.schemas.sales import (
     CheckoutRequest,
+    PaymentPreviewRequest,
+    PaymentPreviewResponse,
     QuoteRequest,
     QuoteResponse,
     ReceiptDispatchRequest,
@@ -22,7 +24,12 @@ from vglpos.api.v1.schemas.sales import (
     SaleResponse,
     VoidSaleRequest,
 )
-from vglpos.api.v1.serializers import quote_response, sale_detail_response, sale_response
+from vglpos.api.v1.serializers import (
+    payment_preview_response,
+    quote_response,
+    sale_detail_response,
+    sale_response,
+)
 from vglpos.extensions import db, limiter
 from vglpos.security.decorators import require_permission
 from vglpos.services.checkout_service import CheckoutService
@@ -72,6 +79,24 @@ def quote() -> tuple[Response, int]:
     with Session(db.engine) as session:
         command = quote_command(body, counter_context())
         return model_response(quote_response(CheckoutService(session).quote(command)))
+
+
+@sales_bp.post("/payment-preview")
+@require_permission("sale.create")
+@limiter.limit("120 per minute", key_func=_terminal_rate_key)
+@idempotent
+@documented(
+    summary="Calculate exact split-tender balance and cash-funded change",
+    request_model=PaymentPreviewRequest,
+    response_model=PaymentPreviewResponse,
+)
+def payment_preview() -> tuple[Response, int]:
+    """Delegate non-persisting payment validation to checkout's money rules."""
+    body = parse_body(PaymentPreviewRequest)
+    with Session(db.engine) as session:
+        command = payment_preview_command(body, counter_context())
+        preview = CheckoutService(session).preview_payment(command)
+        return model_response(payment_preview_response(preview))
 
 
 @sales_bp.get("")
