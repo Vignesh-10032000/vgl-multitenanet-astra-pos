@@ -117,6 +117,63 @@ class OverrideApprovalService:
             new_values={"sale_id": sale_id},
         )
 
+    def approve_shift_variance(
+        self,
+        *,
+        company_id: int,
+        actor_user_id: int,
+        shift_id: int,
+        variance: object,
+        approval_pin: str | None,
+        approver_user_id: int | None,
+        reason: str | None,
+    ) -> Approval:
+        """Require an attributable manager before accepting a large drawer variance."""
+        try:
+            normalized_variance = money(variance)
+        except ValueError as exc:
+            raise ValidationError("Shift variance must be numeric.") from exc
+        return self._approve(
+            company_id=company_id,
+            actor_user_id=actor_user_id,
+            approval_pin=approval_pin,
+            approver_user_id=approver_user_id,
+            reason=reason,
+            required_permission="shift.close",
+            action="SHIFT_VARIANCE_APPROVAL",
+            new_values={"shift_id": shift_id, "variance": str(normalized_variance)},
+        )
+
+    def approve_bulk_price_update(
+        self,
+        *,
+        company_id: int,
+        actor_user_id: int,
+        category_id: int | None,
+        percentage: object,
+        approval_pin: str | None,
+        approver_user_id: int | None,
+        reason: str | None,
+    ) -> Approval:
+        """Require a manager approval before changing multiple catalogue prices."""
+        try:
+            normalized_percentage = to_decimal(percentage).quantize(Decimal("0.01"))
+        except ValueError as exc:
+            raise ValidationError("Bulk price percentage must be numeric.") from exc
+        return self._approve(
+            company_id=company_id,
+            actor_user_id=actor_user_id,
+            approval_pin=approval_pin,
+            approver_user_id=approver_user_id,
+            reason=reason,
+            required_permission="product.edit",
+            action="BULK_PRICE_APPROVAL",
+            new_values={
+                "category_id": category_id,
+                "percentage": str(normalized_percentage),
+            },
+        )
+
     def _approve(
         self,
         *,

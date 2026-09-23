@@ -23,12 +23,13 @@ from vglpos.services.return_service import (
     ReturnService,
 )
 
-from .conftest import ServiceContext
+from .conftest import ServiceContext, open_service_shift
 
 
 def test_return_uses_original_invoice_tax_rate(
     service_session: Session, service_context: ServiceContext
 ) -> None:
+    open_service_shift(service_session, service_context)
     sale = CheckoutService(service_session).checkout(
         CheckoutCommand(
             company_id=service_context.company.id,
@@ -68,6 +69,7 @@ def test_return_uses_original_invoice_tax_rate(
 def test_return_validates_against_all_prior_credit_notes(
     service_session: Session, service_context: ServiceContext
 ) -> None:
+    open_service_shift(service_session, service_context)
     sale = CheckoutService(service_session).checkout(
         CheckoutCommand(
             company_id=service_context.company.id,

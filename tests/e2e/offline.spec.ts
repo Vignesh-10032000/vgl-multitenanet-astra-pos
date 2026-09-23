@@ -12,6 +12,15 @@ async function signIn(page) {
     page.locator("#login-form").getByRole("button", { name: /sign in/i }).click(),
   ]);
   await expect(page.locator("#pos-product-grid")).toHaveAttribute("aria-busy", "false");
+  await page.waitForFunction(() => (
+    document.querySelector("#shift-status")?.getAttribute("data-state") === "open"
+      || document.querySelector("#shift-open-dialog")?.open
+  ));
+  if (await page.locator("#shift-open-dialog").isVisible()) {
+    await page.locator('#shift-open-form [data-denomination="100"]').fill("1");
+    await page.locator("#shift-open-form").getByRole("button", { name: /open shift/i }).click();
+    await expect(page.locator("#shift-open-dialog")).toBeHidden();
+  }
 }
 
 async function saleItems(page) {
@@ -26,6 +35,15 @@ async function saleItems(page) {
 
 async function saleCount(page) {
   return (await saleItems(page)).length;
+}
+
+async function scan(page, barcode: string) {
+  await page.evaluate((value) => {
+    for (const key of value) {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+    }
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  }, barcode);
 }
 
 test("offline bill receives a provisional receipt and syncs exactly once", async ({ page, context }) => {
@@ -50,8 +68,7 @@ test("offline bill receives a provisional receipt and syncs exactly once", async
 
   await context.setOffline(true);
   await expect(page.locator("#connectivity-label")).toContainText("Offline");
-  await page.keyboard.type("8901234567890");
-  await page.keyboard.press("Enter");
+  await scan(page, "8901234567890");
   await expect(page.locator('[data-quantity-input="1"]')).toHaveValue("1.000");
   await expect(page.locator("#total-net")).toHaveText("₹118.00");
 

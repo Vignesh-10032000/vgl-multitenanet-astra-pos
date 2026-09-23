@@ -29,8 +29,14 @@ from vglpos.domain.models.inventory import (
     StockLedgerEntry,
 )
 from vglpos.domain.models.migration import LegacyIdMap
-from vglpos.domain.models.operations import AuditLog, CashMovement, Shift
-from vglpos.domain.models.parties import Customer, Supplier
+from vglpos.domain.models.operations import (
+    AuditLog,
+    CashMovement,
+    HeldBill,
+    Shift,
+    TerminalQuickKey,
+)
+from vglpos.domain.models.parties import Customer, LoyaltyLedger, Supplier
 from vglpos.domain.models.terminal import Terminal
 
 __all__ = [
@@ -43,8 +49,10 @@ __all__ = [
     "CreditNoteItem",
     "Customer",
     "DocumentSeries",
+    "HeldBill",
     "HsnCode",
     "LegacyIdMap",
+    "LoyaltyLedger",
     "Permission",
     "Product",
     "ProductBarcode",
@@ -63,6 +71,7 @@ __all__ = [
     "Supplier",
     "TaxRate",
     "Terminal",
+    "TerminalQuickKey",
     "User",
     "UserRole",
 ]

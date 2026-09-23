@@ -21,7 +21,7 @@ def test_all_migrations_upgrade_downgrade_and_reupgrade(
 
     command.upgrade(config, "head")
     engine = create_engine(database_url)
-    assert len(inspect(engine).get_table_names()) == 31  # 30 domain tables + alembic_version
+    assert len(inspect(engine).get_table_names()) == 34  # 33 domain tables + alembic_version
     assert "mv_daily_sales_summary" in inspect(engine).get_view_names()
     assert "total_cess" in (inspect(engine).get_view_definition("mv_daily_sales_summary") or "")
     assert {
@@ -34,8 +34,34 @@ def test_all_migrations_upgrade_downgrade_and_reupgrade(
     assert {"name_en", "name_ta"}.issubset(
         {column["name"] for column in inspect(engine).get_columns("categories")}
     )
+    assert {"held_bills", "loyalty_ledger", "terminal_quick_keys"}.issubset(
+        inspect(engine).get_table_names()
+    )
+    assert {
+        "opening_denominations",
+        "closing_denominations",
+        "variance_approved_by",
+        "variance_reason",
+    }.issubset({column["name"] for column in inspect(engine).get_columns("shifts")})
+    open_shift_index = next(
+        index
+        for index in inspect(engine).get_indexes("shifts")
+        if index["name"] == "idx_shifts_open"
+    )
+    assert bool(open_shift_index["unique"])
     engine.dispose()
     command.check(config)
+
+    command.downgrade(config, "0014")
+    engine = create_engine(database_url)
+    assert {"held_bills", "loyalty_ledger", "terminal_quick_keys"}.isdisjoint(
+        inspect(engine).get_table_names()
+    )
+    assert "opening_denominations" not in {
+        column["name"] for column in inspect(engine).get_columns("shifts")
+    }
+    engine.dispose()
+    command.upgrade(config, "head")
 
     command.downgrade(config, "0013")
     engine = create_engine(database_url)
@@ -64,7 +90,7 @@ def test_all_migrations_upgrade_downgrade_and_reupgrade(
 
     command.upgrade(config, "head")
     engine = create_engine(database_url)
-    assert len(inspect(engine).get_table_names()) == 31
+    assert len(inspect(engine).get_table_names()) == 34
     assert "mv_daily_sales_summary" in inspect(engine).get_view_names()
     engine.dispose()
 

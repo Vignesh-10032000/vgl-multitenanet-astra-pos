@@ -167,6 +167,7 @@ class Product(TenantEntity):
         BIGINT, ForeignKey("tax_rates.id", ondelete="RESTRICT"), nullable=False
     )
     barcode: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     uom: Mapped[str] = mapped_column(
         String(20), default="UNIT", server_default=text("'UNIT'"), nullable=False
     )

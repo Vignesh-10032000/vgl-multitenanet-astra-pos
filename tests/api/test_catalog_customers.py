@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import io
 from collections.abc import Callable
+from pathlib import Path
 from uuid import uuid4
 
+from flask import Flask
 from flask.testing import FlaskClient
+from PIL import Image
 
 from tests.integration.conftest import IdentityContext
 
@@ -191,6 +195,86 @@ def test_product_cursor_is_stable_across_insertions(
         f"/api/v1/products?limit=2&cursor={first['next_cursor']}", headers=auth_headers
     ).get_json()
     assert first["items"][0]["id"] not in {item["id"] for item in second["items"]}
+
+
+def test_phase7_catalogue_operations_are_available_through_the_api(
+    api_app: Flask,
+    api_client: FlaskClient,
+    auth_headers: dict[str, str],
+    mutation_headers: Callable[..., dict[str, str]],
+    api_identity: IdentityContext,
+    tmp_path: Path,
+) -> None:
+    api_app.config["PRODUCT_IMAGE_DIR"] = str(tmp_path / "product-images")
+    csv_content = (
+        "sku,name,tax_rate_id,cost_price,selling_price,mrp,barcode\n"
+        f"IMPORT-API,Imported API product,{api_identity.product.tax_rate_id},10,20,25,IMPORT-001\n"
+    ).encode()
+    preview = api_client.post(
+        "/api/v1/products/import/preview",
+        headers=mutation_headers(),
+        data={"file": (io.BytesIO(csv_content), "catalog.csv")},
+        content_type="multipart/form-data",
+    )
+    assert preview.status_code == 200, preview.get_data(as_text=True)
+    assert preview.get_json()["valid_rows"] == 1
+    committed = api_client.post(
+        "/api/v1/products/import/commit",
+        headers=mutation_headers(),
+        data={"file": (io.BytesIO(csv_content), "catalog.csv")},
+        content_type="multipart/form-data",
+    )
+    assert committed.status_code == 201
+    assert committed.get_json()["imported_count"] == 1
+
+    invalid = b"sku,name,tax_rate_id,cost_price,selling_price,mrp\n,,999,x,-1,0\n"
+    report = api_client.post(
+        "/api/v1/products/import/error-report",
+        headers=mutation_headers(),
+        data={"file": (io.BytesIO(invalid), "errors.csv")},
+        content_type="multipart/form-data",
+    )
+    assert report.status_code == 200
+    assert report.headers["Content-Disposition"].endswith("product-import-errors.csv")
+    assert b"sku is required" in report.data
+
+    prices = api_client.post(
+        "/api/v1/products/bulk-price-update",
+        headers=mutation_headers(),
+        json={
+            "percentage": "5.00",
+            "approver_user_id": api_identity.user.id,
+            "approval_pin": api_identity.pin,
+            "reason": "Approved API price review",
+        },
+    )
+    assert prices.status_code == 200, prices.get_data(as_text=True)
+    assert prices.get_json()["updated_count"] == 2
+
+    labels = api_client.post(
+        "/api/v1/products/barcode-labels",
+        headers=mutation_headers(),
+        json={"product_ids": [api_identity.product.id], "width_mm": "50", "height_mm": "30"},
+    )
+    assert labels.status_code == 200
+    assert labels.content_type.startswith("image/svg+xml")
+    assert b"<svg" in labels.data
+
+    image_bytes = io.BytesIO()
+    Image.new("RGB", (1200, 900), color=(12, 80, 110)).save(image_bytes, format="PNG")
+    uploaded = api_client.post(
+        f"/api/v1/products/{api_identity.product.id}/image",
+        headers=mutation_headers(),
+        data={"image": (io.BytesIO(image_bytes.getvalue()), "product.png")},
+        content_type="multipart/form-data",
+    )
+    assert uploaded.status_code == 200, uploaded.get_data(as_text=True)
+    assert uploaded.get_json()["image_path"].endswith(".webp")
+    stored = api_client.get(
+        f"/api/v1/products/{api_identity.product.id}/image", headers=auth_headers
+    )
+    assert stored.status_code == 200
+    assert stored.content_type == "image/webp"
 
 
 def test_customer_idempotency_listing_and_detail(

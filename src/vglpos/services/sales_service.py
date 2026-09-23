@@ -6,16 +6,16 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from vglpos.domain.events import SaleUpdated
-from vglpos.domain.models import Customer, Product, Sale, SaleItem, SalePayment
+from vglpos.domain.models import Customer, LoyaltyLedger, Product, Sale, SaleItem, SalePayment
 from vglpos.repositories.base import CursorPage
 from vglpos.repositories.documents import SaleRepository
+from vglpos.security.audit import record_audit_event
 from vglpos.security.override_service import OverrideApprovalService
-from vglpos.services.checkout_service import LOYALTY_EARN_DIVISOR
 from vglpos.services.event_dispatcher import publish_event
 from vglpos.services.exceptions import ConflictError, EntityNotFoundError, ValidationError
 from vglpos.services.inventory_service import InventoryService
@@ -44,7 +44,8 @@ class CancelSaleCommand:
 class ReceiptDispatch:
     sale_id: int
     invoice_number: str
-    phone: str
+    phone: str | None
+    email: str | None
 
 
 class SalesService:
@@ -142,7 +143,7 @@ class SalesService:
                     cmd.actor_user_id,
                     allow_deleted=True,
                 )
-        self._reverse_customer_counters(sale)
+        self._reverse_customer_counters(sale, actor_user_id=cmd.actor_user_id)
         sale.sale_status = "CANCELLED"
         sale.cancelled_at = datetime.now(UTC)
         sale.cancellation_reason = cmd.reason.strip()
@@ -164,8 +165,8 @@ class SalesService:
             self.session.rollback()
             raise ConflictError("Sale cancellation conflicted with current state.") from exc
 
-    def receipt_dispatch(self, sale_id: int) -> ReceiptDispatch:
-        """Resolve a stored customer phone without accepting an arbitrary destination."""
+    def receipt_dispatch(self, sale_id: int, *, channel: str = "WHATSAPP") -> ReceiptDispatch:
+        """Resolve a stored customer destination without accepting arbitrary recipients."""
         sale = self._get_sale(sale_id)
         if sale.customer_id is None:
             raise ValidationError("Sale has no customer for receipt delivery.")
@@ -176,9 +177,33 @@ class SalesService:
                 Customer.deleted_at.is_(None),
             )
         )
-        if customer is None or not customer.phone.strip():
+        if customer is None:
+            raise ValidationError("Sale customer was not found for receipt delivery.")
+        normalized_channel = channel.strip().upper()
+        if normalized_channel in {"WHATSAPP", "SMS"} and not customer.phone.strip():
             raise ValidationError("Sale customer has no delivery phone.")
-        return ReceiptDispatch(sale.id, sale.invoice_number, customer.phone)
+        if normalized_channel == "EMAIL" and not (customer.email and customer.email.strip()):
+            raise ValidationError("Sale customer has no delivery email.")
+        if normalized_channel not in {"WHATSAPP", "SMS", "EMAIL"}:
+            raise ValidationError("Unsupported receipt delivery channel.")
+        return ReceiptDispatch(sale.id, sale.invoice_number, customer.phone, customer.email)
+
+    def record_reprint(self, sale_id: int, *, user_id: int) -> Sale:
+        """Audit every receipt reprint before allowing the browser to print it."""
+        if not user_id:
+            raise ValidationError("Authenticated user is required for a reprint.")
+        sale = self._get_sale(sale_id)
+        record_audit_event(
+            self.session,
+            company_id=self.company_id,
+            user_id=user_id,
+            action="RECEIPT_REPRINT",
+            entity_type="Sale",
+            entity_id=sale.id,
+            new_values={"invoice_number": sale.invoice_number},
+        )
+        self.session.commit()
+        return sale
 
     def _get_sale(self, sale_id: int, *, for_update: bool = False) -> Sale:
         sale = self.repository.get(sale_id, for_update=for_update)
@@ -186,7 +211,7 @@ class SalesService:
             raise EntityNotFoundError("Sale was not found.")
         return sale
 
-    def _reverse_customer_counters(self, sale: Sale) -> None:
+    def _reverse_customer_counters(self, sale: Sale, *, actor_user_id: int) -> None:
         if sale.customer_id is None:
             return
         customer = self.session.scalar(
@@ -200,8 +225,61 @@ class SalesService:
         )
         if customer is None:
             raise EntityNotFoundError("Sale customer was not found.")
-        reversed_points = qty(sale.net_amount / LOYALTY_EARN_DIVISOR)
-        customer.loyalty_points = max(Decimal("0.000"), customer.loyalty_points - reversed_points)
+        loyalty_rows = self.session.execute(
+            select(LoyaltyLedger.movement_type, func.sum(LoyaltyLedger.points))
+            .where(
+                LoyaltyLedger.company_id == self.company_id,
+                LoyaltyLedger.sale_id == sale.id,
+                LoyaltyLedger.credit_note_id.is_(None),
+                LoyaltyLedger.deleted_at.is_(None),
+            )
+            .group_by(LoyaltyLedger.movement_type)
+        ).all()
+        movements = {movement_type: qty(points) for movement_type, points in loyalty_rows}
+        earned = max(Decimal("0.000"), movements.get("EARN", Decimal("0.000")))
+        redeemed = abs(min(Decimal("0.000"), movements.get("REDEEM", Decimal("0.000"))))
+        balance = qty(customer.loyalty_points)
+        if earned > ZERO:
+            balance = qty(balance - earned)
+            self.session.add(
+                LoyaltyLedger(
+                    company_id=self.company_id,
+                    customer_id=customer.id,
+                    sale_id=sale.id,
+                    movement_type="EARN_REVERSAL",
+                    points=-earned,
+                    balance_after=balance,
+                    description=f"Earn reversal on void {sale.invoice_number}",
+                    created_by=actor_user_id,
+                )
+            )
+        if redeemed > ZERO:
+            balance = qty(balance + redeemed)
+            self.session.add(
+                LoyaltyLedger(
+                    company_id=self.company_id,
+                    customer_id=customer.id,
+                    sale_id=sale.id,
+                    movement_type="REDEEM_REVERSAL",
+                    points=redeemed,
+                    balance_after=balance,
+                    description=f"Redemption reversal on void {sale.invoice_number}",
+                    created_by=actor_user_id,
+                )
+            )
+        credit_total = money(
+            self.session.scalar(
+                select(func.coalesce(func.sum(SalePayment.amount), ZERO)).where(
+                    SalePayment.company_id == self.company_id,
+                    SalePayment.sale_id == sale.id,
+                    SalePayment.payment_method == "CREDIT",
+                    SalePayment.deleted_at.is_(None),
+                )
+            )
+            or ZERO
+        )
+        customer.loyalty_points = balance
+        customer.outstanding_balance = max(ZERO, money(customer.outstanding_balance - credit_total))
         customer.total_spent = max(ZERO, money(customer.total_spent - sale.net_amount))
         if customer.total_orders > 0:
             customer.total_orders -= 1

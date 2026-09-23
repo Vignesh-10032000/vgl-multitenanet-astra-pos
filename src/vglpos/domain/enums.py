@@ -13,6 +13,7 @@ class PaymentMethod(StrEnum):
     UPI = "UPI"
     BANK_TRANSFER = "BANK_TRANSFER"
     CREDIT = "CREDIT"
+    LOYALTY = "LOYALTY"
     OTHER = "OTHER"
 
 

@@ -12,15 +12,17 @@ import pytest
 from flask import Flask
 from flask.testing import FlaskClient
 from flask_jwt_extended import create_access_token, decode_token
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from tests.integration.conftest import IdentityContext
-from vglpos.domain.models import StockLedger
+from vglpos.domain.models import AuditLog, StockLedger
 from vglpos.extensions import cache, db
 from vglpos.security.permissions import KNOWN_PERMISSION_CODES
 
 
 def test_quote_checkout_list_detail_and_cancel(
+    api_app: Flask,
     api_client: FlaskClient,
     auth_headers: dict[str, str],
     mutation_headers: Callable[..., dict[str, str]],
@@ -67,6 +69,23 @@ def test_quote_checkout_list_detail_and_cancel(
     assert detail.get_json()["items"][0]["sku"] == api_identity.product.sku
     assert detail.get_json()["items"][0]["name"] == api_identity.product.name
     assert detail.get_json()["payments"][0]["amount"] == "118.00"
+
+    reprint = api_client.post(
+        f"/api/v1/sales/{sale_id}/reprint",
+        headers=mutation_headers(),
+        json={},
+    )
+    assert reprint.status_code == 200
+    with api_app.app_context(), Session(db.engine) as session:
+        audit = session.scalar(
+            select(AuditLog).where(
+                AuditLog.company_id == api_identity.company.id,
+                AuditLog.action == "RECEIPT_REPRINT",
+                AuditLog.entity_type == "Sale",
+                AuditLog.entity_id == str(sale_id),
+            )
+        )
+    assert audit is not None and audit.user_id == api_identity.user.id
 
     no_customer = api_client.post(
         f"/api/v1/sales/{sale_id}/receipt/whatsapp",
@@ -152,7 +171,11 @@ def test_whatsapp_receipt_is_queued_for_the_stored_customer(
     customer = api_client.post(
         "/api/v1/customers",
         headers=mutation_headers(),
-        json={"phone": "9000000300", "name": "Receipt Customer"},
+        json={
+            "phone": "9000000300",
+            "email": "receipt@example.invalid",
+            "name": "Receipt Customer",
+        },
     )
     assert customer.status_code == 201
     payload = {**checkout_payload, "customer_id": customer.get_json()["id"]}
@@ -166,10 +189,25 @@ def test_whatsapp_receipt_is_queued_for_the_stored_customer(
         return SimpleNamespace(id="task-123")
 
     monkeypatch.setattr("vglpos.api.v1.sales.send_whatsapp_receipt.apply_async", fake_apply_async)
+    sms_queued: dict[str, object] = {}
+    email_queued: dict[str, object] = {}
+    monkeypatch.setattr(
+        "vglpos.api.v1.sales.send_sms_receipt.apply_async",
+        lambda *, kwargs: sms_queued.update(kwargs) or SimpleNamespace(id="task-sms"),
+    )
+    monkeypatch.setattr(
+        "vglpos.api.v1.sales.send_email_receipt.apply_async",
+        lambda *, kwargs: email_queued.update(kwargs) or SimpleNamespace(id="task-email"),
+    )
     api_app.config.update(
         WHATSAPP_WEBHOOK_URL="https://provider.invalid/receipt",
         WHATSAPP_API_TOKEN="test-token",
         PUBLIC_RECEIPT_BASE_URL="https://receipts.invalid/sales",
+        SMS_WEBHOOK_URL="https://sms.invalid/receipt",
+        SMS_API_TOKEN="sms-token",
+        EMAIL_WEBHOOK_URL="https://email.invalid/receipt",
+        EMAIL_API_TOKEN="email-token",
+        EMAIL_FROM="billing@example.invalid",
     )
     response = api_client.post(
         f"/api/v1/sales/{sale.get_json()['id']}/receipt/whatsapp",
@@ -179,6 +217,23 @@ def test_whatsapp_receipt_is_queued_for_the_stored_customer(
     assert response.status_code == 202
     assert response.get_json() == {"status": "queued", "task_id": "task-123"}
     assert queued["phone"] == "9000000300"
+    sms = api_client.post(
+        f"/api/v1/sales/{sale.get_json()['id']}/receipt/sms",
+        headers=mutation_headers(),
+        json={},
+    )
+    email = api_client.post(
+        f"/api/v1/sales/{sale.get_json()['id']}/receipt/email",
+        headers=mutation_headers(),
+        json={},
+    )
+    assert sms.status_code == email.status_code == 202
+    assert sms_queued["phone"] == "9000000300"
+    assert email_queued["email"] == "receipt@example.invalid"
+    attachment = email_queued["attachment"]
+    assert isinstance(attachment, dict)
+    assert attachment["content_type"] == "application/pdf"
+    assert attachment["content_base64"].startswith("JVBER")
 
 
 def test_sale_ids_are_hidden_from_other_branches(
@@ -246,7 +301,7 @@ def test_shift_open_movement_close_and_conflicts(
     opened = api_client.post(
         "/api/v1/shifts/open",
         headers=mutation_headers(),
-        json={"opening_cash": "100.00"},
+        json={"opening_cash": "100.00", "denomination_counts": {"100": 1}},
     )
     assert opened.status_code == 201
     shift_id = opened.get_json()["id"]
@@ -254,7 +309,7 @@ def test_shift_open_movement_close_and_conflicts(
     conflict = api_client.post(
         "/api/v1/shifts/open",
         headers=mutation_headers(),
-        json={"opening_cash": "50.00"},
+        json={"opening_cash": "50.00", "denomination_counts": {"50": 1}},
     )
     assert conflict.status_code == 409
 
@@ -286,7 +341,11 @@ def test_shift_open_movement_close_and_conflicts(
     closed = api_client.post(
         "/api/v1/shifts/close",
         headers=mutation_headers(),
-        json={"shift_id": shift_id, "counted_cash": "125.00"},
+        json={
+            "shift_id": shift_id,
+            "counted_cash": "125.00",
+            "denomination_counts": {"100": 1, "20": 1, "5": 1},
+        },
     )
     assert closed.status_code == 200
     assert closed.get_json()["status"] == "CLOSED"
@@ -295,7 +354,11 @@ def test_shift_open_movement_close_and_conflicts(
     already_closed = api_client.post(
         "/api/v1/shifts/close",
         headers=mutation_headers(),
-        json={"shift_id": shift_id, "counted_cash": "125.00"},
+        json={
+            "shift_id": shift_id,
+            "counted_cash": "125.00",
+            "denomination_counts": {"100": 1, "20": 1, "5": 1},
+        },
     )
     assert already_closed.status_code == 409
 

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+from pathlib import Path
 
-from flask import Blueprint, Response, g, request
+from flask import Blueprint, Response, current_app, g, request, send_file
 from sqlalchemy.orm import Session
 
 from vglpos.api.v1.http import model_response, parse_body, parse_query
@@ -12,11 +13,17 @@ from vglpos.api.v1.idempotency import idempotent
 from vglpos.api.v1.openapi import documented
 from vglpos.api.v1.schemas.common import StatusResponse
 from vglpos.api.v1.schemas.products import (
+    BarcodeLabelsRequest,
+    BulkPriceUpdateRequest,
+    BulkPriceUpdateResponse,
     CatalogDeltaQuery,
     CatalogDeltaResponse,
     CategoryListResponse,
     CategoryResponse,
     ProductCreateRequest,
+    ProductImportCommitResponse,
+    ProductImportPreviewResponse,
+    ProductImportRowResponse,
     ProductLookupQuery,
     ProductPageResponse,
     ProductQuery,
@@ -26,12 +33,18 @@ from vglpos.api.v1.schemas.products import (
 from vglpos.api.v1.serializers import catalog_product_response, product_response
 from vglpos.extensions import db
 from vglpos.security.decorators import require_permission
+from vglpos.services.barcode_label_service import BarcodeLabelService
 from vglpos.services.cache_service import catalogue_key, get_mapping, set_mapping
+from vglpos.services.catalog_operations_service import (
+    BulkPriceUpdateCommand,
+    CatalogOperationsService,
+)
 from vglpos.services.catalog_service import (
     CatalogService,
     CreateProductCommand,
     UpdateProductCommand,
 )
+from vglpos.services.exceptions import ValidationError
 
 products_bp = Blueprint("products", __name__, url_prefix="/api/v1/products")
 
@@ -173,3 +186,147 @@ def delete_product(product_id: int) -> tuple[Response, int]:
     with Session(db.engine) as session:
         CatalogService(session, g.company_id).delete_product(product_id, user_id=g.user_id)
         return model_response(StatusResponse(status="deleted"))
+
+
+def _import_file() -> tuple[str, bytes]:
+    uploaded = request.files.get("file")
+    if uploaded is None or not uploaded.filename:
+        raise ValidationError("A CSV or XLSX file is required.")
+    return uploaded.filename, uploaded.read()
+
+
+def _import_preview_response(preview: object) -> ProductImportPreviewResponse:
+    return ProductImportPreviewResponse(
+        total_rows=preview.total_rows,
+        valid_rows=preview.valid_rows,
+        invalid_rows=preview.invalid_rows,
+        rows=[ProductImportRowResponse.model_validate(row) for row in preview.rows],
+    )
+
+
+@products_bp.post("/import/preview")
+@require_permission("product.create")
+@idempotent
+@documented(
+    summary="Dry-run a CSV or XLSX product import",
+    response_model=ProductImportPreviewResponse,
+)
+def preview_import() -> tuple[Response, int]:
+    filename, content = _import_file()
+    with Session(db.engine) as session:
+        preview = CatalogOperationsService(session, g.company_id).preview_import(filename, content)
+        return model_response(_import_preview_response(preview))
+
+
+@products_bp.post("/import/commit")
+@require_permission("product.create")
+@idempotent
+@documented(
+    summary="Commit a fully valid CSV or XLSX product import",
+    response_model=ProductImportCommitResponse,
+    success_status=201,
+)
+def commit_import() -> tuple[Response, int]:
+    filename, content = _import_file()
+    with Session(db.engine) as session:
+        products = CatalogOperationsService(session, g.company_id).commit_import(
+            filename, content, user_id=g.user_id
+        )
+        return model_response(ProductImportCommitResponse(imported_count=len(products)), status=201)
+
+
+@products_bp.post("/import/error-report")
+@require_permission("product.create")
+@idempotent
+@documented(summary="Download product-import validation errors")
+def import_error_report() -> Response:
+    filename, content = _import_file()
+    with Session(db.engine) as session:
+        report = CatalogOperationsService(session, g.company_id).error_report(filename, content)
+    return Response(
+        report,
+        content_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=product-import-errors.csv"},
+    )
+
+
+@products_bp.post("/bulk-price-update")
+@require_permission("product.edit")
+@idempotent
+@documented(
+    summary="Apply a manager-approved bulk price percentage",
+    request_model=BulkPriceUpdateRequest,
+    response_model=BulkPriceUpdateResponse,
+)
+def bulk_price_update() -> tuple[Response, int]:
+    body = parse_body(BulkPriceUpdateRequest)
+    with Session(db.engine) as session:
+        result = CatalogOperationsService(session, g.company_id).bulk_price_update(
+            BulkPriceUpdateCommand(
+                company_id=g.company_id,
+                actor_user_id=g.user_id,
+                category_id=body.category_id,
+                percentage=body.percentage,
+                approver_user_id=body.approver_user_id,
+                approval_pin=body.approval_pin,
+                reason=body.reason,
+            )
+        )
+        return model_response(BulkPriceUpdateResponse.model_validate(result))
+
+
+@products_bp.post("/barcode-labels")
+@require_permission("product.view")
+@idempotent
+@documented(
+    summary="Generate printable Code128 or EAN13 barcode labels",
+    request_model=BarcodeLabelsRequest,
+)
+def barcode_labels() -> Response:
+    body = parse_body(BarcodeLabelsRequest)
+    with Session(db.engine) as session:
+        svg = BarcodeLabelService(session, g.company_id).render(
+            body.product_ids,
+            symbology=body.symbology,
+            width_mm=body.width_mm,
+            height_mm=body.height_mm,
+        )
+    return Response(
+        svg,
+        content_type="image/svg+xml; charset=utf-8",
+        headers={"Content-Disposition": "inline; filename=barcode-labels.svg"},
+    )
+
+
+def _image_root() -> Path:
+    configured = str(current_app.config["PRODUCT_IMAGE_DIR"]).strip()
+    return Path(configured) if configured else Path(current_app.instance_path) / "product-images"
+
+
+@products_bp.post("/<int:product_id>/image")
+@require_permission("product.edit")
+@idempotent
+@documented(summary="Upload and safely resize a product image", response_model=ProductResponse)
+def upload_product_image(product_id: int) -> tuple[Response, int]:
+    uploaded = request.files.get("image")
+    if uploaded is None:
+        raise ValidationError("A product image is required.")
+    with Session(db.engine) as session:
+        product = CatalogOperationsService(session, g.company_id).store_product_image(
+            product_id,
+            user_id=g.user_id,
+            content=uploaded.read(),
+            storage_root=_image_root(),
+        )
+        return model_response(product_response(product))
+
+
+@products_bp.get("/<int:product_id>/image")
+@require_permission("product.view")
+@documented(summary="Read a safely re-encoded product image")
+def get_product_image(product_id: int) -> Response:
+    with Session(db.engine) as session:
+        path = CatalogOperationsService(session, g.company_id).product_image_path(
+            product_id, storage_root=_image_root()
+        )
+    return send_file(path, mimetype="image/webp", conditional=True, max_age=86400)

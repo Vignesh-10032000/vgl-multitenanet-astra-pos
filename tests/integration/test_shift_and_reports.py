@@ -23,7 +23,7 @@ from vglpos.services.shift_service import (
     ShiftService,
 )
 
-from .conftest import ServiceContext
+from .conftest import ServiceContext, open_service_shift
 
 
 def test_shift_blind_count_records_exact_variance(
@@ -37,6 +37,7 @@ def test_shift_blind_count_records_exact_variance(
             terminal_id=service_context.terminal.id,
             cashier_id=service_context.cashier.id,
             opening_cash="200.00",
+            denomination_counts={"200": 1},
         )
     )
     CheckoutService(service_session).checkout(
@@ -68,6 +69,7 @@ def test_shift_blind_count_records_exact_variance(
             company_id=service_context.company.id,
             shift_id=shift.id,
             counted_cash="290.00",
+            denomination_counts={"200": 1, "50": 1, "20": 2},
             user_id=service_context.cashier.id,
             notes="Eight rupees short",
         )
@@ -92,6 +94,7 @@ def test_shift_blind_count_records_exact_variance(
 def test_report_service_groups_sales_without_query_loops(
     service_session: Session, service_context: ServiceContext
 ) -> None:
+    open_service_shift(service_session, service_context)
     on_date = date(2026, 9, 17)
     CheckoutService(service_session).checkout(
         CheckoutCommand(
@@ -151,6 +154,7 @@ def test_z_report_does_not_duplicate_split_tender_sale_totals(
             terminal_id=service_context.terminal.id,
             cashier_id=service_context.cashier.id,
             opening_cash="100.00",
+            denomination_counts={"100": 1},
         )
     )
     CheckoutService(service_session).checkout(
@@ -163,7 +167,7 @@ def test_z_report_does_not_duplicate_split_tender_sale_totals(
             business_date=date(2026, 9, 17),
             lines=[CheckoutLineCommand(service_context.product.id, "1")],
             payments=[
-                PaymentCommand("CARD", "100.00"),
+                PaymentCommand("CARD", "100.00", "CARD-REF"),
                 PaymentCommand("CASH", "20.00"),
             ],
         )

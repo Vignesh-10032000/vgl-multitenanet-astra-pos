@@ -7,7 +7,7 @@ from urllib.request import Request
 import pytest
 from flask import Flask
 
-from vglpos.tasks.receipts import send_whatsapp_receipt
+from vglpos.tasks.receipts import send_email_receipt, send_sms_receipt, send_whatsapp_receipt
 
 
 class _ProviderResponse:
@@ -46,7 +46,11 @@ def test_receipt_task_posts_authenticated_payload(
     assert captured["timeout"] == 15
 
 
-def test_receipt_task_rejects_missing_configuration(api_app: Flask) -> None:
+def test_receipt_task_rejects_missing_configuration(
+    monkeypatch: pytest.MonkeyPatch, api_app: Flask
+) -> None:
+    monkeypatch.setitem(api_app.config, "WHATSAPP_WEBHOOK_URL", "")
+    monkeypatch.setitem(api_app.config, "WHATSAPP_API_TOKEN", "")
     with api_app.app_context(), pytest.raises(RuntimeError, match="not configured"):
         send_whatsapp_receipt.run(
             phone="9000000401",
@@ -69,3 +73,47 @@ def test_receipt_task_rejects_provider_failure(
             invoice_number="S/26-27/3",
             receipt_url="https://receipts.invalid/sales/3",
         )
+
+
+@pytest.mark.parametrize("channel", ["sms", "email"])
+def test_pluggable_receipt_tasks_post_provider_payloads(
+    monkeypatch: pytest.MonkeyPatch, api_app: Flask, channel: str
+) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_urlopen(request: Request, *, timeout: int) -> _ProviderResponse:
+        captured.update(request=request, timeout=timeout)
+        return _ProviderResponse(202)
+
+    monkeypatch.setattr("vglpos.services.receipt_delivery.urlopen", fake_urlopen)
+    with api_app.app_context():
+        if channel == "sms":
+            api_app.config.update(
+                SMS_WEBHOOK_URL="https://sms.invalid/send", SMS_API_TOKEN="sms-token"
+            )
+            result = send_sms_receipt.run(
+                phone="9000000403",
+                invoice_number="S/26-27/4",
+                receipt_url="https://receipts.invalid/sales/4",
+            )
+        else:
+            api_app.config.update(
+                EMAIL_WEBHOOK_URL="https://email.invalid/send",
+                EMAIL_API_TOKEN="email-token",
+                EMAIL_FROM="billing@example.invalid",
+            )
+            result = send_email_receipt.run(
+                email="buyer@example.invalid",
+                invoice_number="S/26-27/4",
+                receipt_url="https://receipts.invalid/sales/4",
+                attachment={
+                    "filename": "invoice.pdf",
+                    "content_type": "application/pdf",
+                    "content_base64": "JVBERg==",
+                },
+            )
+    assert result == {"status": "sent", "invoice_number": "S/26-27/4"}
+    request = captured["request"]
+    assert isinstance(request, Request)
+    assert request.get_header("Authorization") in {"Bearer sms-token", "Bearer email-token"}
+    assert captured["timeout"] == 15

@@ -31,8 +31,9 @@ class Shift(TenantEntity):
         Index(
             "idx_shifts_open",
             "terminal_id",
-            postgresql_where=text("status = 'OPEN'"),
-            sqlite_where=text("status = 'OPEN'"),
+            unique=True,
+            postgresql_where=text("status = 'OPEN' AND deleted_at IS NULL"),
+            sqlite_where=text("status = 'OPEN' AND deleted_at IS NULL"),
         ),
     )
 
@@ -57,6 +58,16 @@ class Shift(TenantEntity):
         String(20), default="OPEN", server_default=text("'OPEN'"), nullable=False
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    opening_denominations: Mapped[dict[str, int]] = mapped_column(
+        JSON().with_variant(JSONB, "postgresql"), default=dict, nullable=False
+    )
+    closing_denominations: Mapped[dict[str, int] | None] = mapped_column(
+        JSON().with_variant(JSONB, "postgresql"), nullable=True
+    )
+    variance_approved_by: Mapped[int | None] = mapped_column(
+        BIGINT, ForeignKey("users.id", ondelete="RESTRICT"), nullable=True
+    )
+    variance_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class CashMovement(TenantEntity):
@@ -69,6 +80,86 @@ class CashMovement(TenantEntity):
     movement_type: Mapped[str] = mapped_column(String(20), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
+    created_by: Mapped[int] = mapped_column(
+        BIGINT, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+
+
+class HeldBill(TenantEntity):
+    """Server-side parked cart that never reserves or mutates stock."""
+
+    __tablename__ = "held_bills"
+    __table_args__ = (
+        Index(
+            "idx_held_bills_terminal_status",
+            "company_id",
+            "terminal_id",
+            "status",
+            "created_at",
+        ),
+    )
+
+    branch_id: Mapped[int] = mapped_column(
+        BIGINT, ForeignKey("branches.id", ondelete="RESTRICT"), nullable=False
+    )
+    terminal_id: Mapped[int] = mapped_column(
+        BIGINT, ForeignKey("terminals.id", ondelete="RESTRICT"), nullable=False
+    )
+    cashier_id: Mapped[int] = mapped_column(
+        BIGINT, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    shift_id: Mapped[int] = mapped_column(
+        BIGINT, ForeignKey("shifts.id", ondelete="RESTRICT"), nullable=False
+    )
+    label: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    cart_payload: Mapped[dict[str, Any]] = mapped_column(
+        JSON().with_variant(JSONB, "postgresql"), nullable=False
+    )
+    item_count: Mapped[int] = mapped_column(nullable=False)
+    net_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(20), default="HELD", server_default=text("'HELD'"), nullable=False
+    )
+    created_by: Mapped[int] = mapped_column(
+        BIGINT, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+
+
+class TerminalQuickKey(TenantEntity):
+    """Pinned product position scoped to one physical counter."""
+
+    __tablename__ = "terminal_quick_keys"
+    __table_args__ = (
+        Index(
+            "uq_terminal_quick_keys_number",
+            "company_id",
+            "terminal_id",
+            "key_number",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+            sqlite_where=text("deleted_at IS NULL"),
+        ),
+        Index(
+            "uq_terminal_quick_keys_product",
+            "company_id",
+            "terminal_id",
+            "product_id",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+            sqlite_where=text("deleted_at IS NULL"),
+        ),
+    )
+
+    terminal_id: Mapped[int] = mapped_column(
+        BIGINT, ForeignKey("terminals.id", ondelete="CASCADE"), nullable=False
+    )
+    product_id: Mapped[int] = mapped_column(
+        BIGINT, ForeignKey("products.id", ondelete="CASCADE"), nullable=False
+    )
+    key_number: Mapped[int] = mapped_column(nullable=False)
+    is_pinned: Mapped[bool] = mapped_column(
+        default=True, server_default=text("true"), nullable=False
+    )
     created_by: Mapped[int] = mapped_column(
         BIGINT, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )

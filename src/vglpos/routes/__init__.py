@@ -9,6 +9,7 @@ from vglpos.api.v1.customers import customers_bp
 from vglpos.api.v1.openapi import openapi_bp
 from vglpos.api.v1.products import products_bp
 from vglpos.api.v1.reports import reports_bp
+from vglpos.api.v1.retail import retail_bp
 from vglpos.api.v1.sales import sales_bp
 from vglpos.api.v1.settings import settings_bp
 from vglpos.api.v1.shifts import shifts_bp
@@ -24,6 +25,7 @@ BLUEPRINTS: tuple[Blueprint, ...] = (
     sales_bp,
     products_bp,
     customers_bp,
+    retail_bp,
     shifts_bp,
     reports_bp,
     sync_bp,
@@ -59,6 +61,7 @@ PUBLIC_ENDPOINTS: frozenset[str] = frozenset(
         "web.settings",
         "web.receipt",
         "web.offline_receipt",
+        "web.z_report",
         "web.sync_queue",
         # PWA metadata and worker code contain no tenant data. They must remain
         # fetchable by the browser outside an authenticated fetch context.

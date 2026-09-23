@@ -20,7 +20,7 @@ from vglpos.services.exceptions import InvoiceNumberError, ValidationError
 from vglpos.services.inventory_service import InventoryService
 from vglpos.services.invoice_number_service import InvoiceNumberService
 
-from .conftest import ServiceContext
+from .conftest import ServiceContext, open_service_shift
 
 
 def _checkout_command(context: ServiceContext, attempt: int) -> CheckoutCommand:
@@ -41,6 +41,7 @@ def test_invoice_numbers_have_no_gaps(
     service_context: ServiceContext,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    open_service_shift(service_session, service_context)
     original = InventoryService.record_movement
     committed: list[int] = []
 

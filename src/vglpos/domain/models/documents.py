@@ -220,6 +220,7 @@ class SalePayment(TenantEntity):
     payment_method: Mapped[str] = mapped_column(String(50), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     reference_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    loyalty_points: Mapped[Decimal | None] = mapped_column(Numeric(12, 3), nullable=True)
     processed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("CURRENT_TIMESTAMP"), nullable=False
     )

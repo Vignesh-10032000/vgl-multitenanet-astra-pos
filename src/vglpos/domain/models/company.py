@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Index, String, text
+from decimal import Decimal
+
+from sqlalchemy import Boolean, Index, Numeric, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from vglpos.domain.models.base import AuditMixin, SurrogateKeyMixin
@@ -53,6 +55,18 @@ class Company(AuditMixin, SurrogateKeyMixin, Base):
     postal_code: Mapped[str] = mapped_column(String(10), nullable=False)
     contact_email: Mapped[str] = mapped_column(String(255), nullable=False)
     contact_phone: Mapped[str] = mapped_column(String(20), nullable=False)
+    shift_variance_threshold: Mapped[Decimal] = mapped_column(
+        Numeric(14, 2), default=Decimal("50.00"), server_default=text("50.00"), nullable=False
+    )
+    loyalty_earn_divisor: Mapped[Decimal] = mapped_column(
+        Numeric(14, 2), default=Decimal("10.00"), server_default=text("10.00"), nullable=False
+    )
+    loyalty_redemption_value: Mapped[Decimal] = mapped_column(
+        Numeric(14, 2), default=Decimal("0.25"), server_default=text("0.25"), nullable=False
+    )
+    loyalty_redemption_cap_percent: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2), default=Decimal("25.00"), server_default=text("25.00"), nullable=False
+    )
     is_active: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=text("true"), nullable=False
     )

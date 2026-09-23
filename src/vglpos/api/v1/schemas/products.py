@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import Field, model_validator
 
@@ -102,6 +103,7 @@ class ProductResponse(ResponseModel):
     hsn_id: int | None
     tax_rate_id: int
     barcode: str | None
+    image_path: str | None
     uom: str
     cost_price: Decimal
     selling_price: Decimal
@@ -133,3 +135,42 @@ class CatalogDeltaResponse(ResponseModel):
     items: list[CatalogProductResponse]
     synced_at: datetime
     truncated: bool
+
+
+class ProductImportRowResponse(ResponseModel):
+    row_number: int
+    sku: str
+    valid: bool
+    errors: list[str]
+
+
+class ProductImportPreviewResponse(ResponseModel):
+    total_rows: int
+    valid_rows: int
+    invalid_rows: int
+    rows: list[ProductImportRowResponse]
+
+
+class ProductImportCommitResponse(ResponseModel):
+    imported_count: int
+
+
+class BulkPriceUpdateRequest(RequestModel):
+    category_id: int | None = Field(default=None, gt=0)
+    percentage: Decimal = Field(gt=Decimal("-100.00"), le=Decimal("1000.00"))
+    approver_user_id: int = Field(gt=0)
+    approval_pin: str = Field(pattern=r"^\d{4,6}$")
+    reason: str = Field(min_length=1, max_length=500)
+
+
+class BulkPriceUpdateResponse(ResponseModel):
+    updated_count: int
+    percentage: Decimal
+    category_id: int | None
+
+
+class BarcodeLabelsRequest(RequestModel):
+    product_ids: list[int] = Field(min_length=1, max_length=100)
+    symbology: Literal["AUTO", "CODE128", "EAN13"] = "AUTO"
+    width_mm: Decimal = Field(default=Decimal("50.00"), ge=Decimal("25.00"), le=Decimal("100.00"))
+    height_mm: Decimal = Field(default=Decimal("30.00"), ge=Decimal("15.00"), le=Decimal("75.00"))

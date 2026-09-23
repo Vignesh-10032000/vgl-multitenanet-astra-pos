@@ -15,7 +15,9 @@ from vglpos.domain.enums import DocType, PaymentMethod, SupplyType
 from vglpos.domain.events import SaleCompleted
 from vglpos.domain.models import (
     Branch,
+    Company,
     Customer,
+    LoyaltyLedger,
     Product,
     Sale,
     SaleItem,
@@ -63,6 +65,16 @@ class PaymentCommand:
     method: str
     amount: object
     reference_number: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class NormalizedPayment:
+    """Carry one validated tender and any server-derived loyalty quantity."""
+
+    method: str
+    amount: Decimal
+    reference_number: str | None
+    loyalty_points: Decimal | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -224,7 +236,7 @@ class CheckoutService:
         products = self._load_products(cmd.company_id, tuple(requested), for_update=False)
         self._check_stock(products, requested)
         rates = self._load_rates(cmd.company_id, products, cmd.business_date)
-        customer = self._load_customer(cmd.company_id, cmd.customer_id)
+        customer = self._load_customer(cmd.company_id, cmd.customer_id, for_update=False)
         place_of_supply = (
             state_code_from_gstin(customer.gstin)
             if customer is not None and customer.gstin is not None
@@ -263,11 +275,17 @@ class CheckoutService:
             )
         )
         payments = self._normalize_payments(cmd)
-        amount_received = money(sum((amount for _, amount, _ in payments), ZERO))
+        company = self._load_company(cmd.company_id)
+        customer = self._load_customer(cmd.company_id, cmd.customer_id, for_update=False)
+        payments = self._validate_customer_tenders(payments, result, customer, company)
+        amount_received = money(sum((payment.amount for payment in payments), ZERO))
         change_due = money(max(ZERO, amount_received - result.net_amount))
         balance_due = money(max(ZERO, result.net_amount - amount_received))
         cash_tendered = money(
-            sum((amount for method, amount, _ in payments if method == "CASH"), ZERO)
+            sum(
+                (payment.amount for payment in payments if payment.method == "CASH"),
+                ZERO,
+            )
         )
         if change_due > cash_tendered:
             raise InvalidPaymentError("Change cannot be funded by a non-cash payment.")
@@ -276,12 +294,12 @@ class CheckoutService:
     def _build_checkout(self, cmd: CheckoutCommand) -> Sale:
         if not 1 <= len(cmd.lines) <= 200:
             raise ValidationError("Checkout must contain between 1 and 200 lines.")
-        branch = self._require_context(cmd)
+        branch, shift, company = self._require_context(cmd)
         requested = self._aggregate_quantities(cmd.lines)
         products = self._load_products(cmd.company_id, tuple(requested), for_update=True)
         self._check_stock(products, requested)
         rates = self._load_rates(cmd.company_id, products, cmd.business_date)
-        customer = self._load_customer(cmd.company_id, cmd.customer_id)
+        customer = self._load_customer(cmd.company_id, cmd.customer_id, for_update=True)
         place_of_supply = (
             state_code_from_gstin(customer.gstin)
             if customer is not None and customer.gstin is not None
@@ -306,7 +324,7 @@ class CheckoutService:
             order_discount=to_decimal(cmd.order_discount),
             apply_round_off=cmd.apply_round_off,
         )
-        payments = self._payments(cmd, result)
+        payments = self._payments(cmd, result, customer, company)
         document_no, _ = InvoiceNumberService(self.session).allocate(
             cmd.company_id,
             cmd.branch_id,
@@ -314,14 +332,14 @@ class CheckoutService:
             DocType.SALE.value,
             cmd.business_date,
         )
-        amount_paid = money(sum((amount for _, amount, _ in payments), ZERO))
+        amount_paid = money(sum((payment.amount for payment in payments), ZERO))
         sale = Sale(
             company_id=cmd.company_id,
             branch_id=cmd.branch_id,
             terminal_id=cmd.terminal_id,
             customer_id=cmd.customer_id,
             cashier_id=cmd.cashier_id,
-            shift_id=cmd.shift_id,
+            shift_id=shift.id,
             offline_uuid=cmd.offline_uuid,
             invoice_number=document_no,
             business_date=cmd.business_date,
@@ -340,7 +358,7 @@ class CheckoutService:
             net_amount=result.net_amount,
             amount_paid=amount_paid,
             balance_due=ZERO,
-            payment_method=payments[0][0] if len(payments) == 1 else "SPLIT",
+            payment_method=payments[0].method if len(payments) == 1 else "SPLIT",
             notes=cmd.notes,
             created_by=cmd.cashier_id,
         )
@@ -363,26 +381,13 @@ class CheckoutService:
                     cmd.cashier_id,
                 )
         if customer is not None:
-            earned_points = qty(result.net_amount / self.loyalty_earn_divisor)
-            self.session.execute(
-                update(Customer)
-                .where(
-                    Customer.id == customer.id,
-                    Customer.company_id == cmd.company_id,
-                    Customer.deleted_at.is_(None),
-                )
-                .values(
-                    loyalty_points=Customer.loyalty_points + earned_points,
-                    total_spent=Customer.total_spent + result.net_amount,
-                    total_orders=Customer.total_orders + 1,
-                    row_version=Customer.row_version + 1,
-                )
-            )
+            self._apply_customer_totals(cmd, sale, customer, company, result, payments)
         self.session.flush()
         return sale
 
-    def _require_context(self, cmd: CheckoutCommand) -> Branch:
+    def _require_context(self, cmd: CheckoutCommand) -> tuple[Branch, Shift, Company]:
         branch = self._require_branch(cmd.company_id, cmd.branch_id)
+        company = self._load_company(cmd.company_id)
         terminal = self.session.scalar(
             select(Terminal.id).where(
                 Terminal.id == cmd.terminal_id,
@@ -404,21 +409,33 @@ class CheckoutService:
         )
         if cashier is None:
             raise EntityNotFoundError("Cashier was not found.")
+        shift_statement = select(Shift).where(
+            Shift.company_id == cmd.company_id,
+            Shift.branch_id == cmd.branch_id,
+            Shift.terminal_id == cmd.terminal_id,
+            Shift.cashier_id == cmd.cashier_id,
+            Shift.deleted_at.is_(None),
+        )
         if cmd.shift_id is not None:
-            shift = self.session.scalar(
-                select(Shift.id).where(
-                    Shift.id == cmd.shift_id,
-                    Shift.company_id == cmd.company_id,
-                    Shift.branch_id == cmd.branch_id,
-                    Shift.terminal_id == cmd.terminal_id,
-                    Shift.cashier_id == cmd.cashier_id,
-                    Shift.status == "OPEN",
-                    Shift.deleted_at.is_(None),
-                )
+            shift_statement = shift_statement.where(Shift.id == cmd.shift_id)
+        else:
+            shift_statement = shift_statement.where(Shift.status == "OPEN")
+        shift = self.session.scalar(shift_statement.with_for_update())
+        if shift is None or (shift.status != "OPEN" and cmd.offline_uuid is None):
+            raise EntityNotFoundError("An open shift is required before checkout.")
+        return branch, shift, company
+
+    def _load_company(self, company_id: int) -> Company:
+        company = self.session.scalar(
+            select(Company).where(
+                Company.id == company_id,
+                Company.deleted_at.is_(None),
+                Company.is_active.is_(True),
             )
-            if shift is None:
-                raise EntityNotFoundError("Open shift was not found.")
-        return branch
+        )
+        if company is None:
+            raise EntityNotFoundError("Company was not found.")
+        return company
 
     def _require_branch(self, company_id: int, branch_id: int) -> Branch:
         branch = self.session.scalar(
@@ -504,48 +521,59 @@ class CheckoutService:
             raise EntityNotFoundError("An effective product tax rate was not found.")
         return rates
 
-    def _load_customer(self, company_id: int, customer_id: int | None) -> Customer | None:
+    def _load_customer(
+        self, company_id: int, customer_id: int | None, *, for_update: bool
+    ) -> Customer | None:
         if customer_id is None:
             return None
-        customer = self.session.scalar(
-            select(Customer).where(
-                Customer.id == customer_id,
-                Customer.company_id == company_id,
-                Customer.deleted_at.is_(None),
-                Customer.is_active.is_(True),
-            )
+        statement = select(Customer).where(
+            Customer.id == customer_id,
+            Customer.company_id == company_id,
+            Customer.deleted_at.is_(None),
+            Customer.is_active.is_(True),
         )
+        if for_update:
+            statement = statement.with_for_update()
+        customer = self.session.scalar(statement)
         if customer is None:
             raise EntityNotFoundError("Customer was not found.")
         return customer
 
     def _payments(
-        self, cmd: CheckoutCommand, result: TaxResult
-    ) -> tuple[tuple[str, Decimal, str | None], ...]:
+        self,
+        cmd: CheckoutCommand,
+        result: TaxResult,
+        customer: Customer | None,
+        company: Company,
+    ) -> tuple[NormalizedPayment, ...]:
         normalized = self._normalize_payments(cmd)
-        tendered = money(sum((payment[1] for payment in normalized), ZERO))
+        normalized = self._validate_customer_tenders(normalized, result, customer, company)
+        tendered = money(sum((payment.amount for payment in normalized), ZERO))
         if tendered < result.net_amount:
             raise InvalidPaymentError("Tendered amount is less than the payable amount.")
         change = money(tendered - result.net_amount)
         cash_tendered = money(
-            sum((amount for method, amount, _ in normalized if method == "CASH"), ZERO)
+            sum(
+                (payment.amount for payment in normalized if payment.method == "CASH"),
+                ZERO,
+            )
         )
         if change > cash_tendered:
             raise InvalidPaymentError("Change cannot be funded by a non-cash payment.")
         return normalized
 
-    def _normalize_payments(
-        self, cmd: CheckoutCommand
-    ) -> tuple[tuple[str, Decimal, str | None], ...]:
+    def _normalize_payments(self, cmd: CheckoutCommand) -> tuple[NormalizedPayment, ...]:
         """Normalize tender rows once for previews and committed checkouts."""
         raw_payments = list(cmd.payments)
         if not raw_payments and cmd.amount_paid is not None and cmd.payment_method is not None:
             raw_payments = [PaymentCommand(cmd.payment_method, cmd.amount_paid)]
         if not raw_payments:
             raise InvalidPaymentError("At least one payment is required.")
+        if len(raw_payments) > 5:
+            raise InvalidPaymentError("A sale can contain at most five payment rows.")
 
         valid_methods = {method.value for method in PaymentMethod}
-        normalized: list[tuple[str, Decimal, str | None]] = []
+        normalized: list[NormalizedPayment] = []
         for payment in raw_payments:
             method = str(payment.method).upper()
             if method not in valid_methods:
@@ -556,8 +584,60 @@ class CheckoutService:
                 raise InvalidPaymentError("Payment amount must be numeric.") from exc
             if amount <= ZERO:
                 raise InvalidPaymentError("Payment amount must be greater than zero.")
-            normalized.append((method, amount, payment.reference_number))
+            reference = payment.reference_number.strip() if payment.reference_number else None
+            if method in {"UPI", "CARD"} and not reference:
+                raise InvalidPaymentError(f"{method} payment requires a reference number.")
+            normalized.append(NormalizedPayment(method, amount, reference))
         return tuple(normalized)
+
+    def _validate_customer_tenders(
+        self,
+        payments: tuple[NormalizedPayment, ...],
+        result: TaxResult,
+        customer: Customer | None,
+        company: Company,
+    ) -> tuple[NormalizedPayment, ...]:
+        credit_total = money(
+            sum((payment.amount for payment in payments if payment.method == "CREDIT"), ZERO)
+        )
+        loyalty_total = money(
+            sum((payment.amount for payment in payments if payment.method == "LOYALTY"), ZERO)
+        )
+        if (credit_total > ZERO or loyalty_total > ZERO) and customer is None:
+            raise InvalidPaymentError("Credit and loyalty payments require a customer.")
+        if customer is not None and credit_total > ZERO:
+            available_credit = money(customer.credit_limit - customer.outstanding_balance)
+            if credit_total > available_credit:
+                raise InvalidPaymentError("Credit payment exceeds the customer's available limit.")
+        if loyalty_total == ZERO:
+            return payments
+        assert customer is not None
+        redemption_value = money(company.loyalty_redemption_value)
+        if redemption_value <= ZERO:
+            raise InvalidPaymentError("Loyalty redemption is not configured.")
+        cap = money(result.net_amount * company.loyalty_redemption_cap_percent / Decimal("100"))
+        if loyalty_total > cap:
+            raise InvalidPaymentError("Loyalty redemption exceeds the configured bill cap.")
+        loyalty_points_by_index: dict[int, Decimal] = {}
+        for index, payment in enumerate(payments):
+            if payment.method != "LOYALTY":
+                continue
+            points = qty(payment.amount / redemption_value)
+            if money(points * redemption_value) != payment.amount:
+                raise InvalidPaymentError("Loyalty amount does not map to supported points.")
+            loyalty_points_by_index[index] = points
+        required_points = qty(sum(loyalty_points_by_index.values(), Decimal("0.000")))
+        if required_points > customer.loyalty_points:
+            raise InvalidPaymentError("Customer does not have enough loyalty points.")
+        return tuple(
+            NormalizedPayment(
+                payment.method,
+                payment.amount,
+                payment.reference_number,
+                loyalty_points_by_index.get(index),
+            )
+            for index, payment in enumerate(payments)
+        )
 
     def _add_sale_lines(
         self,
@@ -598,16 +678,87 @@ class CheckoutService:
         self,
         cmd: CheckoutCommand,
         sale: Sale,
-        payments: tuple[tuple[str, Decimal, str | None], ...],
+        payments: tuple[NormalizedPayment, ...],
     ) -> None:
-        for method, amount, reference in payments:
+        for payment in payments:
             self.session.add(
                 SalePayment(
                     company_id=cmd.company_id,
                     sale_id=sale.id,
-                    payment_method=method,
-                    amount=amount,
-                    reference_number=reference,
+                    payment_method=payment.method,
+                    amount=payment.amount,
+                    reference_number=payment.reference_number,
+                    loyalty_points=payment.loyalty_points,
                     created_by=cmd.cashier_id,
                 )
             )
+
+    def _apply_customer_totals(
+        self,
+        cmd: CheckoutCommand,
+        sale: Sale,
+        customer: Customer,
+        company: Company,
+        result: TaxResult,
+        payments: tuple[NormalizedPayment, ...],
+    ) -> None:
+        redeemed = qty(
+            sum(
+                (
+                    payment.loyalty_points
+                    for payment in payments
+                    if payment.loyalty_points is not None
+                ),
+                Decimal("0.000"),
+            )
+        )
+        credit = money(
+            sum((payment.amount for payment in payments if payment.method == "CREDIT"), ZERO)
+        )
+        balance = qty(customer.loyalty_points - redeemed)
+        if redeemed > ZERO:
+            self.session.add(
+                LoyaltyLedger(
+                    company_id=cmd.company_id,
+                    customer_id=customer.id,
+                    sale_id=sale.id,
+                    movement_type="REDEEM",
+                    points=-redeemed,
+                    balance_after=balance,
+                    description=f"Redeemed on sale {sale.invoice_number}",
+                    created_by=cmd.cashier_id,
+                )
+            )
+        divisor = money(company.loyalty_earn_divisor)
+        if divisor <= ZERO:
+            raise InvalidPaymentError("Loyalty earning is not configured.")
+        earned = qty(result.net_amount / divisor)
+        balance = qty(balance + earned)
+        if earned > ZERO:
+            self.session.add(
+                LoyaltyLedger(
+                    company_id=cmd.company_id,
+                    customer_id=customer.id,
+                    sale_id=sale.id,
+                    movement_type="EARN",
+                    points=earned,
+                    balance_after=balance,
+                    description=f"Earned on sale {sale.invoice_number}",
+                    created_by=cmd.cashier_id,
+                )
+            )
+        self.session.execute(
+            update(Customer)
+            .where(
+                Customer.id == customer.id,
+                Customer.company_id == cmd.company_id,
+                Customer.deleted_at.is_(None),
+            )
+            .values(
+                loyalty_points=balance,
+                total_spent=Customer.total_spent + result.net_amount,
+                total_orders=Customer.total_orders + 1,
+                outstanding_balance=Customer.outstanding_balance + credit,
+                row_version=Customer.row_version + 1,
+            )
+        )

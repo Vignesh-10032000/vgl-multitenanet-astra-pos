@@ -16,6 +16,33 @@
   font-weight: 600;
 }
 
+.z-report section {
+  padding-block: 0.5rem;
+  border-bottom: 1px dashed #333;
+}
+
+.z-report section h2 {
+  margin: 0 0 0.25rem;
+  font: 600 1em var(--font-mono);
+  text-transform: uppercase;
+}
+
+.z-report-totals {
+  width: 100%;
+  margin: 0;
+}
+
+.z-payment-totals p {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  padding: 2px 0;
+}
+
+.z-report-exceptions {
+  margin: 0;
+}
+
 @media print {
   html,
   body,

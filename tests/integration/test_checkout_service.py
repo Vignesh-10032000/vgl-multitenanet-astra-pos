@@ -16,9 +16,13 @@ from vglpos.services.checkout_service import (
     CheckoutService,
     PaymentCommand,
 )
-from vglpos.services.exceptions import InsufficientStockError, InvalidPaymentError
+from vglpos.services.exceptions import (
+    EntityNotFoundError,
+    InsufficientStockError,
+    InvalidPaymentError,
+)
 
-from .conftest import ServiceContext
+from .conftest import ServiceContext, open_service_shift
 
 ON_DATE = date(2026, 9, 17)
 
@@ -48,6 +52,7 @@ def _command(
 def test_checkout_uses_server_price_and_updates_every_aggregate(
     service_session: Session, service_context: ServiceContext
 ) -> None:
+    open_service_shift(service_session, service_context)
     command = _command(
         service_context,
         lines=[
@@ -86,6 +91,7 @@ def test_checkout_uses_server_price_and_updates_every_aggregate(
 def test_duplicate_lines_are_aggregated_before_stock_check(
     service_session: Session, service_context: ServiceContext
 ) -> None:
+    open_service_shift(service_session, service_context)
     service_context.product.on_hand = Decimal("1.000")
     service_session.commit()
     command = _command(
@@ -105,6 +111,7 @@ def test_duplicate_lines_are_aggregated_before_stock_check(
 def test_idempotent_replay_returns_original_sale(
     service_session: Session, service_context: ServiceContext
 ) -> None:
+    open_service_shift(service_session, service_context)
     command = _command(service_context, offline_uuid="6b76ec52-315c-47c4-a214-1f28b96daf23")
     service = CheckoutService(service_session)
 
@@ -119,6 +126,7 @@ def test_idempotent_replay_returns_original_sale(
 def test_customer_gstin_controls_interstate_tax(
     service_session: Session, service_context: ServiceContext
 ) -> None:
+    open_service_shift(service_session, service_context)
     service_context.customer.gstin = "29AACCR7832C1ZD"
     service_session.commit()
 
@@ -134,13 +142,21 @@ def test_customer_gstin_controls_interstate_tax(
 def test_change_must_be_covered_by_cash_tender(
     service_session: Session, service_context: ServiceContext
 ) -> None:
+    open_service_shift(service_session, service_context)
     command = _command(
         service_context,
-        payments=[PaymentCommand("CARD", "120.00")],
+        payments=[PaymentCommand("CARD", "120.00", "CARD-REF")],
     )
 
     with pytest.raises(InvalidPaymentError, match="non-cash"):
         CheckoutService(service_session).checkout(command)
+
+
+def test_checkout_rejected_without_an_open_shift(
+    service_session: Session, service_context: ServiceContext
+) -> None:
+    with pytest.raises(EntityNotFoundError, match="open shift"):
+        CheckoutService(service_session).checkout(_command(service_context))
 
 
 def test_payment_preview_reports_exact_balance_and_cash_change(

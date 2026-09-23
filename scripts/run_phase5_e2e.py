@@ -30,7 +30,7 @@ from vglpos.domain.models import (
     UserRole,
 )
 from vglpos.extensions import db
-from vglpos.security.password import hash_password
+from vglpos.security.password import hash_password, hash_pin
 from vglpos.security.permissions import PERMISSION_DEFINITIONS
 
 
@@ -85,6 +85,7 @@ def _seed(app: Flask) -> None:
             username="cashier",
             email="cashier@example.invalid",
             password_hash=hash_password("Browser-test-password-42!"),
+            pin_hash=hash_pin("2468"),
             full_name="Browser Cashier",
         )
         role = Role(

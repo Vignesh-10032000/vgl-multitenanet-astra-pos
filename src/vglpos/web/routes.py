@@ -83,6 +83,12 @@ def offline_receipt(offline_uuid: UUID) -> Response:
     )
 
 
+@web_bp.get("/z-report/<int:shift_id>")
+def z_report(shift_id: int) -> Response:
+    """Render a printable shift-close report populated through the protected API."""
+    return _page("z_report.html", page_name="z-report", shell="receipt", shift_id=shift_id)
+
+
 @web_bp.get("/sync-queue")
 def sync_queue() -> Response:
     """Render the required human review surface for queued and rejected bills."""

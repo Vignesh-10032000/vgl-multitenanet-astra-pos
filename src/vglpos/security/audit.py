@@ -21,6 +21,8 @@ from vglpos.domain.models import (
     CreditNoteItem,
     Customer,
     DocumentSeries,
+    HeldBill,
+    LoyaltyLedger,
     Product,
     ProductBarcode,
     Purchase,
@@ -36,6 +38,7 @@ from vglpos.domain.models import (
     Supplier,
     TaxRate,
     Terminal,
+    TerminalQuickKey,
     User,
     UserRole,
 )
@@ -69,6 +72,9 @@ _AUDITED_TYPES = (
     Terminal,
     User,
     UserRole,
+    HeldBill,
+    LoyaltyLedger,
+    TerminalQuickKey,
 )
 
 

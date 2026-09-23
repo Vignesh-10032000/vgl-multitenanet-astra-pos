@@ -23,6 +23,7 @@ export default defineConfig({
         reports: resolve(sourceRoot, "js/reports.js"),
         settings: resolve(sourceRoot, "js/settings.js"),
         receipt: resolve(sourceRoot, "js/receipt.js"),
+        zReport: resolve(sourceRoot, "js/z-report.js"),
         offlineReceipt: resolve(sourceRoot, "js/offline-receipt.js"),
         syncQueue: resolve(sourceRoot, "js/sync-queue.js")
       },

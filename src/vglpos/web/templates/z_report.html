@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Z report · VGL POS{% endblock %}
+{% block receipt_content %}
+  <div class="receipt-toolbar no-print">
+    <a class="button button-secondary" href="/pos"><i data-lucide="arrow-left"></i><span data-i18n="receipt.new_sale">New sale</span></a>
+    <button class="button button-primary" type="button" id="print-z-report"><i data-lucide="printer"></i><span data-i18n="common.print">Print</span></button>
+  </div>
+  <article class="invoice paper-a5 z-report" id="z-report" data-shift-id="{{ shift_id }}" aria-busy="true">
+    <header class="invoice-header"><div class="receipt-brand-mark" aria-hidden="true">V</div><h1>VGL POS</h1><p data-i18n="z_report.subtitle">End-of-shift reconciliation</p></header>
+    <div class="invoice-title"><strong data-i18n="z_report.title">Z REPORT</strong><span><span data-i18n="pos.shift_id">Shift ID</span>: <span id="z-shift-id">—</span></span></div>
+    <section><h2 data-i18n="z_report.sales">Sales</h2><dl class="invoice-totals z-report-totals"><div><dt data-i18n="z_report.transactions">Transactions</dt><dd id="z-transactions">—</dd></div><div><dt data-i18n="z_report.gross_sales">Gross sales</dt><dd id="z-gross-sales">—</dd></div><div><dt data-i18n="pos.discount">Discount</dt><dd id="z-discounts">—</dd></div><div class="invoice-grand-total"><dt data-i18n="z_report.net_sales">Net sales</dt><dd id="z-net-sales">—</dd></div></dl></section>
+    <section><h2 data-i18n="z_report.tenders">Tender summary</h2><div id="z-payment-totals" class="z-payment-totals"></div></section>
+    <section><h2 data-i18n="z_report.drawer">Cash drawer</h2><dl class="invoice-totals z-report-totals"><div><dt data-i18n="z_report.cash_sales">Cash sales</dt><dd id="z-cash-sales">—</dd></div><div><dt data-i18n="z_report.cash_movements">Cash movements</dt><dd id="z-cash-movements">—</dd></div><div><dt data-i18n="z_report.expected_cash">Expected cash</dt><dd id="z-expected-cash">—</dd></div><div><dt data-i18n="pos.counted_cash">Counted cash</dt><dd id="z-counted-cash">—</dd></div><div class="invoice-grand-total"><dt data-i18n="z_report.variance">Variance</dt><dd id="z-variance">—</dd></div></dl></section>
+    <section><h2 data-i18n="z_report.exceptions">Exceptions</h2><dl class="invoice-meta z-report-exceptions"><div><dt data-i18n="z_report.voids">Voids</dt><dd id="z-voids">—</dd></div><div><dt data-i18n="z_report.returns">Returns</dt><dd id="z-returns">—</dd></div><div><dt data-i18n="z_report.no_sales">No-sale opens</dt><dd id="z-no-sales">—</dd></div></dl></section>
+    <section><h2 data-i18n="z_report.tax">Tax summary</h2><dl class="invoice-totals z-report-totals"><div><dt>CGST</dt><dd id="z-cgst">—</dd></div><div><dt>SGST</dt><dd id="z-sgst">—</dd></div><div><dt>IGST</dt><dd id="z-igst">—</dd></div><div><dt data-i18n="pos.cess">Cess</dt><dd id="z-cess">—</dd></div></dl></section>
+    <footer class="invoice-footer"><small data-i18n="z_report.system_note">Computer-generated shift close report</small></footer>
+  </article>
+{% endblock %}
+{% block scripts %}
+  {% set bundle = vite_entry('js/z-report.js') %}
+  {% for stylesheet in bundle.styles %}<link rel="stylesheet" href="{{ stylesheet }}">{% endfor %}
+  <script type="module" src="{{ bundle.script }}" defer></script>
+{% endblock %}

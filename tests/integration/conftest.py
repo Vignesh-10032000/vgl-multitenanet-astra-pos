@@ -29,6 +29,7 @@ from vglpos.domain.models import (
     Product,
     Role,
     RolePermission,
+    Shift,
     TaxRate,
     Terminal,
     User,
@@ -386,6 +387,29 @@ def seed_service_context(
     )
     session.commit()
     return ServiceContext(company, branch, terminal, cashier, rate, product, customer)
+
+
+def open_service_shift(
+    session: Session,
+    context: ServiceContext,
+    *,
+    opening_cash: Decimal = Decimal("0.00"),
+    denomination_counts: dict[str, int] | None = None,
+) -> Shift:
+    """Open the counter explicitly so checkout tests exercise the Phase 7 invariant."""
+    from vglpos.services.shift_service import OpenShiftCommand, ShiftService
+
+    counts = denomination_counts if denomination_counts is not None else {}
+    return ShiftService(session).open_shift(
+        OpenShiftCommand(
+            company_id=context.company.id,
+            branch_id=context.branch.id,
+            terminal_id=context.terminal.id,
+            cashier_id=context.cashier.id,
+            opening_cash=opening_cash,
+            denomination_counts=counts,
+        )
+    )
 
 
 @pytest.fixture()

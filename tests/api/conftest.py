@@ -100,7 +100,23 @@ def mutation_headers(auth_headers: dict[str, str]) -> Callable[..., dict[str, st
 
 
 @pytest.fixture()
-def checkout_payload(api_identity: IdentityContext) -> dict[str, object]:
+def api_open_shift(
+    api_client: FlaskClient,
+    mutation_headers: Callable[..., dict[str, str]],
+) -> dict[str, object]:
+    response = api_client.post(
+        "/api/v1/shifts/open",
+        headers=mutation_headers(),
+        json={"opening_cash": "100.00", "denomination_counts": {"100": 1}},
+    )
+    assert response.status_code == 201, response.get_data(as_text=True)
+    return response.get_json()
+
+
+@pytest.fixture()
+def checkout_payload(
+    api_identity: IdentityContext, api_open_shift: dict[str, object]
+) -> dict[str, object]:
     return {
         "lines": [{"product_id": api_identity.product.id, "quantity": "1.000"}],
         "payments": [{"method": "CASH", "amount": "118.00"}],

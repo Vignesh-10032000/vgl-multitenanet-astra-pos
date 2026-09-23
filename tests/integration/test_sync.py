@@ -21,17 +21,24 @@ from vglpos.services.checkout_service import (
 )
 from vglpos.services.sync_service import OfflineSyncService, SignedCheckoutOperation
 
-from .conftest import ServiceContext
+from .conftest import ServiceContext, open_service_shift
 
 SIGNING_SECRET = "integration-offline-signing-secret-value"
 
 
-def _command(context: ServiceContext, identifier: UUID, quantity: str = "1.000") -> CheckoutCommand:
+def _command(
+    context: ServiceContext,
+    identifier: UUID,
+    quantity: str = "1.000",
+    *,
+    shift_id: int | None = None,
+) -> CheckoutCommand:
     return CheckoutCommand(
         company_id=context.company.id,
         branch_id=context.branch.id,
         terminal_id=context.terminal.id,
         cashier_id=context.cashier.id,
+        shift_id=shift_id,
         lines=[CheckoutLineCommand(context.product.id, quantity)],
         payments=[PaymentCommand("CASH", "118.00")],
         business_date=date(2026, 9, 21),
@@ -40,7 +47,11 @@ def _command(context: ServiceContext, identifier: UUID, quantity: str = "1.000")
 
 
 def _payload(
-    context: ServiceContext, identifier: UUID, quantity: str = "1.000"
+    context: ServiceContext,
+    identifier: UUID,
+    quantity: str = "1.000",
+    *,
+    shift_id: int | None = None,
 ) -> dict[str, object]:
     return {
         "lines": [
@@ -55,7 +66,7 @@ def _payload(
         "business_date": "2026-09-21",
         "order_discount": "0.00",
         "apply_round_off": True,
-        "shift_id": None,
+        "shift_id": shift_id,
         "offline_uuid": str(identifier),
         "notes": None,
     }
@@ -76,8 +87,10 @@ def _signed_operation(
     context: ServiceContext,
     identifier: UUID,
     quantity: str = "1.000",
+    *,
+    shift_id: int | None = None,
 ) -> SignedCheckoutOperation:
-    payload = _payload(context, identifier, quantity)
+    payload = _payload(context, identifier, quantity, shift_id=shift_id)
     key = base64.urlsafe_b64decode(f"{service.bootstrap().signing_key}=")
     body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
     signature = (
@@ -88,16 +101,20 @@ def _signed_operation(
         .rstrip("=")
     )
     return SignedCheckoutOperation(
-        identifier, _command(context, identifier, quantity), payload, signature
+        identifier,
+        _command(context, identifier, quantity, shift_id=shift_id),
+        payload,
+        signature,
     )
 
 
 def test_duplicate_signed_uuid_creates_exactly_one_sale(
     service_session: Session, service_context: ServiceContext
 ) -> None:
+    shift = open_service_shift(service_session, service_context)
     service = _service(service_session, service_context)
     identifier = uuid4()
-    operation = _signed_operation(service, service_context, identifier)
+    operation = _signed_operation(service, service_context, identifier, shift_id=shift.id)
 
     results = service.sync_batch([operation, operation])
 
@@ -110,10 +127,13 @@ def test_duplicate_signed_uuid_creates_exactly_one_sale(
 def test_partial_failure_keeps_rejected_bill_visible(
     service_session: Session, service_context: ServiceContext
 ) -> None:
+    shift = open_service_shift(service_session, service_context)
     service = _service(service_session, service_context)
-    good = _signed_operation(service, service_context, uuid4())
-    unavailable = _signed_operation(service, service_context, uuid4(), "2000.000")
-    tampered = _signed_operation(service, service_context, uuid4())
+    good = _signed_operation(service, service_context, uuid4(), shift_id=shift.id)
+    unavailable = _signed_operation(
+        service, service_context, uuid4(), "2000.000", shift_id=shift.id
+    )
+    tampered = _signed_operation(service, service_context, uuid4(), shift_id=shift.id)
     tampered = SignedCheckoutOperation(
         tampered.uuid,
         tampered.command,

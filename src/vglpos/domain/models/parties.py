@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Index, Numeric, String, Text, text
+from sqlalchemy import Boolean, ForeignKey, Index, Numeric, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from vglpos.domain.models.base import BIGINT, TenantEntity
@@ -62,6 +62,32 @@ class Customer(TenantEntity):
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=text("true"), nullable=False
+    )
+
+
+class LoyaltyLedger(TenantEntity):
+    """Append-only points movement preserving every earn, redeem, and reversal."""
+
+    __tablename__ = "loyalty_ledger"
+    __table_args__ = (
+        Index("idx_loyalty_ledger_customer", "company_id", "customer_id", "created_at", "id"),
+    )
+
+    customer_id: Mapped[int] = mapped_column(
+        BIGINT, ForeignKey("customers.id", ondelete="RESTRICT"), nullable=False
+    )
+    sale_id: Mapped[int | None] = mapped_column(
+        BIGINT, ForeignKey("sales.id", ondelete="RESTRICT"), nullable=True
+    )
+    credit_note_id: Mapped[int | None] = mapped_column(
+        BIGINT, ForeignKey("credit_notes.id", ondelete="RESTRICT"), nullable=True
+    )
+    movement_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    points: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
+    balance_after: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_by: Mapped[int] = mapped_column(
+        BIGINT, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
 
 

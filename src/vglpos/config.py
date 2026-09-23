@@ -63,6 +63,12 @@ class BaseConfig(BaseSettings):
     WHATSAPP_WEBHOOK_URL: str = ""
     WHATSAPP_API_TOKEN: str = ""
     PUBLIC_RECEIPT_BASE_URL: str = ""
+    SMS_WEBHOOK_URL: str = ""
+    SMS_API_TOKEN: str = ""
+    EMAIL_WEBHOOK_URL: str = ""
+    EMAIL_API_TOKEN: str = ""
+    EMAIL_FROM: str = ""
+    PRODUCT_IMAGE_DIR: str = ""
 
     DATABASE_URL: str = ""
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -115,6 +121,12 @@ class BaseConfig(BaseSettings):
             "WHATSAPP_WEBHOOK_URL": self.WHATSAPP_WEBHOOK_URL,
             "WHATSAPP_API_TOKEN": self.WHATSAPP_API_TOKEN,
             "PUBLIC_RECEIPT_BASE_URL": self.PUBLIC_RECEIPT_BASE_URL,
+            "SMS_WEBHOOK_URL": self.SMS_WEBHOOK_URL,
+            "SMS_API_TOKEN": self.SMS_API_TOKEN,
+            "EMAIL_WEBHOOK_URL": self.EMAIL_WEBHOOK_URL,
+            "EMAIL_API_TOKEN": self.EMAIL_API_TOKEN,
+            "EMAIL_FROM": self.EMAIL_FROM,
+            "PRODUCT_IMAGE_DIR": self.PRODUCT_IMAGE_DIR,
             "CACHE_TYPE": self.CACHE_TYPE,
             "CACHE_REDIS_URL": self.REDIS_URL,
             "CACHE_DEFAULT_TIMEOUT": self.CACHE_DEFAULT_TIMEOUT,

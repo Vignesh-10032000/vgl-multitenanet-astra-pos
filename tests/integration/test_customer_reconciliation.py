@@ -16,13 +16,14 @@ from vglpos.services.checkout_service import (
 )
 from vglpos.services.customer_reconciliation import CustomerCounterReconciliationService
 
-from .conftest import ServiceContext
+from .conftest import ServiceContext, open_service_shift
 
 
 def test_customer_counter_reconciliation_reports_and_repairs_drift(
     service_session: Session,
     service_context: ServiceContext,
 ) -> None:
+    open_service_shift(service_session, service_context)
     CheckoutService(service_session).checkout(
         CheckoutCommand(
             company_id=service_context.company.id,

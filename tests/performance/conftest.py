@@ -16,6 +16,7 @@ from vglpos.extensions import db
 api_app = api_fixtures.api_app
 api_client = api_fixtures.api_client
 api_identity = api_fixtures.api_identity
+api_open_shift = api_fixtures.api_open_shift
 auth_headers = api_fixtures.auth_headers
 checkout_payload = api_fixtures.checkout_payload
 login_payload = api_fixtures.login_payload
@@ -62,6 +63,7 @@ __all__ = [
     "api_app",
     "api_client",
     "api_identity",
+    "api_open_shift",
     "assert_max_queries",
     "auth_headers",
     "checkout_payload",

@@ -30,7 +30,7 @@ class CheckoutLineRequest(RequestModel):
 
 
 class PaymentRequest(RequestModel):
-    method: Literal["CASH", "CARD", "UPI", "BANK_TRANSFER", "CREDIT", "OTHER"]
+    method: Literal["CASH", "CARD", "UPI", "BANK_TRANSFER", "CREDIT", "LOYALTY", "OTHER"]
     amount: PositiveMoney
     reference_number: str | None = Field(default=None, max_length=100)
 
@@ -122,6 +122,7 @@ class SalePaymentResponse(ResponseModel):
     payment_method: str
     amount: Decimal
     reference_number: str | None
+    loyalty_points: Decimal | None
 
 
 class SaleResponse(ResponseModel):

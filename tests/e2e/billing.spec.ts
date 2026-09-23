@@ -13,11 +13,24 @@ async function signIn(page) {
     page.locator("#login-form").getByRole("button", { name: /sign in/i }).click(),
   ]);
   await expect(page.locator("#pos-product-grid")).toHaveAttribute("aria-busy", "false");
+  await page.waitForFunction(() => (
+    document.querySelector("#shift-status")?.getAttribute("data-state") === "open"
+      || document.querySelector("#shift-open-dialog")?.open
+  ));
+  if (await page.locator("#shift-open-dialog").isVisible()) {
+    await page.locator('#shift-open-form [data-denomination="100"]').fill("1");
+    await page.locator("#shift-open-form").getByRole("button", { name: /open shift/i }).click();
+    await expect(page.locator("#shift-open-dialog")).toBeHidden();
+  }
 }
 
 async function scan(page, barcode: string) {
-  await page.keyboard.type(barcode);
-  await page.keyboard.press("Enter");
+  await page.evaluate((value) => {
+    for (const key of value) {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+    }
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  }, barcode);
 }
 
 test("scanner billing restores the cart, accepts split tender, and prints every paper size", async ({ page }, testInfo) => {

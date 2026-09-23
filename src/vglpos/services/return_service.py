@@ -16,11 +16,12 @@ from vglpos.domain.models import (
     CreditNote,
     CreditNoteItem,
     Customer,
+    LoyaltyLedger,
     Product,
     Sale,
     SaleItem,
+    SalePayment,
 )
-from vglpos.services.checkout_service import LOYALTY_EARN_DIVISOR
 from vglpos.services.exceptions import (
     CheckoutError,
     EntityNotFoundError,
@@ -58,16 +59,8 @@ class CreateCreditNoteCommand:
 class ReturnService:
     """Validate cumulative returns and persist a tax-faithful credit note."""
 
-    def __init__(
-        self,
-        session: Session,
-        *,
-        loyalty_earn_divisor: Decimal = LOYALTY_EARN_DIVISOR,
-    ) -> None:
-        if loyalty_earn_divisor <= ZERO:
-            raise ValueError("loyalty_earn_divisor must be positive.")
+    def __init__(self, session: Session) -> None:
         self.session = session
-        self.loyalty_earn_divisor = loyalty_earn_divisor
 
     def create_credit_note(self, cmd: CreateCreditNoteCommand) -> CreditNote:
         """Commit one credit note, stock reversal, and loyalty reversal atomically."""
@@ -227,9 +220,20 @@ class ReturnService:
             customer = self.session.get(Customer, sale.customer_id, with_for_update=True)
             if customer is None or customer.company_id != cmd.company_id:
                 raise EntityNotFoundError("Sale customer was not found.")
-            reversed_points = qty(credit_total / self.loyalty_earn_divisor)
-            customer.loyalty_points = max(
-                Decimal("0.000"), customer.loyalty_points - reversed_points
+            self._reverse_loyalty(
+                cmd=cmd,
+                sale=sale,
+                credit_note=credit_note,
+                customer=customer,
+                credit_total=credit_total,
+                fully_returned=fully_returned,
+            )
+            self._reverse_credit_outstanding(
+                sale=sale,
+                customer=customer,
+                credit_total=credit_total,
+                prior_return_total=money(sum(prior_amounts.values(), ZERO)),
+                fully_returned=fully_returned,
             )
             customer.total_spent = max(ZERO, money(customer.total_spent - credit_total))
             if fully_returned and customer.total_orders > 0:
@@ -237,6 +241,125 @@ class ReturnService:
             customer.row_version += 1
         self.session.flush()
         return credit_note
+
+    def _reverse_loyalty(
+        self,
+        *,
+        cmd: CreateCreditNoteCommand,
+        sale: Sale,
+        credit_note: CreditNote,
+        customer: Customer,
+        credit_total: Decimal,
+        fully_returned: bool,
+    ) -> None:
+        """Reverse earned and redeemed points proportionally with an immutable ledger."""
+        original_rows = self.session.execute(
+            select(LoyaltyLedger.movement_type, func.sum(LoyaltyLedger.points))
+            .where(
+                LoyaltyLedger.company_id == cmd.company_id,
+                LoyaltyLedger.sale_id == sale.id,
+                LoyaltyLedger.credit_note_id.is_(None),
+                LoyaltyLedger.deleted_at.is_(None),
+            )
+            .group_by(LoyaltyLedger.movement_type)
+        ).all()
+        originals = {movement_type: qty(points) for movement_type, points in original_rows}
+        prior_rows = self.session.execute(
+            select(LoyaltyLedger.movement_type, func.sum(LoyaltyLedger.points))
+            .where(
+                LoyaltyLedger.company_id == cmd.company_id,
+                LoyaltyLedger.sale_id == sale.id,
+                LoyaltyLedger.credit_note_id.is_not(None),
+                LoyaltyLedger.deleted_at.is_(None),
+            )
+            .group_by(LoyaltyLedger.movement_type)
+        ).all()
+        prior = {movement_type: qty(points) for movement_type, points in prior_rows}
+        ratio = credit_total / sale.net_amount if sale.net_amount > ZERO else ZERO
+        original_earned = max(Decimal("0.000"), originals.get("EARN", Decimal("0.000")))
+        original_redeemed = abs(min(Decimal("0.000"), originals.get("REDEEM", Decimal("0.000"))))
+        earned_already_reversed = abs(
+            min(Decimal("0.000"), prior.get("EARN_REVERSAL", Decimal("0.000")))
+        )
+        redeemed_already_restored = max(
+            Decimal("0.000"), prior.get("REDEEM_REVERSAL", Decimal("0.000"))
+        )
+        earned_reversal = (
+            qty(original_earned - earned_already_reversed)
+            if fully_returned
+            else qty(original_earned * ratio)
+        )
+        redeemed_restoration = (
+            qty(original_redeemed - redeemed_already_restored)
+            if fully_returned
+            else qty(original_redeemed * ratio)
+        )
+        balance = qty(customer.loyalty_points)
+        if earned_reversal > ZERO:
+            balance = qty(balance - earned_reversal)
+            self.session.add(
+                LoyaltyLedger(
+                    company_id=cmd.company_id,
+                    customer_id=customer.id,
+                    sale_id=sale.id,
+                    credit_note_id=credit_note.id,
+                    movement_type="EARN_REVERSAL",
+                    points=-earned_reversal,
+                    balance_after=balance,
+                    description=f"Earn reversal on {credit_note.credit_note_number}",
+                    created_by=cmd.user_id,
+                )
+            )
+        if redeemed_restoration > ZERO:
+            balance = qty(balance + redeemed_restoration)
+            self.session.add(
+                LoyaltyLedger(
+                    company_id=cmd.company_id,
+                    customer_id=customer.id,
+                    sale_id=sale.id,
+                    credit_note_id=credit_note.id,
+                    movement_type="REDEEM_REVERSAL",
+                    points=redeemed_restoration,
+                    balance_after=balance,
+                    description=f"Redemption reversal on {credit_note.credit_note_number}",
+                    created_by=cmd.user_id,
+                )
+            )
+        customer.loyalty_points = balance
+
+    def _reverse_credit_outstanding(
+        self,
+        *,
+        sale: Sale,
+        customer: Customer,
+        credit_total: Decimal,
+        prior_return_total: Decimal,
+        fully_returned: bool,
+    ) -> None:
+        """Reduce khata outstanding by the returned share of the original credit tender."""
+        original_credit = money(
+            self.session.scalar(
+                select(func.coalesce(func.sum(SalePayment.amount), ZERO)).where(
+                    SalePayment.company_id == sale.company_id,
+                    SalePayment.sale_id == sale.id,
+                    SalePayment.payment_method == "CREDIT",
+                    SalePayment.deleted_at.is_(None),
+                )
+            )
+            or ZERO
+        )
+        if original_credit <= ZERO or sale.net_amount <= ZERO:
+            return
+        previously_reversed = money(original_credit * prior_return_total / sale.net_amount)
+        if fully_returned:
+            reversal = money(original_credit - previously_reversed)
+        else:
+            cumulative_return = money(prior_return_total + credit_total)
+            cumulative_reversal = money(original_credit * cumulative_return / sale.net_amount)
+            reversal = money(cumulative_reversal - previously_reversed)
+        customer.outstanding_balance = max(
+            ZERO, money(customer.outstanding_balance - max(ZERO, reversal))
+        )
 
     @staticmethod
     def _aggregate_requested(

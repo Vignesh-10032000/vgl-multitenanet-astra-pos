@@ -10,6 +10,7 @@ from vglpos.api.v1.context import counter_context
 from vglpos.api.v1.http import model_response, parse_body, parse_query
 from vglpos.api.v1.idempotency import idempotent
 from vglpos.api.v1.openapi import documented
+from vglpos.api.v1.schemas.common import StatusResponse
 from vglpos.api.v1.schemas.sales import (
     CheckoutRequest,
     PaymentPreviewRequest,
@@ -34,8 +35,9 @@ from vglpos.extensions import db, limiter
 from vglpos.security.decorators import require_permission
 from vglpos.services.checkout_service import CheckoutService
 from vglpos.services.exceptions import ValidationError
+from vglpos.services.receipt_delivery import pdf_attachment_payload, render_a5_invoice_pdf
 from vglpos.services.sales_service import CancelSaleCommand, SalesService
-from vglpos.tasks.receipts import send_whatsapp_receipt
+from vglpos.tasks.receipts import send_email_receipt, send_sms_receipt, send_whatsapp_receipt
 
 sales_bp = Blueprint("sales", __name__, url_prefix="/api/v1/sales")
 
@@ -156,6 +158,23 @@ def cancel_sale(sale_id: int) -> tuple[Response, int]:
         return model_response(sale_response(sale))
 
 
+@sales_bp.post("/<int:sale_id>/reprint")
+@require_permission("sale.view")
+@idempotent
+@documented(
+    summary="Authorize and audit a receipt reprint",
+    request_model=ReceiptDispatchRequest,
+    response_model=StatusResponse,
+)
+def reprint_sale(sale_id: int) -> tuple[Response, int]:
+    parse_body(ReceiptDispatchRequest)
+    with Session(db.engine) as session:
+        SalesService(session, g.company_id, branch_id=g.branch_id).record_reprint(
+            sale_id, user_id=g.user_id
+        )
+        return model_response(StatusResponse(status="authorized"))
+
+
 @sales_bp.post("/<int:sale_id>/receipt/whatsapp")
 @require_permission("sale.view")
 @limiter.limit("5 per hour", key_func=_user_rate_key)
@@ -186,6 +205,83 @@ def send_receipt(sale_id: int) -> tuple[Response, int]:
             "phone": dispatch.phone,
             "invoice_number": dispatch.invoice_number,
             "receipt_url": f"{base_url}/{dispatch.sale_id}",
+        }
+    )
+    return model_response(
+        ReceiptDispatchResponse(status="queued", task_id=str(task.id)), status=202
+    )
+
+
+@sales_bp.post("/<int:sale_id>/receipt/sms")
+@require_permission("sale.view")
+@limiter.limit("5 per hour", key_func=_user_rate_key)
+@idempotent
+@documented(
+    summary="Queue an SMS receipt delivery",
+    request_model=ReceiptDispatchRequest,
+    response_model=ReceiptDispatchResponse,
+    success_status=202,
+)
+def send_sms(sale_id: int) -> tuple[Response, int]:
+    parse_body(ReceiptDispatchRequest)
+    base_url = str(current_app.config["PUBLIC_RECEIPT_BASE_URL"]).strip().rstrip("/")
+    if not all(
+        (base_url, current_app.config["SMS_WEBHOOK_URL"], current_app.config["SMS_API_TOKEN"])
+    ):
+        raise ValidationError("SMS receipt delivery is not configured.")
+    with Session(db.engine) as session:
+        dispatch = SalesService(session, g.company_id, branch_id=g.branch_id).receipt_dispatch(
+            sale_id, channel="SMS"
+        )
+    assert dispatch.phone is not None
+    task = send_sms_receipt.apply_async(
+        kwargs={
+            "phone": dispatch.phone,
+            "invoice_number": dispatch.invoice_number,
+            "receipt_url": f"{base_url}/{dispatch.sale_id}",
+        }
+    )
+    return model_response(
+        ReceiptDispatchResponse(status="queued", task_id=str(task.id)), status=202
+    )
+
+
+@sales_bp.post("/<int:sale_id>/receipt/email")
+@require_permission("sale.view")
+@limiter.limit("5 per hour", key_func=_user_rate_key)
+@idempotent
+@documented(
+    summary="Queue an email receipt with an A5 PDF attachment",
+    request_model=ReceiptDispatchRequest,
+    response_model=ReceiptDispatchResponse,
+    success_status=202,
+)
+def send_email(sale_id: int) -> tuple[Response, int]:
+    parse_body(ReceiptDispatchRequest)
+    base_url = str(current_app.config["PUBLIC_RECEIPT_BASE_URL"]).strip().rstrip("/")
+    if not all(
+        (
+            base_url,
+            current_app.config["EMAIL_WEBHOOK_URL"],
+            current_app.config["EMAIL_API_TOKEN"],
+            current_app.config["EMAIL_FROM"],
+        )
+    ):
+        raise ValidationError("Email receipt delivery is not configured.")
+    with Session(db.engine) as session:
+        service = SalesService(session, g.company_id, branch_id=g.branch_id)
+        dispatch = service.receipt_dispatch(sale_id, channel="EMAIL")
+        attachment = pdf_attachment_payload(
+            f"{dispatch.invoice_number.replace('/', '-')}.pdf",
+            render_a5_invoice_pdf(service.sale_detail(sale_id)),
+        )
+    assert dispatch.email is not None
+    task = send_email_receipt.apply_async(
+        kwargs={
+            "email": dispatch.email,
+            "invoice_number": dispatch.invoice_number,
+            "receipt_url": f"{base_url}/{dispatch.sale_id}",
+            "attachment": attachment,
         }
     )
     return model_response(

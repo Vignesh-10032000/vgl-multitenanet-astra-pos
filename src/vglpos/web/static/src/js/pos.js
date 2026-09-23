@@ -1,10 +1,8 @@
 import "../css/pos.css";
 
-
 import { decimalCompare, localDateIso, scaledInteger } from "./data.js";
 import { whenAppReady } from "./app.js";
 import {
-  formatDate,
   formatInteger,
   formatMoney,
   formatQuantity,
@@ -40,16 +38,17 @@ const state = {
   lastBarcode: null,
   lastBarcodeAt: 0,
   usingOfflineQuote: false,
+  currentShift: null,
+  quickKeys: [],
 };
 
 let cartKey = "";
-let holdsKey = "";
 let quoteController = null;
 let audioContext = null;
 let offlinePromise = null;
 let offlineDatabasePromise = null;
 let taxEnginePromise = null;
-let keyValuePromise = null;
+let retailOperationsPromise = null;
 const scheduleQuote = debounce(requestQuote, 150);
 const schedulePaymentPreview = debounce(requestPaymentPreview, 150);
 
@@ -68,9 +67,19 @@ function taxEngine() {
   return taxEnginePromise;
 }
 
-function keyValueStore() {
-  keyValuePromise ||= import("idb-keyval");
-  return keyValuePromise;
+function retailOperations() {
+  retailOperationsPromise ||= import("./pos-retail-operations.js").then(
+    ({ createRetailOperations }) => createRetailOperations({
+      state,
+      quotePayload,
+      clearCart,
+      productById,
+      mutationComplete,
+      renderTotals,
+      offlineDatabase,
+    }),
+  );
+  return retailOperationsPromise;
 }
 
 function exactQuantity(value) {
@@ -228,6 +237,89 @@ function renderProducts() {
   refreshIcons(grid);
 }
 
+function renderQuickKeys() {
+  const container = document.querySelector("#quick-key-grid");
+  clearChildren(container);
+  state.quickKeys.forEach((entry) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "quick-key-button";
+    button.dataset.quickProductId = String(entry.product.id);
+    const key = document.createElement("kbd");
+    key.textContent = String(entry.key_number);
+    const name = document.createElement("span");
+    name.textContent = localizedName(entry.product);
+    button.append(key, name);
+    container.append(button);
+  });
+}
+
+async function loadQuickKeys() {
+  if (!navigator.onLine) return;
+  try {
+    const response = await apiJson("/api/v1/retail/quick-keys");
+    state.quickKeys = response.items;
+    renderQuickKeys();
+  } catch (error) {
+    showToast(`${t("pos.quick_keys_failed")}: ${error.message}`, { tone: "warning" });
+  }
+}
+
+function renderQuickKeySettings() {
+  const container = document.querySelector("#quick-key-settings");
+  clearChildren(container);
+  const pinned = new Map(
+    state.quickKeys.filter((entry) => entry.is_pinned)
+      .map((entry) => [entry.key_number, entry.product.id]),
+  );
+  for (let number = 1; number <= 12; number += 1) {
+    const label = document.createElement("label");
+    const key = document.createElement("kbd");
+    key.textContent = String(number);
+    const select = document.createElement("select");
+    select.dataset.quickKeyNumber = String(number);
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = "—";
+    select.append(empty);
+    state.products.forEach((product) => {
+      const option = document.createElement("option");
+      option.value = String(product.id);
+      option.textContent = `${localizedName(product)} · ${product.sku}`;
+      option.selected = pinned.get(number) === product.id;
+      select.append(option);
+    });
+    label.append(key, select);
+    container.append(label);
+  }
+}
+
+async function configureQuickKeys(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const assignments = [...form.querySelectorAll("[data-quick-key-number]")]
+    .filter((select) => select.value)
+    .map((select) => ({
+      key_number: Number.parseInt(select.dataset.quickKeyNumber, 10),
+      product_id: Number.parseInt(select.value, 10),
+    }));
+  setBusy(form, true);
+  try {
+    const response = await apiJson("/api/v1/retail/quick-keys", {
+      method: "PUT",
+      body: JSON.stringify({ assignments }),
+    });
+    state.quickKeys = response.items;
+    renderQuickKeys();
+    closeDialog("#quick-keys-dialog");
+    showToast(t("pos.quick_keys_saved"), { tone: "success" });
+  } catch (error) {
+    showToast(error.message, { tone: "danger" });
+  } finally {
+    setBusy(form, false);
+  }
+}
+
 function createQuantityControl(item) {
   const control = document.createElement("div");
   control.className = "quantity-control";
@@ -316,7 +408,8 @@ function renderTotals() {
   Object.entries(bindings).forEach(([selector, value]) => {
     document.querySelector(selector).textContent = formatMoney(value);
   });
-  document.querySelector("#pay-button").disabled = !state.cart.length || !state.quote;
+  document.querySelector("#pay-button").disabled =
+    !state.cart.length || !state.quote || !state.currentShift;
 }
 
 function renderCart(highlightId = null) {
@@ -692,7 +785,7 @@ function paymentRow(payment, index) {
   row.dataset.paymentId = payment.id;
   const method = document.createElement("select");
   method.setAttribute("aria-label", t("pos.payment_method"));
-  ["CASH", "UPI", "CARD", "BANK_TRANSFER", "CREDIT", "OTHER"].forEach((value) => {
+  ["CASH", "UPI", "CARD", "BANK_TRANSFER", "CREDIT", "LOYALTY", "OTHER"].forEach((value) => {
     const option = document.createElement("option");
     option.value = value;
     option.textContent = value.replace("_", " ");
@@ -825,13 +918,16 @@ async function saveOfflineCheckout(payload) {
 
 async function completeSale() {
   if (!state.paymentPreview || scaledInteger(state.paymentPreview.balance_due, 2) !== 0n) return;
+  if (!state.currentShift) {
+    document.querySelector("#payment-error").textContent = t("pos.shift_required");
+    return;
+  }
   const button = document.querySelector("#complete-sale");
   button.disabled = true;
-  const shift = sessionStorage.getItem("vglpos.shiftId");
   const payload = {
     ...quotePayload(),
     payments: paymentPayload(),
-    shift_id: shift ? Number.parseInt(shift, 10) : null,
+    shift_id: state.currentShift.id,
     offline_uuid: state.saleUuid,
     notes: null,
   };
@@ -874,19 +970,57 @@ async function holdBill() {
     showToast(t("pos.nothing_to_hold"), { tone: "warning" });
     return;
   }
-  const { get, set } = await keyValueStore();
-  const holds = await get(holdsKey) || [];
-  holds.unshift({ id: crypto.randomUUID(), createdAt: new Date().toISOString(), ...cartRecord() });
-  await set(holdsKey, holds.slice(0, 20));
-  clearCart({ offerUndo: false });
-  showToast(t("pos.bill_held"), { tone: "success" });
+  if (!state.currentShift || !navigator.onLine) {
+    showToast(t("pos.hold_requires_online_shift"), { tone: "warning" });
+    return;
+  }
+  const form = document.querySelector("#hold-form");
+  form.reset();
+  document.querySelector("#hold-error").textContent = "";
+  openDialog("#hold-dialog");
+  form.elements.label.focus();
+}
+
+async function submitHeldBill(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const error = document.querySelector("#hold-error");
+  error.textContent = "";
+  setBusy(form, true);
+  try {
+    await apiJson("/api/v1/retail/held-bills", {
+      method: "POST",
+      body: JSON.stringify({
+        ...quotePayload(),
+        shift_id: state.currentShift.id,
+        label: form.elements.label.value.trim() || null,
+      }),
+    });
+    closeDialog("#hold-dialog");
+    clearCart({ offerUndo: false });
+    showToast(t("pos.bill_held"), { tone: "success" });
+  } catch (failure) {
+    error.textContent = failure.message;
+  } finally {
+    setBusy(form, false);
+  }
+}
+
+async function fetchHeldBills() {
+  const response = await apiJson("/api/v1/retail/held-bills");
+  return response.items;
 }
 
 async function showHeldBills() {
-  const { get } = await keyValueStore();
-  const holds = await get(holdsKey) || [];
   const list = document.querySelector("#held-list");
   clearChildren(list);
+  let holds = [];
+  try {
+    holds = await fetchHeldBills();
+  } catch (error) {
+    showToast(error.message, { tone: "danger" });
+    return;
+  }
   if (!holds.length) {
     const message = document.createElement("p");
     message.textContent = t("pos.no_held_bills");
@@ -897,16 +1031,26 @@ async function showHeldBills() {
     row.className = "held-bill";
     const copy = document.createElement("div");
     const title = document.createElement("strong");
-    title.textContent = t("pos.held_items", { count: hold.cart.length });
+    title.textContent = hold.label || t("pos.held_items", { count: hold.item_count });
     const time = document.createElement("small");
-    time.textContent = formatDate(hold.createdAt, { dateStyle: "short", timeStyle: "short" });
-    copy.append(title, time);
+    time.textContent = `${formatDate(hold.created_at, { dateStyle: "short", timeStyle: "short" })} · ${formatMoney(hold.net_amount)}`;
+    const notice = document.createElement("small");
+    notice.textContent = t("pos.stock_not_reserved");
+    copy.append(title, time, notice);
+    const actions = document.createElement("div");
+    actions.className = "held-bill-actions";
     const restore = document.createElement("button");
     restore.type = "button";
     restore.className = "button button-secondary";
-    restore.dataset.restoreHold = hold.id;
+    restore.dataset.recallHold = hold.id;
     restore.textContent = t("pos.restore");
-    row.append(copy, restore);
+    const discard = document.createElement("button");
+    discard.type = "button";
+    discard.className = "button button-ghost";
+    discard.dataset.discardHold = hold.id;
+    discard.textContent = t("common.delete");
+    actions.append(restore, discard);
+    row.append(copy, actions);
     list.append(row);
   });
   openDialog("#holds-dialog");
@@ -917,17 +1061,92 @@ async function restoreHeldBill(id) {
     showToast(t("pos.hold_current_first"), { tone: "warning" });
     return;
   }
-  const { get, set } = await keyValueStore();
-  const holds = await get(holdsKey) || [];
-  const hold = holds.find((item) => item.id === id);
-  if (!hold) return;
-  state.cart = hold.cart;
-  state.saleUuid = hold.saleUuid || crypto.randomUUID();
-  document.querySelector("#order-discount").value = hold.orderDiscount || "0.00";
-  document.querySelector("#pos-customer").value = hold.customerId || "";
-  await set(holdsKey, holds.filter((item) => item.id !== id));
-  closeDialog("#holds-dialog");
-  mutationComplete();
+  try {
+    const hold = await apiJson(`/api/v1/retail/held-bills/${id}/recall`, {
+      method: "POST",
+      body: "{}",
+    });
+    const lines = hold.cart_payload.lines || [];
+    const restored = lines.map((line) => ({
+      product_id: line.product_id,
+      quantity: line.quantity,
+      product: productById(line.product_id),
+    }));
+    if (restored.some((line) => !line.product)) {
+      throw new Error(t("pos.held_product_unavailable"));
+    }
+    state.cart = restored;
+    state.saleUuid = crypto.randomUUID();
+    document.querySelector("#order-discount").value = hold.cart_payload.order_discount || "0.00";
+    document.querySelector("#pos-customer").value = hold.cart_payload.customer_id || "";
+    closeDialog("#holds-dialog");
+    mutationComplete();
+  } catch (error) {
+    showToast(error.message, { tone: "danger" });
+  }
+}
+
+async function discardHeldBill(id) {
+  try {
+    await apiJson(`/api/v1/retail/held-bills/${id}`, { method: "DELETE" });
+    await showHeldBills();
+  } catch (error) {
+    showToast(error.message, { tone: "danger" });
+  }
+}
+
+function setCurrentShift(shift) {
+  state.currentShift = shift;
+  const status = document.querySelector("#shift-status");
+  status.dataset.state = shift ? "open" : "closed";
+  status.querySelector("span").textContent = shift
+    ? t("pos.shift_open", { id: shift.id })
+    : t("pos.shift_required");
+  if (shift) sessionStorage.setItem("vglpos.shiftId", String(shift.id));
+  else sessionStorage.removeItem("vglpos.shiftId");
+  renderTotals();
+}
+
+async function ensureShift() {
+  try {
+    const response = await apiJson("/api/v1/shifts/current");
+    setCurrentShift(response.shift);
+    if (!response.shift) openDialog("#shift-open-dialog");
+  } catch (error) {
+    const stored = sessionStorage.getItem("vglpos.shiftId");
+    if (stored && !navigator.onLine) {
+      setCurrentShift({ id: Number.parseInt(stored, 10), status: "OPEN" });
+      return;
+    }
+    setCurrentShift(null);
+    showToast(error.message, { tone: "danger" });
+    openDialog("#shift-open-dialog");
+  }
+}
+
+async function openShift(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const error = document.querySelector("#shift-open-error");
+  error.textContent = "";
+  setBusy(form, true);
+  try {
+    const shift = await apiJson("/api/v1/shifts/open", {
+      method: "POST",
+      body: JSON.stringify({
+        opening_cash: denominationTotal(form),
+        denomination_counts: denominationCounts(form),
+        notes: form.elements.notes.value.trim() || null,
+      }),
+    });
+    setCurrentShift(shift);
+    closeDialog("#shift-open-dialog");
+    showToast(t("pos.shift_opened"), { tone: "success" });
+  } catch (failure) {
+    error.textContent = failure.message;
+  } finally {
+    setBusy(form, false);
+  }
 }
 
 async function closeShift(event) {
@@ -940,27 +1159,50 @@ async function closeShift(event) {
     error.textContent = t("pos.shift_queue_warning", { count: summary.total });
     return;
   }
+  const heldCount = Number.parseInt(form.dataset.heldCount || "0", 10);
+  if (heldCount && !form.elements.expire_held_bills.checked) {
+    error.textContent = t("pos.held_close_warning", { count: heldCount });
+    return;
+  }
   setBusy(form, true);
   try {
     const shift = await apiJson("/api/v1/shifts/close", {
       method: "POST",
       body: JSON.stringify({
-        shift_id: Number.parseInt(form.elements.shift_id.value, 10),
-        counted_cash: form.elements.counted_cash.value.trim(),
+        shift_id: state.currentShift.id,
+        counted_cash: denominationTotal(form),
+        denomination_counts: denominationCounts(form),
         notes: form.elements.notes.value.trim() || null,
+        expire_held_bills: form.elements.expire_held_bills.checked,
+        approver_user_id: form.elements.approver_user_id.value
+          ? Number.parseInt(form.elements.approver_user_id.value, 10)
+          : null,
+        approval_pin: form.elements.approval_pin.value || null,
+        variance_reason: form.elements.variance_reason.value.trim() || null,
       }),
     });
-    sessionStorage.removeItem("vglpos.shiftId");
+    setCurrentShift(null);
     closeDialog("#shift-close-dialog");
     showToast(t("pos.shift_closed", { difference: formatMoney(shift.cash_difference) }), { tone: "success", duration: 8000 });
+    location.href = `/z-report/${shift.id}`;
   } catch (failure) {
     error.textContent = failure.message;
+    if (failure.status === 403) {
+      document.querySelector("#variance-approval").classList.remove("is-hidden");
+      form.elements.approver_user_id.required = true;
+      form.elements.approval_pin.required = true;
+      form.elements.variance_reason.required = true;
+    }
   } finally {
     setBusy(form, false);
   }
 }
 
 async function openShiftClose() {
+  if (!state.currentShift) {
+    openDialog("#shift-open-dialog");
+    return;
+  }
   const summary = await (await offlineDatabase()).outboxSummary();
   const warning = document.querySelector("#shift-queue-warning");
   warning.classList.toggle("is-hidden", summary.total === 0);
@@ -968,7 +1210,46 @@ async function openShiftClose() {
     ? t("pos.shift_queue_warning", { count: summary.total })
     : "";
   warning.querySelector("input").checked = false;
+  let held = [];
+  try {
+    held = await fetchHeldBills();
+  } catch (error) {
+    showToast(error.message, { tone: "warning" });
+  }
+  const form = document.querySelector("#shift-close-form");
+  form.dataset.heldCount = String(held.length);
+  form.elements.shift_id.value = String(state.currentShift.id);
+  form.elements.expire_held_bills.checked = false;
+  const heldWarning = document.querySelector("#held-bills-warning");
+  heldWarning.classList.toggle("is-hidden", held.length === 0);
+  document.querySelector("#held-bills-message").textContent = held.length
+    ? t("pos.held_close_warning", { count: held.length })
+    : "";
+  document.querySelector("#variance-approval").classList.add("is-hidden");
+  form.elements.approver_user_id.required = false;
+  form.elements.approval_pin.required = false;
+  form.elements.variance_reason.required = false;
+  form.querySelectorAll("[data-denomination]").forEach((input) => { input.value = "0"; });
+  updateDenominationTotal(form);
   openDialog("#shift-close-dialog");
+}
+
+async function reprintLastReceipt() {
+  const saleId = localStorage.getItem("vglpos.lastSaleId");
+  const receiptPath = localStorage.getItem("vglpos.lastReceiptPath");
+  if (!saleId || !receiptPath || receiptPath.includes("/offline/")) {
+    showToast(t("pos.no_last_receipt"), { tone: "warning" });
+    return;
+  }
+  try {
+    await apiJson(`/api/v1/sales/${saleId}/reprint`, {
+      method: "POST",
+      body: "{}",
+    });
+    location.href = `${receiptPath}?print=1`;
+  } catch (error) {
+    showToast(error.message, { tone: "danger" });
+  }
 }
 
 function runShortcut(key) {
@@ -976,16 +1257,13 @@ function runShortcut(key) {
   if (key === "F1") openDialog("#help-dialog");
   else if (key === "F2") openPayment();
   else if (key === "F3") document.querySelector("#pos-search").focus();
-  else if (key === "F4") holdBill();
-  else if (key === "F5") showHeldBills();
+  else if (key === "F4") retailOperations().then((operations) => operations.holdBill());
+  else if (key === "F5") retailOperations().then((operations) => operations.showHeldBills());
   else if (key === "F6") document.querySelector("#pos-customer").focus();
   else if (key === "F7") document.querySelector("#order-discount").focus();
   else if (key === "F8" && focusedItem) document.querySelector(`[data-quantity-input="${focusedItem}"]`)?.focus();
-  else if (key === "F9") {
-    const receiptPath = localStorage.getItem("vglpos.lastReceiptPath");
-    if (receiptPath) location.href = `${receiptPath}?print=1`;
-    else showToast(t("pos.no_last_receipt"), { tone: "warning" });
-  } else if (key === "F10") openShiftClose();
+  else if (key === "F9") reprintLastReceipt();
+  else if (key === "F10") retailOperations().then((operations) => operations.openShiftClose());
 }
 
 function initializeKeyboard() {
@@ -1001,6 +1279,14 @@ function initializeKeyboard() {
       return;
     }
     const typing = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement;
+    if (!typing && event.altKey && !document.querySelector("dialog[open]") && /^[1-9]$/.test(event.key)) {
+      const quickKey = state.quickKeys.find((entry) => entry.key_number === Number.parseInt(event.key, 10));
+      if (quickKey) {
+        event.preventDefault();
+        selectProduct(quickKey.product);
+        return;
+      }
+    }
     if (!typing && (event.key === "+" || event.key === "-") && state.focusedProductId) {
       event.preventDefault();
       adjustQuantity(state.focusedProductId, event.key === "+" ? 1 : -1);
@@ -1009,6 +1295,20 @@ function initializeKeyboard() {
 }
 
 function initializeEvents() {
+  document.querySelector("#quick-key-grid").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-quick-product-id]");
+    if (!button) return;
+    const entry = state.quickKeys.find(
+      (item) => item.product.id === Number.parseInt(button.dataset.quickProductId, 10),
+    );
+    if (entry) selectProduct(entry.product);
+  });
+  document.querySelector("#configure-quick-keys").addEventListener("click", () => {
+    retailOperations().then((operations) => {
+      operations.renderQuickKeySettings();
+      openDialog("#quick-keys-dialog");
+    });
+  });
   document.querySelector("#pos-product-grid").addEventListener("click", (event) => {
     const tile = event.target.closest("[data-product-id]");
     if (!tile) return;
@@ -1101,16 +1401,34 @@ function initializeEvents() {
   });
   document.querySelector("#complete-sale").addEventListener("click", completeSale);
   document.querySelector("#held-list").addEventListener("click", (event) => {
-    const restore = event.target.closest("[data-restore-hold]");
-    if (restore) restoreHeldBill(restore.dataset.restoreHold);
+    const recall = event.target.closest("[data-recall-hold]");
+    if (recall) {
+      retailOperations().then((operations) => operations.restoreHeldBill(recall.dataset.recallHold));
+    }
+    const discard = event.target.closest("[data-discard-hold]");
+    if (discard) {
+      retailOperations().then((operations) => operations.discardHeldBill(discard.dataset.discardHold));
+    }
   });
-  document.querySelector("#shift-close-form").addEventListener("submit", closeShift);
+  document.querySelector("#hold-form").addEventListener("submit", (event) => {
+    retailOperations().then((operations) => operations.submitHeldBill(event));
+  });
+  document.querySelector("#quick-keys-form").addEventListener("submit", (event) => {
+    retailOperations().then((operations) => operations.configureQuickKeys(event));
+  });
+  document.querySelector("#shift-open-form").addEventListener("submit", (event) => {
+    retailOperations().then((operations) => operations.openShift(event));
+  });
+  document.querySelector("#shift-close-form").addEventListener("submit", (event) => {
+    retailOperations().then((operations) => operations.closeShift(event));
+  });
 }
 
 async function initializePos(session) {
   registerIcons((await import("./pos-icons.js")).posIcons);
   cartKey = `vglpos.cart.${session.user.company_id}.${session.user.id}.${session.user.branch_id || 0}.${session.user.terminal_id || 0}`;
-  holdsKey = `${cartKey}.holds`;
+  const operations = await retailOperations();
+  operations.initializeDenominations();
   initializeEvents();
   initializeKeyboard();
   initializeScanner();
@@ -1121,10 +1439,11 @@ async function initializePos(session) {
       await (await offlineApi()).publishStatus();
     }
   }
-  await Promise.all([loadProducts(), loadReferenceData()]);
+  await Promise.all([loadProducts(), loadReferenceData(), operations.ensureShift()]);
+  await operations.loadQuickKeys();
   await restoreCart();
   if (new URLSearchParams(location.search).get("shiftClose") === "1") {
-    openShiftClose();
+    operations.openShiftClose();
   }
 }
 
@@ -1137,5 +1456,9 @@ document.addEventListener("vgl:locale-changed", () => {
   renderCategories();
   renderProducts();
   renderCart();
+  retailOperations().then((operations) => {
+    operations.renderQuickKeys();
+    operations.renderShiftState();
+  });
   if (document.querySelector("#payment-dialog").open) renderPayments();
 });

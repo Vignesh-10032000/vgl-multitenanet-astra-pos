@@ -25,8 +25,10 @@ EXPECTED_TABLES = {
     "credit_notes",
     "customers",
     "document_series",
+    "held_bills",
     "hsn_codes",
     "legacy_id_map",
+    "loyalty_ledger",
     "permissions",
     "product_barcodes",
     "product_price_history",
@@ -43,6 +45,7 @@ EXPECTED_TABLES = {
     "stock_ledger",
     "suppliers",
     "tax_rates",
+    "terminal_quick_keys",
     "terminals",
     "user_roles",
     "users",
@@ -63,6 +66,7 @@ QUANTITY_COLUMNS = {
     "loyalty_points",
     "low_stock_threshold",
     "on_hand",
+    "points",
     "quantity",
     "quantity_available",
     "quantity_received",
@@ -76,6 +80,7 @@ RATE_COLUMNS = {
     "igst_rate",
     "cess_rate",
     "max_discount_percent",
+    "loyalty_redemption_cap_percent",
 }
 
 
