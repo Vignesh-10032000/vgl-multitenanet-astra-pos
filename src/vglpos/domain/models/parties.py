@@ -60,6 +60,8 @@ class Customer(TenantEntity):
         Numeric(14, 2), default=Decimal("0.00"), server_default=text("0.00"), nullable=False
     )
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    city: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    postal_code: Mapped[str | None] = mapped_column(String(10), nullable=True)
     is_active: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=text("true"), nullable=False
     )

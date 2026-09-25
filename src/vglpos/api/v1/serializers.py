@@ -14,6 +14,7 @@ from vglpos.api.v1.schemas.reports import (
     RevenueSeriesResponse,
 )
 from vglpos.api.v1.schemas.sales import (
+    EInvoiceReceiptResponse,
     PaymentPreviewResponse,
     QuoteLineResponse,
     QuoteResponse,
@@ -26,6 +27,7 @@ from vglpos.api.v1.schemas.shifts import CashMovementResponse, ShiftResponse
 from vglpos.services.catalog_service import CatalogRecord
 from vglpos.services.checkout_service import PaymentPreview
 from vglpos.services.customer_service import CustomerDetail
+from vglpos.services.qr_service import qr_png_data_uri
 from vglpos.services.report_service import (
     DailySummary,
     Gstr1Row,
@@ -87,6 +89,22 @@ def sale_detail_response(detail: SaleDetail) -> SaleDetailResponse:
             for item in detail.items
         ],
         payments=[SalePaymentResponse.model_validate(payment) for payment in detail.payments],
+        e_invoice=(
+            EInvoiceReceiptResponse(
+                status=detail.e_invoice.status,
+                irn=detail.e_invoice.irn,
+                ack_number=detail.e_invoice.ack_number,
+                ack_date=detail.e_invoice.ack_date,
+                qr_data_uri=(
+                    qr_png_data_uri(detail.e_invoice.signed_qr_code)
+                    if detail.e_invoice.signed_qr_code
+                    else None
+                ),
+            )
+            if detail.e_invoice is not None
+            else None
+        ),
+        composition_declaration=detail.composition_declaration,
     )
 
 

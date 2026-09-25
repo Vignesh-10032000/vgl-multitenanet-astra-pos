@@ -27,6 +27,8 @@ class CreateCustomerCommand:
     state_code: str
     credit_limit: Decimal
     address: str | None
+    city: str | None
+    postal_code: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,6 +87,8 @@ class CustomerService:
             state_code=state_code,
             credit_limit=cmd.credit_limit,
             address=cmd.address,
+            city=cmd.city.strip() if cmd.city else None,
+            postal_code=cmd.postal_code,
             created_by=cmd.user_id,
         )
         try:

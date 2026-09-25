@@ -40,6 +40,7 @@ from vglpos.services.exceptions import (
 )
 from vglpos.services.inventory_depth_service import InventoryDepthService
 from vglpos.services.inventory_service import InventoryService
+from vglpos.services.invoice_compliance_service import InvoiceComplianceService
 from vglpos.services.invoice_number_service import InvoiceNumberService
 from vglpos.services.tax_engine import TaxEngine, TaxLineInput, TaxResult
 from vglpos.utils.gst import state_code_from_gstin, uqc_code
@@ -262,10 +263,22 @@ class CheckoutService:
             TaxLineInput(
                 quantity=line.quantity,
                 unit_price=products[line.product_id].selling_price,
-                tax_rate=rates[products[line.product_id].tax_rate_id].rate,
-                cess_rate=rates[products[line.product_id].tax_rate_id].cess_rate,
+                tax_rate=(
+                    ZERO
+                    if company.composition_scheme_enabled
+                    else rates[products[line.product_id].tax_rate_id].rate
+                ),
+                cess_rate=(
+                    ZERO
+                    if company.composition_scheme_enabled
+                    else rates[products[line.product_id].tax_rate_id].cess_rate
+                ),
                 line_discount=line.line_discount,
-                tax_inclusive=products[line.product_id].is_tax_inclusive,
+                tax_inclusive=(
+                    False
+                    if company.composition_scheme_enabled
+                    else products[line.product_id].is_tax_inclusive
+                ),
             )
             for line in cmd.lines
         ]
@@ -316,20 +329,34 @@ class CheckoutService:
         self._check_stock(products, requested)
         rates = self._load_rates(cmd.company_id, products, cmd.business_date)
         customer = self._load_customer(cmd.company_id, cmd.customer_id, for_update=True)
-        place_of_supply = (
-            state_code_from_gstin(customer.gstin)
-            if customer is not None and customer.gstin is not None
-            else branch.state_code
-        )
+        place_of_supply = branch.state_code
+        if customer is not None:
+            place_of_supply = (
+                state_code_from_gstin(customer.gstin)
+                if customer.gstin is not None
+                else customer.state_code
+            )
 
         tax_lines = [
             TaxLineInput(
                 quantity=line.quantity,
                 unit_price=products[line.product_id].selling_price,
-                tax_rate=rates[products[line.product_id].tax_rate_id].rate,
-                cess_rate=rates[products[line.product_id].tax_rate_id].cess_rate,
+                tax_rate=(
+                    ZERO
+                    if company.composition_scheme_enabled
+                    else rates[products[line.product_id].tax_rate_id].rate
+                ),
+                cess_rate=(
+                    ZERO
+                    if company.composition_scheme_enabled
+                    else rates[products[line.product_id].tax_rate_id].cess_rate
+                ),
                 line_discount=line.line_discount,
-                tax_inclusive=products[line.product_id].is_tax_inclusive,
+                tax_inclusive=(
+                    False
+                    if company.composition_scheme_enabled
+                    else products[line.product_id].is_tax_inclusive
+                ),
             )
             for line in cmd.lines
         ]
@@ -385,6 +412,14 @@ class CheckoutService:
         self.session.flush()
         sale_items = self._add_sale_lines(cmd, sale, products, result)
         self._add_payments(cmd, sale, payments)
+        InvoiceComplianceService(self.session, cmd.company_id).validate_before_issue(
+            company=company,
+            branch=branch,
+            sale=sale,
+            customer=customer,
+            items=sale_items,
+            products=products,
+        )
 
         inventory = InventoryService(self.session, cmd.company_id)
         inventory_depth = InventoryDepthService(self.session, cmd.company_id)

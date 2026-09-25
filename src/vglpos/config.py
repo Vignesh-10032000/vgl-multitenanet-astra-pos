@@ -71,6 +71,18 @@ class BaseConfig(BaseSettings):
     PRODUCT_IMAGE_DIR: str = ""
     REPORT_ARTIFACT_DIR: str = "var/reports"
 
+    IRP_NIC_AUTH_URL: str = ""
+    IRP_NIC_GENERATE_URL: str = ""
+    IRP_NIC_LOOKUP_URL: str = ""
+    IRP_NIC_CANCEL_URL: str = ""
+    IRP_NIC_EWAY_URL: str = ""
+    IRP_NIC_USERNAME: str = ""
+    IRP_NIC_PASSWORD: str = ""
+    IRP_NIC_CLIENT_ID: str = ""
+    IRP_NIC_CLIENT_SECRET: str = ""
+    COMPLIANCE_ALERT_WEBHOOK_URL: str = ""
+    COMPLIANCE_ALERT_API_TOKEN: str = ""
+
     DATABASE_URL: str = ""
     REDIS_URL: str = "redis://localhost:6379/0"
 
@@ -129,6 +141,17 @@ class BaseConfig(BaseSettings):
             "EMAIL_FROM": self.EMAIL_FROM,
             "PRODUCT_IMAGE_DIR": self.PRODUCT_IMAGE_DIR,
             "REPORT_ARTIFACT_DIR": self.REPORT_ARTIFACT_DIR,
+            "IRP_NIC_AUTH_URL": self.IRP_NIC_AUTH_URL,
+            "IRP_NIC_GENERATE_URL": self.IRP_NIC_GENERATE_URL,
+            "IRP_NIC_LOOKUP_URL": self.IRP_NIC_LOOKUP_URL,
+            "IRP_NIC_CANCEL_URL": self.IRP_NIC_CANCEL_URL,
+            "IRP_NIC_EWAY_URL": self.IRP_NIC_EWAY_URL,
+            "IRP_NIC_USERNAME": self.IRP_NIC_USERNAME,
+            "IRP_NIC_PASSWORD": self.IRP_NIC_PASSWORD,
+            "IRP_NIC_CLIENT_ID": self.IRP_NIC_CLIENT_ID,
+            "IRP_NIC_CLIENT_SECRET": self.IRP_NIC_CLIENT_SECRET,
+            "COMPLIANCE_ALERT_WEBHOOK_URL": self.COMPLIANCE_ALERT_WEBHOOK_URL,
+            "COMPLIANCE_ALERT_API_TOKEN": self.COMPLIANCE_ALERT_API_TOKEN,
             "CACHE_TYPE": self.CACHE_TYPE,
             "CACHE_REDIS_URL": self.REDIS_URL,
             "CACHE_DEFAULT_TIMEOUT": self.CACHE_DEFAULT_TIMEOUT,
@@ -152,6 +175,7 @@ class BaseConfig(BaseSettings):
                     "vglpos.tasks.receipts",
                     "vglpos.tasks.maintenance",
                     "vglpos.tasks.reports",
+                    "vglpos.tasks.compliance",
                 ),
                 "beat_schedule": {
                     "refresh-daily-sales-summary": {
@@ -161,6 +185,14 @@ class BaseConfig(BaseSettings):
                     "reconcile-customer-counters-nightly": {
                         "task": "vglpos.reconcile_customer_counters",
                         "schedule": crontab(hour=2, minute=15),
+                    },
+                    "reconcile-e-invoices-hourly": {
+                        "task": "vglpos.reconcile_einvoices",
+                        "schedule": 3600.0,
+                    },
+                    "monitor-compliance-queue": {
+                        "task": "vglpos.monitor_compliance_queue",
+                        "schedule": 900.0,
                     },
                 },
             },

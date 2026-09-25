@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Compliance · VGL POS{% endblock %}
+{% block page_title %}E-invoice compliance{% endblock %}
+{% block content %}
+  <section class="toolbar filter-toolbar" aria-label="Compliance actions">
+    <label>Status<select id="einvoice-status"><option value="">All</option><option>PENDING</option><option>RETRY</option><option>GENERATED</option><option>DEAD</option><option>CANCEL_PENDING</option><option>CANCELLED</option></select></label>
+    <button class="button button-secondary filter-apply" type="button" id="compliance-refresh"><i data-lucide="refresh-cw"></i><span>Refresh</span></button>
+  </section>
+  <section class="metric-grid metric-grid-three">
+    <article class="metric-card"><div class="metric-icon"><i data-lucide="clock-3"></i></div><div><p>Pending</p><strong id="compliance-pending">—</strong></div></article>
+    <article class="metric-card"><div class="metric-icon"><i data-lucide="triangle-alert"></i></div><div><p>Dead letters</p><strong id="compliance-dead">—</strong></div></article>
+    <article class="metric-card"><div class="metric-icon"><i data-lucide="list-checks"></i></div><div><p>Reconciliation gaps</p><strong id="compliance-gaps">—</strong></div></article>
+  </section>
+  <section class="panel table-panel">
+    <div class="section-heading"><div><p class="eyebrow">IRP</p><h2>E-invoice queue</h2></div></div>
+    <div class="table-scroll"><table><thead><tr><th>Sale</th><th>Status</th><th>IRN / error</th><th>Attempts</th><th>Created</th><th>Action</th></tr></thead><tbody id="einvoice-rows"><tr><td colspan="6"><div class="table-skeleton"></div></td></tr></tbody></table></div>
+  </section>
+  <section class="panel table-panel">
+    <div class="section-heading"><div><p class="eyebrow">Books vs IRP</p><h2>Reconciliation gaps</h2></div></div>
+    <div class="table-scroll"><table><thead><tr><th>Invoice</th><th>Date</th><th>Issue</th><th>Status</th><th>Error</th></tr></thead><tbody id="reconciliation-rows"><tr><td colspan="5"><div class="table-skeleton"></div></td></tr></tbody></table></div>
+  </section>
+  <dialog id="irn-cancel-dialog" class="dialog dialog-small" aria-labelledby="irn-cancel-title">
+    <form id="irn-cancel-form" method="dialog">
+      <div class="dialog-header"><h2 id="irn-cancel-title">Cancel IRN</h2><button class="icon-button" type="button" data-dialog-close title="Close" aria-label="Close"><i data-lucide="x"></i></button></div>
+      <div class="dialog-body form-stack">
+        <label>Cancellation reason<textarea name="reason" rows="3" minlength="1" maxlength="100" required autofocus></textarea></label>
+        <p class="form-error" id="irn-cancel-error" role="alert"></p>
+      </div>
+      <div class="dialog-actions"><button class="button button-secondary" type="button" data-dialog-close>Keep IRN</button><button class="button button-danger" type="submit">Cancel IRN</button></div>
+    </form>
+  </dialog>
+{% endblock %}
+{% block scripts %}
+  {% set bundle = vite_entry('js/compliance.js') %}
+  {% for stylesheet in bundle.styles %}<link rel="stylesheet" href="{{ stylesheet }}">{% endfor %}
+  <script type="module" src="{{ bundle.script }}" defer></script>
+{% endblock %}

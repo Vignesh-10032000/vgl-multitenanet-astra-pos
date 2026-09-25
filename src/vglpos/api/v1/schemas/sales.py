@@ -125,6 +125,14 @@ class SalePaymentResponse(ResponseModel):
     loyalty_points: Decimal | None
 
 
+class EInvoiceReceiptResponse(ResponseModel):
+    status: str
+    irn: str | None
+    ack_number: str | None
+    ack_date: datetime | None
+    qr_data_uri: str | None
+
+
 class SaleResponse(ResponseModel):
     id: int
     invoice_number: str
@@ -153,6 +161,8 @@ class SaleResponse(ResponseModel):
 class SaleDetailResponse(SaleResponse):
     items: list[SaleLineResponse]
     payments: list[SalePaymentResponse]
+    e_invoice: EInvoiceReceiptResponse | None
+    composition_declaration: str | None
 
 
 class SalePageResponse(ResponseModel):

@@ -5,9 +5,11 @@ from __future__ import annotations
 import base64
 import json
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Protocol
 from urllib.request import Request, urlopen
 
+from vglpos.services.qr_service import qr_matrix
 from vglpos.services.sales_service import SaleDetail
 
 
@@ -63,6 +65,16 @@ def render_a5_invoice_pdf(detail: SaleDetail) -> bytes:
         text_lines.append(
             f"{product.sku} {product.name}  {item.quantity:.3f} x {item.unit_price:.2f}"
         )
+    if detail.e_invoice is not None and detail.e_invoice.irn:
+        text_lines.extend(
+            (
+                "",
+                f"IRN: {detail.e_invoice.irn}",
+                f"Ack No: {detail.e_invoice.ack_number or '-'}",
+            )
+        )
+    if detail.composition_declaration:
+        text_lines.extend(("", detail.composition_declaration))
     commands = ["BT", "/F1 10 Tf", "36 559 Td"]
     for index, line in enumerate(text_lines):
         if index:
@@ -71,6 +83,19 @@ def render_a5_invoice_pdf(detail: SaleDetail) -> bytes:
         safe = safe.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
         commands.append(f"({safe}) Tj")
     commands.append("ET")
+    if detail.e_invoice is not None and detail.e_invoice.signed_qr_code:
+        matrix = qr_matrix(detail.e_invoice.signed_qr_code)
+        module_size = Decimal("1.5")
+        origin_x = Decimal("300")
+        origin_y = Decimal("36")
+        commands.append("0 0 0 rg")
+        for row_index, row in enumerate(matrix):
+            for column_index, dark in enumerate(row):
+                if not dark:
+                    continue
+                x = origin_x + Decimal(column_index) * module_size
+                y = origin_y + Decimal(len(matrix) - row_index - 1) * module_size
+                commands.append(f"{x:f} {y:f} {module_size:f} {module_size:f} re f")
     stream = "\n".join(commands).encode("latin-1")
     objects = [
         b"<< /Type /Catalog /Pages 2 0 R >>",

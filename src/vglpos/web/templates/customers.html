@@ -19,6 +19,7 @@
         <div class="field-grid"><label><span data-i18n="customers.email">Email</span><input name="email" type="email" maxlength="255"></label><label><span data-i18n="customers.gstin">GSTIN</span><input name="gstin" maxlength="15" minlength="15"></label></div>
         <div class="field-grid"><label><span data-i18n="customers.state_code">State code</span><input name="state_code" value="33" pattern="[0-9]{2}" maxlength="2" required></label><label><span data-i18n="customers.credit_limit">Credit limit</span><input name="credit_limit" inputmode="decimal" value="0.00" required></label></div>
         <label><span data-i18n="customers.address">Address</span><textarea name="address" rows="3"></textarea></label>
+        <div class="field-grid"><label>City<input name="city" maxlength="100"></label><label>Postal code<input name="postal_code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6"></label></div>
         <p class="form-error" id="customer-form-error" role="alert"></p>
       </div>
       <div class="dialog-actions"><button class="button button-secondary" type="button" data-dialog-close data-i18n="common.cancel">Cancel</button><button class="button button-primary" type="submit"><i data-lucide="save"></i><span data-i18n="common.save">Save</span></button></div>

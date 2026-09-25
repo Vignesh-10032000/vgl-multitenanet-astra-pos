@@ -5,6 +5,7 @@ from __future__ import annotations
 from flask import Blueprint
 
 from vglpos.api.v1.auth import auth_bp
+from vglpos.api.v1.compliance import compliance_bp
 from vglpos.api.v1.customers import customers_bp
 from vglpos.api.v1.inventory_depth import inventory_depth_bp
 from vglpos.api.v1.openapi import openapi_bp
@@ -26,6 +27,7 @@ BLUEPRINTS: tuple[Blueprint, ...] = (
     auth_bp,
     sales_bp,
     products_bp,
+    compliance_bp,
     purchases_bp,
     inventory_depth_bp,
     customers_bp,
@@ -63,6 +65,7 @@ PUBLIC_ENDPOINTS: frozenset[str] = frozenset(
         "web.sales",
         "web.reports",
         "web.settings",
+        "web.compliance",
         "web.receipt",
         "web.offline_receipt",
         "web.z_report",

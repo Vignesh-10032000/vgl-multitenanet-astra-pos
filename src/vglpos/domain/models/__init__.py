@@ -12,6 +12,7 @@ from vglpos.domain.models.catalog import (
     TaxRate,
 )
 from vglpos.domain.models.company import Company
+from vglpos.domain.models.compliance import EInvoice, EWayBill, InvoiceTemplate
 from vglpos.domain.models.documents import (
     CreditNote,
     CreditNoteItem,
@@ -64,10 +65,13 @@ __all__ = [
     "CreditNoteItemBatch",
     "Customer",
     "DocumentSeries",
+    "EInvoice",
+    "EWayBill",
     "GoodsReceipt",
     "GoodsReceiptItem",
     "HeldBill",
     "HsnCode",
+    "InvoiceTemplate",
     "LegacyIdMap",
     "LoyaltyLedger",
     "Permission",

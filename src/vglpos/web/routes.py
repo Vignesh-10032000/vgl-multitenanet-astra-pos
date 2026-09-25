@@ -66,6 +66,12 @@ def settings() -> Response:
     return _page("settings.html", page_name="settings", shell="app")
 
 
+@web_bp.get("/compliance")
+def compliance() -> Response:
+    """Render the e-invoice queue, dead-letter, and reconciliation administration shell."""
+    return _page("compliance.html", page_name="compliance", shell="app")
+
+
 @web_bp.get("/receipt/<int:sale_id>")
 def receipt(sale_id: int) -> Response:
     """Render a printable receipt shell populated through the protected API."""
@@ -122,6 +128,7 @@ def pwa_assets() -> Response:
         "/sales",
         "/reports",
         "/settings",
+        "/compliance",
         "/sync-queue",
         "/receipt/offline/00000000-0000-0000-0000-000000000000",
         "/manifest.webmanifest",

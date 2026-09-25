@@ -13,7 +13,9 @@
     <table class="invoice-lines"><thead><tr><th data-i18n="receipt.description">Description</th><th class="numeric" data-i18n="receipt.qty">Qty</th><th class="numeric" data-i18n="receipt.rate">Rate</th><th class="numeric" data-i18n="receipt.amount">Amount</th></tr></thead><tbody id="receipt-lines"><tr><td colspan="4"><div class="table-skeleton"></div></td></tr></tbody></table>
     <dl class="invoice-totals"><div><dt data-i18n="pos.gross">Gross</dt><dd id="receipt-gross">—</dd></div><div><dt data-i18n="pos.discount">Discount</dt><dd id="receipt-discount">—</dd></div><div><dt data-i18n="pos.taxable">Taxable</dt><dd id="receipt-taxable">—</dd></div><div><dt>CGST</dt><dd id="receipt-cgst">—</dd></div><div><dt>SGST</dt><dd id="receipt-sgst">—</dd></div><div><dt>IGST</dt><dd id="receipt-igst">—</dd></div><div><dt data-i18n="pos.cess">Cess</dt><dd id="receipt-cess">—</dd></div><div><dt data-i18n="pos.round_off">Round off</dt><dd id="receipt-round">—</dd></div><div class="invoice-grand-total"><dt data-i18n="pos.total">Total</dt><dd id="receipt-total">—</dd></div></dl>
     <section class="invoice-payments"><h2 data-i18n="receipt.payment">Payment</h2><div id="receipt-payments"></div></section>
-    <footer class="invoice-footer"><div class="qr-reserved" aria-label="Future invoice QR code"><span>QR</span></div><p data-i18n="receipt.thanks">Thank you for shopping with us.</p><small data-i18n="receipt.system_note">Computer-generated invoice</small></footer>
+    <section class="invoice-compliance" id="receipt-compliance" hidden><p><strong>IRN</strong>: <span id="receipt-irn"></span></p><p><strong>Ack No</strong>: <span id="receipt-ack"></span></p><img id="receipt-irp-qr" alt="Signed GST e-invoice QR code"></section>
+    <p class="composition-declaration" id="receipt-composition" hidden></p>
+    <footer class="invoice-footer"><p data-i18n="receipt.thanks">Thank you for shopping with us.</p><small data-i18n="receipt.system_note">Computer-generated invoice</small></footer>
   </article>
 {% endblock %}
 {% block scripts %}

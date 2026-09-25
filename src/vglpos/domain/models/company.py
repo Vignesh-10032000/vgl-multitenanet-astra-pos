@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Index, Integer, Numeric, String, text
+from sqlalchemy import Boolean, Date, Index, Integer, Numeric, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from vglpos.domain.models.base import AuditMixin, SurrogateKeyMixin
@@ -79,6 +80,33 @@ class Company(AuditMixin, SurrogateKeyMixin, Base):
     expired_stock_policy: Mapped[str] = mapped_column(
         String(10), default="BLOCK", server_default=text("'BLOCK'"), nullable=False
     )
+    e_invoice_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false"), nullable=False
+    )
+    e_invoice_provider: Mapped[str] = mapped_column(
+        String(20), default="NIC", server_default=text("'NIC'"), nullable=False
+    )
+    e_invoice_reporting_window_days: Mapped[int] = mapped_column(
+        Integer, default=30, server_default=text("30"), nullable=False
+    )
+    e_invoice_retry_limit: Mapped[int] = mapped_column(
+        Integer, default=5, server_default=text("5"), nullable=False
+    )
+    composition_scheme_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false"), nullable=False
+    )
+    composition_declaration: Mapped[str] = mapped_column(
+        Text,
+        default="Composition taxable person, not eligible to collect tax on supplies.",
+        server_default=text(
+            "'Composition taxable person, not eligible to collect tax on supplies.'"
+        ),
+        nullable=False,
+    )
+    invoice_validation_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false"), nullable=False
+    )
+    gst_filing_locked_through: Mapped[date | None] = mapped_column(Date, nullable=True)
     is_active: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=text("true"), nullable=False
     )

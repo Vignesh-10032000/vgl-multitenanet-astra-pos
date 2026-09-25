@@ -11,7 +11,16 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from vglpos.domain.events import SaleUpdated
-from vglpos.domain.models import Customer, LoyaltyLedger, Product, Sale, SaleItem, SalePayment
+from vglpos.domain.models import (
+    Company,
+    Customer,
+    EInvoice,
+    LoyaltyLedger,
+    Product,
+    Sale,
+    SaleItem,
+    SalePayment,
+)
 from vglpos.repositories.base import CursorPage
 from vglpos.repositories.documents import SaleRepository
 from vglpos.security.audit import record_audit_event
@@ -19,6 +28,7 @@ from vglpos.security.override_service import OverrideApprovalService
 from vglpos.services.event_dispatcher import publish_event
 from vglpos.services.exceptions import ConflictError, EntityNotFoundError, ValidationError
 from vglpos.services.inventory_service import InventoryService
+from vglpos.services.invoice_compliance_service import InvoiceComplianceService
 from vglpos.utils.money import ZERO, money, qty
 
 
@@ -28,6 +38,8 @@ class SaleDetail:
     items: tuple[SaleItem, ...]
     payments: tuple[SalePayment, ...]
     products: dict[int, Product]
+    e_invoice: EInvoice | None
+    composition_declaration: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,11 +111,30 @@ class SalesService:
         }
         if len(products) != len(set(product_ids)):
             raise EntityNotFoundError("Sale product was not found.")
+        e_invoice = self.session.scalar(
+            select(EInvoice).where(
+                EInvoice.company_id == self.company_id,
+                EInvoice.sale_id == sale.id,
+                EInvoice.deleted_at.is_(None),
+            )
+        )
+        company = self.session.scalar(
+            select(Company).where(
+                Company.id == self.company_id,
+                Company.deleted_at.is_(None),
+            )
+        )
         return SaleDetail(
             sale=sale,
             items=items,
             payments=self.repository.payments(sale.id),
             products=products,
+            e_invoice=e_invoice,
+            composition_declaration=(
+                company.composition_declaration
+                if company is not None and company.composition_scheme_enabled
+                else None
+            ),
         )
 
     def cancel_sale(self, cmd: CancelSaleCommand) -> Sale:
@@ -113,6 +144,7 @@ class SalesService:
         sale = self._get_sale(cmd.sale_id, for_update=True)
         if sale.sale_status != "COMPLETED":
             raise ConflictError("Only a completed, unreturned sale can be voided.")
+        InvoiceComplianceService(self.session, self.company_id).enforce_sale_cancellation(sale)
         OverrideApprovalService(self.session).approve_void(
             company_id=self.company_id,
             actor_user_id=cmd.actor_user_id,

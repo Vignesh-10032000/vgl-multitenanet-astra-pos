@@ -21,7 +21,7 @@ def test_all_migrations_upgrade_downgrade_and_reupgrade(
 
     command.upgrade(config, "head")
     engine = create_engine(database_url)
-    assert len(inspect(engine).get_table_names()) == 48  # 47 domain tables + alembic_version
+    assert len(inspect(engine).get_table_names()) == 51  # 50 domain tables + alembic_version
     assert "mv_daily_sales_summary" in inspect(engine).get_view_names()
     assert "total_cess" in (inspect(engine).get_view_definition("mv_daily_sales_summary") or "")
     assert {
@@ -72,6 +72,16 @@ def test_all_migrations_upgrade_downgrade_and_reupgrade(
         {column["name"] for column in inspect(engine).get_columns("sales")}
     )
     assert "note_date" in {column["name"] for column in inspect(engine).get_columns("credit_notes")}
+    assert {"e_invoices", "e_way_bills", "invoice_templates"}.issubset(
+        inspect(engine).get_table_names()
+    )
+    assert {
+        "composition_scheme_enabled",
+        "e_invoice_enabled",
+        "e_invoice_reporting_window_days",
+        "gst_filing_locked_through",
+        "invoice_validation_enabled",
+    }.issubset({column["name"] for column in inspect(engine).get_columns("companies")})
     open_shift_index = next(
         index
         for index in inspect(engine).get_indexes("shifts")
@@ -80,6 +90,17 @@ def test_all_migrations_upgrade_downgrade_and_reupgrade(
     assert bool(open_shift_index["unique"])
     engine.dispose()
     command.check(config)
+
+    command.downgrade(config, "0016")
+    engine = create_engine(database_url)
+    assert {"e_invoices", "e_way_bills", "invoice_templates"}.isdisjoint(
+        inspect(engine).get_table_names()
+    )
+    assert "e_invoice_enabled" not in {
+        column["name"] for column in inspect(engine).get_columns("companies")
+    }
+    engine.dispose()
+    command.upgrade(config, "head")
 
     command.downgrade(config, "0015")
     engine = create_engine(database_url)
@@ -138,7 +159,7 @@ def test_all_migrations_upgrade_downgrade_and_reupgrade(
 
     command.upgrade(config, "head")
     engine = create_engine(database_url)
-    assert len(inspect(engine).get_table_names()) == 48
+    assert len(inspect(engine).get_table_names()) == 51
     assert "mv_daily_sales_summary" in inspect(engine).get_view_names()
     engine.dispose()
 

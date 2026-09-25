@@ -22,6 +22,8 @@ class CustomerCreateRequest(RequestModel):
     state_code: str = Field(default="33", pattern=r"^\d{2}$")
     credit_limit: Money = Decimal("0.00")
     address: str | None = None
+    city: str | None = Field(default=None, max_length=100)
+    postal_code: str | None = Field(default=None, pattern=r"^[0-9]{6}$")
 
 
 class CustomerResponse(ResponseModel):
@@ -37,6 +39,8 @@ class CustomerResponse(ResponseModel):
     credit_limit: Decimal
     outstanding_balance: Decimal
     address: str | None
+    city: str | None
+    postal_code: str | None
     is_active: bool
 
 

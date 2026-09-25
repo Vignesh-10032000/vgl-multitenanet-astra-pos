@@ -69,6 +69,8 @@ async function saveCustomer(event) {
     state_code: value("state_code"),
     credit_limit: value("credit_limit"),
     address: value("address") || null,
+    city: value("city") || null,
+    postal_code: value("postal_code") || null,
   };
   try {
     await apiJson("/api/v1/customers", { method: "POST", body: JSON.stringify(payload) });

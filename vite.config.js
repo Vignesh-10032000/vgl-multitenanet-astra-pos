@@ -25,7 +25,8 @@ export default defineConfig({
         receipt: resolve(sourceRoot, "js/receipt.js"),
         zReport: resolve(sourceRoot, "js/z-report.js"),
         offlineReceipt: resolve(sourceRoot, "js/offline-receipt.js"),
-        syncQueue: resolve(sourceRoot, "js/sync-queue.js")
+        syncQueue: resolve(sourceRoot, "js/sync-queue.js"),
+        compliance: resolve(sourceRoot, "js/compliance.js")
       },
       output: {
         entryFileNames: "assets/[name]-[hash].js",

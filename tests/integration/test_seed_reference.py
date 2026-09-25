@@ -49,6 +49,10 @@ EXPECTED_PERMISSION_CODES = {
     "user.manage",
     "settings.manage",
     "einvoice.generate",
+    "einvoice.view",
+    "einvoice.retry",
+    "einvoice.cancel",
+    "eway.generate",
     "purchase.create",
     "purchase.approve",
     "purchase.view",
@@ -97,7 +101,7 @@ def test_seed_reference_is_complete_and_idempotent(
     first = runner.invoke(args=["seed-reference", "--company-id", str(company_id)])
     assert first.exit_code == 0, first.output
     assert "37 state codes available" in first.output
-    assert "38 permissions, 6 roles, and 9 GST rates inserted" in first.output
+    assert "42 permissions, 6 roles, and 9 GST rates inserted" in first.output
 
     second = runner.invoke(args=["seed-reference", "--company-id", str(company_id)])
     assert second.exit_code == 0, second.output
@@ -112,7 +116,7 @@ def test_seed_reference_is_complete_and_idempotent(
             *(f"{code:02d}" for code in range(29, 39)),
             "97",
         }
-        assert session.scalar(select(func.count()).select_from(Permission)) == 38
+        assert session.scalar(select(func.count()).select_from(Permission)) == 42
         assert session.scalar(select(func.count()).select_from(Role)) == 6
         assert session.scalar(select(func.count()).select_from(TaxRate)) == 9
         assert set(session.scalars(select(Permission.code))) == EXPECTED_PERMISSION_CODES
@@ -151,6 +155,11 @@ def test_seed_reference_is_complete_and_idempotent(
             "purchase.view",
             "supplier.view",
             "supplier.pay",
+            "einvoice.generate",
+            "einvoice.view",
+            "einvoice.retry",
+            "einvoice.cancel",
+            "eway.generate",
         }
         assert role_permissions["AUDITOR"].isdisjoint(
             {"sale.create", "product.create", "product.edit", "stock.adjust"}

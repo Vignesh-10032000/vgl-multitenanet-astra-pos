@@ -9,6 +9,12 @@ from vglpos.services.checkout_service import (
     QuoteCommand,
 )
 from vglpos.services.customer_service import CustomerService
+from vglpos.services.einvoice_service import (
+    EInvoiceMapper,
+    EInvoiceService,
+    EWayBillCommand,
+    EWayBillService,
+)
 from vglpos.services.financial_report_service import FinancialReportService
 from vglpos.services.inventory_depth_service import (
     CreateTransferCommand,
@@ -18,6 +24,11 @@ from vglpos.services.inventory_depth_service import (
     VariantCommand,
 )
 from vglpos.services.inventory_service import InventoryService
+from vglpos.services.invoice_compliance_service import (
+    ComplianceSettingsCommand,
+    InvoiceComplianceService,
+    InvoiceTemplateCommand,
+)
 from vglpos.services.invoice_number_service import InvoiceNumberService
 from vglpos.services.purchase_service import (
     CreateGoodsReceiptCommand,
@@ -52,16 +63,23 @@ __all__ = [
     "CheckoutLineCommand",
     "CheckoutService",
     "CloseShiftCommand",
+    "ComplianceSettingsCommand",
     "CreateCreditNoteCommand",
     "CreateGoodsReceiptCommand",
     "CreatePurchaseOrderCommand",
     "CreateTransferCommand",
     "CustomerService",
+    "EInvoiceMapper",
+    "EInvoiceService",
+    "EWayBillCommand",
+    "EWayBillService",
     "FinancialReportService",
     "GoodsReceiptLineCommand",
     "InventoryDepthService",
     "InventoryService",
+    "InvoiceComplianceService",
     "InvoiceNumberService",
+    "InvoiceTemplateCommand",
     "OpenShiftCommand",
     "PaymentCommand",
     "PostPurchaseInvoiceCommand",

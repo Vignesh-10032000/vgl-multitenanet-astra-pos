@@ -74,6 +74,19 @@ function renderReceipt(sale, profile) {
   setText("#receipt-total", formatMoney(sale.net_amount));
   renderLines(sale);
   renderPayments(sale);
+  const compliance = document.querySelector("#receipt-compliance");
+  if (sale.e_invoice?.irn) {
+    setText("#receipt-irn", sale.e_invoice.irn);
+    setText("#receipt-ack", sale.e_invoice.ack_number);
+    const qr = document.querySelector("#receipt-irp-qr");
+    if (sale.e_invoice.qr_data_uri) qr.src = sale.e_invoice.qr_data_uri;
+    compliance.hidden = false;
+  } else {
+    compliance.hidden = true;
+  }
+  const declaration = document.querySelector("#receipt-composition");
+  declaration.textContent = sale.composition_declaration || "";
+  declaration.hidden = !sale.composition_declaration;
   document.querySelector("#invoice").setAttribute("aria-busy", "false");
 }
 
