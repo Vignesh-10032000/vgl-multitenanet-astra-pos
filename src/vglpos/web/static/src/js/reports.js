@@ -2,9 +2,9 @@ import { Download, IndianRupee, Printer, Receipt, RefreshCw, Warehouse } from "l
 
 import { whenAppReady } from "./app.js";
 import { renderRevenueBars } from "./charts.js";
-import { downloadJson, localDateIso } from "./data.js";
+import { localDateIso } from "./data.js";
 import { formatInteger, formatMoney, localizedName, t } from "./i18n.js";
-import { apiJson } from "./session.js";
+import { apiFetch, apiJson } from "./session.js";
 import { clearChildren, createCell, registerIcons, showToast } from "./ui.js";
 
 registerIcons({ Download, IndianRupee, Printer, Receipt, RefreshCw, Warehouse });
@@ -48,8 +48,31 @@ async function exportGstr1() {
   const to = document.querySelector("#gstr-to").value;
   if (!from || !to) return;
   try {
-    const report = await apiJson(`/api/v1/reports/gstr1?start_date=${from}&end_date=${to}`);
-    downloadJson(`gstr1-${from}-${to}.json`, report);
+    let job = await apiJson("/api/v1/reports/jobs", {
+      method: "POST",
+      body: JSON.stringify({
+        report_name: "GSTR1",
+        output_format: "JSON",
+        parameters: { start_date: from, end_date: to },
+      }),
+    });
+    for (let attempt = 0; attempt < 120 && !["COMPLETED", "FAILED"].includes(job.status); attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      job = await apiJson(`/api/v1/reports/jobs/${job.id}`);
+    }
+    if (job.status === "FAILED") throw new Error(job.error_message || "Report generation failed.");
+    if (job.status !== "COMPLETED" || !job.download_url) {
+      throw new Error("Report generation is still pending. Try again shortly.");
+    }
+    const response = await apiFetch(job.download_url);
+    const url = URL.createObjectURL(await response.blob());
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `gstr1-${from}-${to}.json`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
     showToast(t("reports.export_ready"), { tone: "success" });
   } catch (error) {
     showToast(error.message, { tone: "danger" });

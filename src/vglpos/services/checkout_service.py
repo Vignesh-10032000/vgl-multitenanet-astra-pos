@@ -17,6 +17,7 @@ from vglpos.domain.models import (
     Branch,
     Company,
     Customer,
+    HsnCode,
     LoyaltyLedger,
     Product,
     Sale,
@@ -37,10 +38,11 @@ from vglpos.services.exceptions import (
     ServiceError,
     ValidationError,
 )
+from vglpos.services.inventory_depth_service import InventoryDepthService
 from vglpos.services.inventory_service import InventoryService
 from vglpos.services.invoice_number_service import InvoiceNumberService
 from vglpos.services.tax_engine import TaxEngine, TaxLineInput, TaxResult
-from vglpos.utils.gst import state_code_from_gstin
+from vglpos.utils.gst import state_code_from_gstin, uqc_code
 from vglpos.utils.money import ZERO, money, qty, to_decimal
 
 logger = logging.getLogger(__name__)
@@ -235,13 +237,27 @@ class CheckoutService:
         requested = self._aggregate_quantities(cmd.lines)
         products = self._load_products(cmd.company_id, tuple(requested), for_update=False)
         self._check_stock(products, requested)
+        inventory_depth = InventoryDepthService(self.session, cmd.company_id)
+        company = self._load_company(cmd.company_id)
+        for product_id, required in requested.items():
+            product = products[product_id]
+            if product.batch_tracking_enabled:
+                inventory_depth.ensure_fefo_availability(
+                    product=product,
+                    branch_id=cmd.branch_id,
+                    quantity=required,
+                    on_date=cmd.business_date,
+                    expired_policy=company.expired_stock_policy,
+                )
         rates = self._load_rates(cmd.company_id, products, cmd.business_date)
         customer = self._load_customer(cmd.company_id, cmd.customer_id, for_update=False)
-        place_of_supply = (
-            state_code_from_gstin(customer.gstin)
-            if customer is not None and customer.gstin is not None
-            else branch.state_code
-        )
+        place_of_supply = branch.state_code
+        if customer is not None:
+            place_of_supply = (
+                state_code_from_gstin(customer.gstin)
+                if customer.gstin is not None
+                else customer.state_code
+            )
         lines = [
             TaxLineInput(
                 quantity=line.quantity,
@@ -347,6 +363,9 @@ class CheckoutService:
             supply_type=(
                 SupplyType.INTERSTATE.value if result.is_interstate else SupplyType.INTRASTATE.value
             ),
+            place_of_supply=place_of_supply,
+            customer_gstin_at_sale=customer.gstin if customer is not None else None,
+            customer_name_at_sale=customer.name if customer is not None else None,
             gross_amount=result.gross_amount,
             discount_amount=result.discount_amount,
             taxable_amount=result.taxable_amount,
@@ -364,13 +383,29 @@ class CheckoutService:
         )
         self.session.add(sale)
         self.session.flush()
-        self._add_sale_lines(cmd, sale, products, result)
+        sale_items = self._add_sale_lines(cmd, sale, products, result)
         self._add_payments(cmd, sale, payments)
 
         inventory = InventoryService(self.session, cmd.company_id)
+        inventory_depth = InventoryDepthService(self.session, cmd.company_id)
+        batch_product_ids: set[int] = set()
+        for command_line, sale_item in zip(cmd.lines, sale_items, strict=True):
+            product = products[command_line.product_id]
+            if not product.is_inventory_tracked or not product.batch_tracking_enabled:
+                continue
+            batch_product_ids.add(product.id)
+            inventory_depth.allocate_fefo(
+                sale_item=sale_item,
+                product=product,
+                branch_id=cmd.branch_id,
+                quantity=sale_item.quantity,
+                on_date=cmd.business_date,
+                expired_policy=company.expired_stock_policy,
+                user_id=cmd.cashier_id,
+            )
         for product_id in sorted(requested):
             product = products[product_id]
-            if product.is_inventory_tracked:
+            if product.is_inventory_tracked and product_id not in batch_product_ids:
                 inventory.record_movement(
                     product,
                     cmd.branch_id,
@@ -645,7 +680,18 @@ class CheckoutService:
         sale: Sale,
         products: dict[int, Product],
         result: TaxResult,
-    ) -> None:
+    ) -> tuple[SaleItem, ...]:
+        hsn_ids = {product.hsn_id for product in products.values() if product.hsn_id is not None}
+        hsn_codes = {
+            hsn.id: hsn.code
+            for hsn in self.session.scalars(
+                select(HsnCode).where(
+                    HsnCode.id.in_(sorted(hsn_ids)),
+                    HsnCode.deleted_at.is_(None),
+                )
+            )
+        }
+        items: list[SaleItem] = []
         for line_number, (command_line, calculated) in enumerate(
             zip(cmd.lines, result.lines, strict=True), start=1
         ):
@@ -669,10 +715,23 @@ class CheckoutService:
                 sgst_amount=calculated.sgst_amount,
                 igst_amount=calculated.igst_amount,
                 cess_amount=calculated.cess_amount,
+                cost_at_sale=products[command_line.product_id].cost_price,
+                supplier_id_at_sale=products[command_line.product_id].preferred_supplier_id,
+                hsn_code_at_sale=self._hsn_snapshot(
+                    hsn_codes, products[command_line.product_id].hsn_id
+                ),
+                uqc_at_sale=uqc_code(products[command_line.product_id].uom),
                 total_amount=calculated.line_total,
                 created_by=cmd.cashier_id,
             )
             self.session.add(item)
+            items.append(item)
+        self.session.flush()
+        return tuple(items)
+
+    @staticmethod
+    def _hsn_snapshot(hsn_codes: dict[int, str], hsn_id: int | None) -> str | None:
+        return hsn_codes.get(hsn_id) if hsn_id is not None else None
 
     def _add_payments(
         self,

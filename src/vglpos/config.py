@@ -69,6 +69,7 @@ class BaseConfig(BaseSettings):
     EMAIL_API_TOKEN: str = ""
     EMAIL_FROM: str = ""
     PRODUCT_IMAGE_DIR: str = ""
+    REPORT_ARTIFACT_DIR: str = "var/reports"
 
     DATABASE_URL: str = ""
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -127,6 +128,7 @@ class BaseConfig(BaseSettings):
             "EMAIL_API_TOKEN": self.EMAIL_API_TOKEN,
             "EMAIL_FROM": self.EMAIL_FROM,
             "PRODUCT_IMAGE_DIR": self.PRODUCT_IMAGE_DIR,
+            "REPORT_ARTIFACT_DIR": self.REPORT_ARTIFACT_DIR,
             "CACHE_TYPE": self.CACHE_TYPE,
             "CACHE_REDIS_URL": self.REDIS_URL,
             "CACHE_DEFAULT_TIMEOUT": self.CACHE_DEFAULT_TIMEOUT,
@@ -149,6 +151,7 @@ class BaseConfig(BaseSettings):
                 "imports": (
                     "vglpos.tasks.receipts",
                     "vglpos.tasks.maintenance",
+                    "vglpos.tasks.reports",
                 ),
                 "beat_schedule": {
                     "refresh-daily-sales-summary": {

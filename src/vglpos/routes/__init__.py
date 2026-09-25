@@ -6,8 +6,10 @@ from flask import Blueprint
 
 from vglpos.api.v1.auth import auth_bp
 from vglpos.api.v1.customers import customers_bp
+from vglpos.api.v1.inventory_depth import inventory_depth_bp
 from vglpos.api.v1.openapi import openapi_bp
 from vglpos.api.v1.products import products_bp
+from vglpos.api.v1.purchases import purchases_bp
 from vglpos.api.v1.reports import reports_bp
 from vglpos.api.v1.retail import retail_bp
 from vglpos.api.v1.sales import sales_bp
@@ -24,6 +26,8 @@ BLUEPRINTS: tuple[Blueprint, ...] = (
     auth_bp,
     sales_bp,
     products_bp,
+    purchases_bp,
+    inventory_depth_bp,
     customers_bp,
     retail_bp,
     shifts_bp,

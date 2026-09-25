@@ -157,8 +157,15 @@ class Product(TenantEntity):
     name_en: Mapped[str | None] = mapped_column(String(255), nullable=True)
     name_ta: Mapped[str | None] = mapped_column(String(255), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    brand: Mapped[str | None] = mapped_column(String(100), nullable=True)
     category_id: Mapped[int | None] = mapped_column(
         BIGINT, ForeignKey("categories.id", ondelete="RESTRICT"), nullable=True
+    )
+    parent_product_id: Mapped[int | None] = mapped_column(
+        BIGINT, ForeignKey("products.id", ondelete="RESTRICT"), nullable=True
+    )
+    preferred_supplier_id: Mapped[int | None] = mapped_column(
+        BIGINT, ForeignKey("suppliers.id", ondelete="RESTRICT"), nullable=True
     )
     hsn_id: Mapped[int | None] = mapped_column(
         BIGINT, ForeignKey("hsn_codes.id", ondelete="RESTRICT"), nullable=True
@@ -168,6 +175,9 @@ class Product(TenantEntity):
     )
     barcode: Mapped[str | None] = mapped_column(String(64), nullable=True)
     image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    variant_size: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    variant_colour: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    variant_style: Mapped[str | None] = mapped_column(String(50), nullable=True)
     uom: Mapped[str] = mapped_column(
         String(20), default="UNIT", server_default=text("'UNIT'"), nullable=False
     )
@@ -180,6 +190,9 @@ class Product(TenantEntity):
     is_inventory_tracked: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=text("true"), nullable=False
     )
+    batch_tracking_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false"), nullable=False
+    )
     is_weighed: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default=text("false"), nullable=False
     )
@@ -189,6 +202,14 @@ class Product(TenantEntity):
         server_default=text("5.000"),
         nullable=False,
     )
+    safety_stock: Mapped[Decimal] = mapped_column(
+        Numeric(12, 3),
+        default=Decimal("0.000"),
+        server_default=text("0.000"),
+        nullable=False,
+    )
+    lead_time_days: Mapped[int] = mapped_column(default=0, server_default=text("0"), nullable=False)
+    unit_weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(12, 3), nullable=True)
     on_hand: Mapped[Decimal] = mapped_column(
         Numeric(12, 3),
         default=Decimal("0.000"),

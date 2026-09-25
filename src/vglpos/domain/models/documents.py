@@ -18,7 +18,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from vglpos.domain.models.base import BIGINT, TenantEntity
+from vglpos.domain.models.base import BIGINT, ActorTenantEntity, TenantEntity
 
 
 class DocumentSeries(TenantEntity):
@@ -127,6 +127,9 @@ class Sale(TenantEntity):
     supply_type: Mapped[str] = mapped_column(
         String(20), default="INTRASTATE", server_default=text("'INTRASTATE'"), nullable=False
     )
+    place_of_supply: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    customer_gstin_at_sale: Mapped[str | None] = mapped_column(String(15), nullable=True)
+    customer_name_at_sale: Mapped[str | None] = mapped_column(String(255), nullable=True)
     gross_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     discount_amount: Mapped[Decimal] = mapped_column(
         Numeric(14, 2), default=Decimal("0.00"), server_default=text("0.00"), nullable=False
@@ -207,7 +210,33 @@ class SaleItem(TenantEntity):
     cess_amount: Mapped[Decimal] = mapped_column(
         Numeric(14, 2), default=Decimal("0.00"), server_default=text("0.00"), nullable=False
     )
+    cost_at_sale: Mapped[Decimal] = mapped_column(
+        Numeric(14, 2), default=Decimal("0.00"), server_default=text("0.00"), nullable=False
+    )
+    supplier_id_at_sale: Mapped[int | None] = mapped_column(
+        BIGINT, ForeignKey("suppliers.id", ondelete="RESTRICT"), nullable=True
+    )
+    hsn_code_at_sale: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    uqc_at_sale: Mapped[str] = mapped_column(
+        String(10), default="OTH", server_default=text("'OTH'"), nullable=False
+    )
     total_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+
+
+class SaleItemBatch(ActorTenantEntity):
+    """Persist the exact FEFO lots consumed by one immutable sale line."""
+
+    __tablename__ = "sale_item_batches"
+    __table_args__ = (Index("idx_sale_item_batches_item", "sale_item_id"),)
+
+    sale_item_id: Mapped[int] = mapped_column(
+        BIGINT, ForeignKey("sale_items.id", ondelete="CASCADE"), nullable=False
+    )
+    batch_id: Mapped[int] = mapped_column(
+        BIGINT, ForeignKey("stock_batches.id", ondelete="RESTRICT"), nullable=False
+    )
+    quantity: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
+    unit_cost: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
 
 
 class SalePayment(TenantEntity):
@@ -248,6 +277,7 @@ class CreditNote(TenantEntity):
         BIGINT, ForeignKey("sales.id", ondelete="RESTRICT"), nullable=False
     )
     credit_note_number: Mapped[str] = mapped_column(String(64), nullable=False)
+    note_date: Mapped[date] = mapped_column(Date, nullable=False)
     reason: Mapped[str] = mapped_column(String(50), nullable=False)
     net_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
 
@@ -264,3 +294,22 @@ class CreditNoteItem(TenantEntity):
     )
     quantity: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+
+
+class CreditNoteItemBatch(ActorTenantEntity):
+    """Record the original sale lot restored by one returned line quantity."""
+
+    __tablename__ = "credit_note_item_batches"
+    __table_args__ = (Index("idx_credit_note_item_batches_item", "credit_note_item_id"),)
+
+    credit_note_item_id: Mapped[int] = mapped_column(
+        BIGINT, ForeignKey("credit_note_items.id", ondelete="CASCADE"), nullable=False
+    )
+    sale_item_batch_id: Mapped[int] = mapped_column(
+        BIGINT, ForeignKey("sale_item_batches.id", ondelete="RESTRICT"), nullable=False
+    )
+    batch_id: Mapped[int] = mapped_column(
+        BIGINT, ForeignKey("stock_batches.id", ondelete="RESTRICT"), nullable=False
+    )
+    quantity: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
+    unit_cost: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)

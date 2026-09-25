@@ -15,15 +15,19 @@ from vglpos.domain.enums import DocType, ReturnReason, SaleStatus
 from vglpos.domain.models import (
     CreditNote,
     CreditNoteItem,
+    CreditNoteItemBatch,
     Customer,
     LoyaltyLedger,
     Product,
     Sale,
     SaleItem,
+    SaleItemBatch,
     SalePayment,
+    StockBatch,
 )
 from vglpos.services.exceptions import (
     CheckoutError,
+    ConflictError,
     EntityNotFoundError,
     ReturnQuantityError,
     ServiceError,
@@ -160,6 +164,7 @@ class ReturnService:
             branch_id=sale.branch_id,
             original_sale_id=sale.id,
             credit_note_number=number,
+            note_date=cmd.on_date,
             reason=cmd.reason.strip().upper(),
             net_amount=credit_total,
             created_by=cmd.user_id,
@@ -186,18 +191,30 @@ class ReturnService:
         inventory = InventoryService(self.session, cmd.company_id)
         for item_id in sorted(requested):
             item = items_by_id[item_id]
-            self.session.add(
-                CreditNoteItem(
-                    company_id=cmd.company_id,
-                    credit_note_id=credit_note.id,
-                    original_sale_item_id=item_id,
-                    quantity=requested[item_id],
-                    amount=item_amounts[item_id],
-                    created_by=cmd.user_id,
-                )
+            credit_item = CreditNoteItem(
+                company_id=cmd.company_id,
+                credit_note_id=credit_note.id,
+                original_sale_item_id=item_id,
+                quantity=requested[item_id],
+                amount=item_amounts[item_id],
+                created_by=cmd.user_id,
             )
+            self.session.add(credit_item)
+            self.session.flush()
             product = products[item.product_id]
+            restored_batches = False
             if product.is_inventory_tracked:
+                restored_batches = self._restore_original_batches(
+                    cmd=cmd,
+                    sale=sale,
+                    sale_item=item,
+                    credit_note=credit_note,
+                    credit_item=credit_item,
+                    product=product,
+                    return_quantity=requested[item_id],
+                    inventory=inventory,
+                )
+            if product.is_inventory_tracked and not restored_batches:
                 inventory.record_movement(
                     product,
                     sale.branch_id,
@@ -241,6 +258,104 @@ class ReturnService:
             customer.row_version += 1
         self.session.flush()
         return credit_note
+
+    def _restore_original_batches(
+        self,
+        *,
+        cmd: CreateCreditNoteCommand,
+        sale: Sale,
+        sale_item: SaleItem,
+        credit_note: CreditNote,
+        credit_item: CreditNoteItem,
+        product: Product,
+        return_quantity: Decimal,
+        inventory: InventoryService,
+    ) -> bool:
+        """Restore a return across the immutable lots consumed by the original line."""
+        allocations = tuple(
+            self.session.scalars(
+                select(SaleItemBatch)
+                .where(
+                    SaleItemBatch.company_id == cmd.company_id,
+                    SaleItemBatch.sale_item_id == sale_item.id,
+                    SaleItemBatch.deleted_at.is_(None),
+                )
+                .order_by(SaleItemBatch.id)
+            )
+        )
+        if not allocations:
+            return False
+        prior = {
+            allocation_id: qty(restored)
+            for allocation_id, restored in self.session.execute(
+                select(
+                    CreditNoteItemBatch.sale_item_batch_id,
+                    func.sum(CreditNoteItemBatch.quantity),
+                )
+                .join(
+                    CreditNoteItem,
+                    CreditNoteItem.id == CreditNoteItemBatch.credit_note_item_id,
+                )
+                .where(
+                    CreditNoteItemBatch.company_id == cmd.company_id,
+                    CreditNoteItemBatch.deleted_at.is_(None),
+                    CreditNoteItem.company_id == cmd.company_id,
+                    CreditNoteItem.original_sale_item_id == sale_item.id,
+                    CreditNoteItem.deleted_at.is_(None),
+                )
+                .group_by(CreditNoteItemBatch.sale_item_batch_id)
+            )
+        }
+        remaining = qty(return_quantity)
+        for allocation in allocations:
+            restorable = qty(allocation.quantity - prior.get(allocation.id, Decimal("0.000")))
+            restored = min(remaining, restorable)
+            if restored <= ZERO:
+                continue
+            batch = self.session.scalar(
+                select(StockBatch)
+                .where(
+                    StockBatch.id == allocation.batch_id,
+                    StockBatch.company_id == cmd.company_id,
+                    StockBatch.branch_id == sale.branch_id,
+                    StockBatch.product_id == sale_item.product_id,
+                    StockBatch.deleted_at.is_(None),
+                )
+                .with_for_update()
+            )
+            if batch is None:
+                raise EntityNotFoundError("The original sale batch was not found.")
+            batch.quantity_available = qty(batch.quantity_available + restored)
+            batch.row_version += 1
+            self.session.add(
+                CreditNoteItemBatch(
+                    company_id=cmd.company_id,
+                    credit_note_item_id=credit_item.id,
+                    sale_item_batch_id=allocation.id,
+                    batch_id=batch.id,
+                    quantity=restored,
+                    unit_cost=allocation.unit_cost,
+                    created_by=cmd.user_id,
+                )
+            )
+            inventory.record_movement(
+                product,
+                sale.branch_id,
+                restored,
+                "SALE_RETURN",
+                "credit_notes",
+                credit_note.id,
+                cmd.user_id,
+                batch_id=batch.id,
+                unit_cost=allocation.unit_cost,
+                notes=f"Original sale item {sale_item.id}",
+            )
+            remaining = qty(remaining - restored)
+            if remaining <= ZERO:
+                break
+        if remaining > ZERO:
+            raise ConflictError("Original sale batch allocations cannot satisfy the return.")
+        return True
 
     def _reverse_loyalty(
         self,

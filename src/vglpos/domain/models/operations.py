@@ -20,7 +20,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from vglpos.domain.models.base import BIGINT, TenantEntity
+from vglpos.domain.models.base import BIGINT, ActorTenantEntity, TenantEntity
 
 
 class Shift(TenantEntity):
@@ -163,6 +163,30 @@ class TerminalQuickKey(TenantEntity):
     created_by: Mapped[int] = mapped_column(
         BIGINT, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
+
+
+class ReportJob(ActorTenantEntity):
+    """Durable asynchronous report request and its downloadable artifact metadata."""
+
+    __tablename__ = "report_jobs"
+    __table_args__ = (
+        Index("idx_report_jobs_company_status", "company_id", "status", "created_at"),
+    )
+
+    requested_by: Mapped[int] = mapped_column(
+        BIGINT, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    report_name: Mapped[str] = mapped_column(String(50), nullable=False)
+    output_format: Mapped[str] = mapped_column(String(20), nullable=False)
+    parameters: Mapped[dict[str, Any]] = mapped_column(
+        JSON().with_variant(JSONB, "postgresql"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(
+        String(20), default="PENDING", server_default=text("'PENDING'"), nullable=False
+    )
+    artifact_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class AuditLog(TenantEntity):

@@ -20,6 +20,44 @@ STATE_CODES: dict[str, str] = dict(REFERENCE_STATE_CODES)
 
 _GSTIN_PATTERN: Final = re.compile(r"^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$")
 _BASE36: Final = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+_UQC_CODES: Final[dict[str, str]] = {
+    "BAG": "BAG",
+    "BALE": "BAL",
+    "BUNDLE": "BDL",
+    "BOX": "BOX",
+    "CARTON": "CTN",
+    "DOZEN": "DOZ",
+    "GRAM": "GMS",
+    "GRAMS": "GMS",
+    "KILOGRAM": "KGS",
+    "KILOGRAMS": "KGS",
+    "KG": "KGS",
+    "KGS": "KGS",
+    "LITRE": "LTR",
+    "LITRES": "LTR",
+    "LITER": "LTR",
+    "LITERS": "LTR",
+    "LTR": "LTR",
+    "METRE": "MTR",
+    "METRES": "MTR",
+    "METER": "MTR",
+    "METERS": "MTR",
+    "MILLILITRE": "MLT",
+    "MILLILITRES": "MLT",
+    "ML": "MLT",
+    "NUMBER": "NOS",
+    "NUMBERS": "NOS",
+    "NOS": "NOS",
+    "PACK": "PAC",
+    "PACKET": "PAC",
+    "PAIR": "PRS",
+    "PIECE": "NOS",
+    "PIECES": "NOS",
+    "SET": "SET",
+    "TONNE": "TON",
+    "UNIT": "NOS",
+    "UNITS": "NOS",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,6 +114,11 @@ def financial_year_code(value: date) -> str:
     """
     starting_year = value.year if value.month >= 4 else value.year - 1
     return f"{starting_year % 100:02d}-{(starting_year + 1) % 100:02d}"
+
+
+def uqc_code(value: str) -> str:
+    """Map catalogue units to GST offline-utility quantity codes."""
+    return _UQC_CODES.get(value.strip().upper(), "OTH")
 
 
 def _validated_state_code(value: object, label: str) -> str:

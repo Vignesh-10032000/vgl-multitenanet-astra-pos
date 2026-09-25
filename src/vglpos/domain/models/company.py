@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Index, Numeric, String, text
+from sqlalchemy import Boolean, Index, Integer, Numeric, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from vglpos.domain.models.base import AuditMixin, SurrogateKeyMixin
@@ -66,6 +66,18 @@ class Company(AuditMixin, SurrogateKeyMixin, Base):
     )
     loyalty_redemption_cap_percent: Mapped[Decimal] = mapped_column(
         Numeric(5, 2), default=Decimal("25.00"), server_default=text("25.00"), nullable=False
+    )
+    purchase_quantity_tolerance_percent: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2), default=Decimal("0.00"), server_default=text("0.00"), nullable=False
+    )
+    purchase_price_tolerance_percent: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2), default=Decimal("0.00"), server_default=text("0.00"), nullable=False
+    )
+    near_expiry_days: Mapped[int] = mapped_column(
+        Integer, default=30, server_default=text("30"), nullable=False
+    )
+    expired_stock_policy: Mapped[str] = mapped_column(
+        String(10), default="BLOCK", server_default=text("'BLOCK'"), nullable=False
     )
     is_active: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=text("true"), nullable=False

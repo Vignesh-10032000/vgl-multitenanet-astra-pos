@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from flask import Blueprint, Response, g
+from flask import Blueprint, Response, current_app, g, send_file
 from sqlalchemy.orm import Session
 
-from vglpos.api.v1.http import model_response, parse_query
+from vglpos.api.v1.http import model_response, parse_body, parse_query
+from vglpos.api.v1.idempotency import idempotent
 from vglpos.api.v1.openapi import documented
 from vglpos.api.v1.schemas.reports import (
     DailySummaryQuery,
@@ -16,6 +17,8 @@ from vglpos.api.v1.schemas.reports import (
     Gstr1Response,
     InventoryValuationQuery,
     InventoryValuationResponse,
+    ReportJobCreateRequest,
+    ReportJobResponse,
     RevenueQuery,
     RevenueSeriesResponse,
 )
@@ -25,10 +28,13 @@ from vglpos.api.v1.serializers import (
     inventory_valuation_response,
     revenue_series_response,
 )
+from vglpos.domain.models import ReportJob
 from vglpos.extensions import db, limiter
 from vglpos.security.decorators import require_permission
 from vglpos.services.cache_service import dashboard_key, get_mapping, set_mapping
+from vglpos.services.report_job_service import ReportJobService
 from vglpos.services.report_service import ReportService
+from vglpos.tasks.reports import generate_report_artifact
 
 reports_bp = Blueprint("reports", __name__, url_prefix="/api/v1/reports")
 
@@ -118,3 +124,70 @@ def inventory_valuation() -> tuple[Response, int]:
             method=query.method, branch_id=g.branch_id
         )
         return model_response(inventory_valuation_response(valuation))
+
+
+def _report_job_response(job: ReportJob) -> ReportJobResponse:
+    base = ReportJobResponse(
+        id=job.id,
+        report_name=job.report_name,
+        output_format=job.output_format,
+        parameters=job.parameters,
+        status=job.status,
+        error_message=job.error_message,
+        completed_at=job.completed_at,
+        created_at=job.created_at,
+        download_url=None,
+    )
+    if base.status != "COMPLETED":
+        return base
+    return base.model_copy(update={"download_url": f"/api/v1/reports/jobs/{base.id}/download"})
+
+
+@reports_bp.post("/jobs")
+@require_permission("report.view", "report.export", require_all=True)
+@idempotent
+@limiter.limit("10 per minute", key_func=_user_rate_key)
+@documented(
+    summary="Queue a downloadable report artifact",
+    request_model=ReportJobCreateRequest,
+    response_model=ReportJobResponse,
+    success_status=202,
+)
+def create_report_job() -> tuple[Response, int]:
+    body = parse_body(ReportJobCreateRequest)
+    with Session(db.engine) as session:
+        job = ReportJobService(session, g.company_id).create(
+            requested_by=g.user_id,
+            report_name=body.report_name,
+            output_format=body.output_format,
+            parameters=body.parameters,
+        )
+        generate_report_artifact.delay(company_id=g.company_id, job_id=job.id)
+        return model_response(_report_job_response(job), status=202)
+
+
+@reports_bp.get("/jobs/<int:job_id>")
+@require_permission("report.view")
+@documented(summary="Get report job status", response_model=ReportJobResponse)
+def report_job_status(job_id: int) -> tuple[Response, int]:
+    with Session(db.engine) as session:
+        job = ReportJobService(session, g.company_id).get(job_id)
+        return model_response(_report_job_response(job))
+
+
+@reports_bp.get("/jobs/<int:job_id>/download")
+@require_permission("report.view", "report.export", require_all=True)
+def download_report_job(job_id: int) -> Response:
+    with Session(db.engine) as session:
+        service = ReportJobService(session, g.company_id)
+        job = service.get(job_id)
+        path, content_type = service.artifact(
+            job_id, str(current_app.config["REPORT_ARTIFACT_DIR"])
+        )
+        suffix = path.suffix.removeprefix(".")
+        return send_file(
+            path,
+            mimetype=content_type,
+            as_attachment=True,
+            download_name=f"{job.report_name.lower()}-{job.id}.{suffix}",
+        )

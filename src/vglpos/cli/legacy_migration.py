@@ -1188,6 +1188,7 @@ class LegacyMigrator:
                 credit_note_number=(
                     f"LEGACY-CN/{financial_year_code(business_day)}/{sequence:06d}"
                 ),
+                note_date=business_day,
                 reason=reason,
                 net_amount=_legacy_money(row["refund_amount"]),
                 created_at=timestamp,

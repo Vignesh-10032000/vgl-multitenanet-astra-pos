@@ -33,6 +33,9 @@ PERMISSION_DEFINITIONS: tuple[PermissionDefinition, ...] = (
     PermissionDefinition("product.delete", "Soft-delete products", "product"),
     PermissionDefinition("stock.adjust", "Record authorised stock adjustments", "stock"),
     PermissionDefinition("stock.view", "View stock balances and movements", "stock"),
+    PermissionDefinition("stock.audit", "Conduct and post physical stock counts", "stock"),
+    PermissionDefinition("stock.transfer", "Move stock between branches", "stock"),
+    PermissionDefinition("stock.reorder", "View stock replenishment suggestions", "stock"),
     PermissionDefinition("customer.view", "View customer records", "customer"),
     PermissionDefinition("customer.create", "Create customer records", "customer"),
     PermissionDefinition("customer.edit", "Edit customer records", "customer"),
@@ -50,6 +53,13 @@ PERMISSION_DEFINITIONS: tuple[PermissionDefinition, ...] = (
     PermissionDefinition("einvoice.generate", "Generate an e-invoice", "einvoice"),
     PermissionDefinition("purchase.create", "Create supplier purchases", "purchase"),
     PermissionDefinition("purchase.approve", "Approve supplier purchases", "purchase"),
+    PermissionDefinition("purchase.view", "View supplier purchase documents", "purchase"),
+    PermissionDefinition("purchase.receive", "Receive purchase orders", "purchase"),
+    PermissionDefinition("purchase.invoice", "Match and post supplier invoices", "purchase"),
+    PermissionDefinition("purchase.return", "Create purchase debit notes", "purchase"),
+    PermissionDefinition("supplier.view", "View supplier masters and ledgers", "purchase"),
+    PermissionDefinition("supplier.create", "Create supplier masters", "purchase"),
+    PermissionDefinition("supplier.pay", "Record supplier payments", "purchase"),
 )
 
 KNOWN_PERMISSION_CODES: frozenset[str] = frozenset(
@@ -90,14 +100,34 @@ STANDARD_ROLES: tuple[StandardRoleDefinition, ...] = (
                 "product.edit",
                 "stock.view",
                 "stock.adjust",
+                "stock.audit",
+                "stock.transfer",
+                "stock.reorder",
                 "purchase.create",
+                "purchase.view",
+                "purchase.receive",
+                "purchase.invoice",
+                "purchase.return",
+                "supplier.view",
+                "supplier.create",
             }
         ),
     ),
     StandardRoleDefinition(
         "ACCOUNTANT",
         "Financial reporting and export operator",
-        frozenset({"sale.view", "customer.export", "report.view", "report.gst", "report.export"}),
+        frozenset(
+            {
+                "sale.view",
+                "customer.export",
+                "report.view",
+                "report.gst",
+                "report.export",
+                "purchase.view",
+                "supplier.view",
+                "supplier.pay",
+            }
+        ),
     ),
     StandardRoleDefinition(
         "AUDITOR",
@@ -112,6 +142,8 @@ STANDARD_ROLES: tuple[StandardRoleDefinition, ...] = (
                 "report.view",
                 "report.gst",
                 "report.export",
+                "purchase.view",
+                "supplier.view",
             }
         ),
     ),

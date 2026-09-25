@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
@@ -84,3 +84,21 @@ class InventoryValuationResponse(ResponseModel):
     method: str
     items: list[InventoryValuationRowResponse]
     total_value: Decimal
+
+
+class ReportJobCreateRequest(RequestModel):
+    report_name: str = Field(min_length=1, max_length=50)
+    output_format: Literal["JSON", "XLSX", "XML"]
+    parameters: dict[str, str | int | bool | None] = Field(default_factory=dict)
+
+
+class ReportJobResponse(ResponseModel):
+    id: int
+    report_name: str
+    output_format: str
+    parameters: dict[str, str | int | bool | None]
+    status: str
+    error_message: str | None
+    completed_at: datetime | None
+    created_at: datetime
+    download_url: str | None

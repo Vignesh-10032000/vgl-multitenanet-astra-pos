@@ -78,6 +78,18 @@ class TenantEntity(TenantMixin, AuditMixin, SurrogateKeyMixin, Base):
     __abstract__ = True
 
 
+class ActorTenantEntity(TenantEntity):
+    """Require an attributable creator for auditable business workflows."""
+
+    __abstract__ = True
+
+    created_by: Mapped[int] = mapped_column(
+        BIGINT,
+        ForeignKey("users.id", ondelete="RESTRICT", use_alter=True),
+        nullable=False,
+    )
+
+
 class AuditedEntity(AuditMixin, SurrogateKeyMixin, Base):
     """Abstract base for audited entities owned through an aggregate root."""
 

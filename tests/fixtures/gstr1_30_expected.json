@@ -1,0 +1,174 @@
+{
+  "gstin": "33AAAAA0000A1Z5",
+  "fp": "082026",
+  "b2b": [
+    {
+      "ctin": "29ABCDE1234F1Z7",
+      "inv": [
+        {
+          "inum": "S/0006",
+          "idt": "15-08-2026",
+          "val": 210.00,
+          "rchrg": "N",
+          "inv_typ": "R",
+          "itms": [{"num": 1, "itm_det": {"rt": 5.00, "txval": 200.00, "iamt": 10.00, "camt": 0.00, "samt": 0.00, "csamt": 0.00}}],
+          "pos": "29"
+        },
+        {
+          "inum": "S/0007",
+          "idt": "15-08-2026",
+          "val": 210.00,
+          "rchrg": "N",
+          "inv_typ": "R",
+          "itms": [{"num": 1, "itm_det": {"rt": 5.00, "txval": 200.00, "iamt": 10.00, "camt": 0.00, "samt": 0.00, "csamt": 0.00}}],
+          "pos": "29"
+        },
+        {
+          "inum": "S/0008",
+          "idt": "15-08-2026",
+          "val": 210.00,
+          "rchrg": "N",
+          "inv_typ": "R",
+          "itms": [{"num": 1, "itm_det": {"rt": 5.00, "txval": 200.00, "iamt": 10.00, "camt": 0.00, "samt": 0.00, "csamt": 0.00}}],
+          "pos": "29"
+        },
+        {
+          "inum": "S/0009",
+          "idt": "15-08-2026",
+          "val": 210.00,
+          "rchrg": "N",
+          "inv_typ": "R",
+          "itms": [{"num": 1, "itm_det": {"rt": 5.00, "txval": 200.00, "iamt": 10.00, "camt": 0.00, "samt": 0.00, "csamt": 0.00}}],
+          "pos": "29"
+        },
+        {
+          "inum": "S/0010",
+          "idt": "15-08-2026",
+          "val": 210.00,
+          "rchrg": "N",
+          "inv_typ": "R",
+          "itms": [{"num": 1, "itm_det": {"rt": 5.00, "txval": 200.00, "iamt": 10.00, "camt": 0.00, "samt": 0.00, "csamt": 0.00}}],
+          "pos": "29"
+        }
+      ]
+    },
+    {
+      "ctin": "33ABCDE1234F1Z5",
+      "inv": [
+        {
+          "inum": "S/0001",
+          "idt": "15-08-2026",
+          "val": 118.00,
+          "rchrg": "N",
+          "inv_typ": "R",
+          "itms": [{"num": 1, "itm_det": {"rt": 18.00, "txval": 100.00, "iamt": 0.00, "camt": 9.00, "samt": 9.00, "csamt": 0.00}}],
+          "pos": "33"
+        },
+        {
+          "inum": "S/0002",
+          "idt": "15-08-2026",
+          "val": 118.00,
+          "rchrg": "N",
+          "inv_typ": "R",
+          "itms": [{"num": 1, "itm_det": {"rt": 18.00, "txval": 100.00, "iamt": 0.00, "camt": 9.00, "samt": 9.00, "csamt": 0.00}}],
+          "pos": "33"
+        },
+        {
+          "inum": "S/0003",
+          "idt": "15-08-2026",
+          "val": 118.00,
+          "rchrg": "N",
+          "inv_typ": "R",
+          "itms": [{"num": 1, "itm_det": {"rt": 18.00, "txval": 100.00, "iamt": 0.00, "camt": 9.00, "samt": 9.00, "csamt": 0.00}}],
+          "pos": "33"
+        },
+        {
+          "inum": "S/0004",
+          "idt": "15-08-2026",
+          "val": 118.00,
+          "rchrg": "N",
+          "inv_typ": "R",
+          "itms": [{"num": 1, "itm_det": {"rt": 18.00, "txval": 100.00, "iamt": 0.00, "camt": 9.00, "samt": 9.00, "csamt": 0.00}}],
+          "pos": "33"
+        },
+        {
+          "inum": "S/0005",
+          "idt": "15-08-2026",
+          "val": 118.00,
+          "rchrg": "N",
+          "inv_typ": "R",
+          "itms": [{"num": 1, "itm_det": {"rt": 18.00, "txval": 100.00, "iamt": 0.00, "camt": 9.00, "samt": 9.00, "csamt": 0.00}}],
+          "pos": "33"
+        }
+      ]
+    }
+  ],
+  "b2cl": [
+    {
+      "pos": "29",
+      "inv": [
+        {
+          "inum": "S/0011",
+          "idt": "15-08-2026",
+          "val": 105000.00,
+          "rchrg": "N",
+          "inv_typ": "R",
+          "itms": [{"num": 1, "itm_det": {"rt": 5.00, "txval": 100000.00, "iamt": 5000.00, "camt": 0.00, "samt": 0.00, "csamt": 0.00}}]
+        },
+        {
+          "inum": "S/0012",
+          "idt": "15-08-2026",
+          "val": 105000.00,
+          "rchrg": "N",
+          "inv_typ": "R",
+          "itms": [{"num": 1, "itm_det": {"rt": 5.00, "txval": 100000.00, "iamt": 5000.00, "camt": 0.00, "samt": 0.00, "csamt": 0.00}}]
+        }
+      ]
+    }
+  ],
+  "b2cs": [
+    {"sply_ty": "INTER", "pos": "29", "typ": "OE", "rt": 5.00, "txval": 600.00, "iamt": 30.00, "camt": 0.00, "samt": 0.00, "csamt": 0.00},
+    {"sply_ty": "INTRA", "pos": "33", "typ": "OE", "rt": 18.00, "txval": 500.00, "iamt": 0.00, "camt": 45.00, "samt": 45.00, "csamt": 0.00}
+  ],
+  "cdnr": [
+    {
+      "ctin": "33ABCDE1234F1Z5",
+      "nt": [
+        {
+          "ntty": "C",
+          "nt_num": "C/0001",
+          "nt_dt": "20-08-2026",
+          "val": 118.00,
+          "pos": "33",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "itms": [{"num": 1, "itm_det": {"rt": 18.00, "txval": 100.00, "iamt": 0.00, "camt": 9.00, "samt": 9.00, "csamt": 0.00}}]
+        }
+      ]
+    }
+  ],
+  "nil": {
+    "inv": [
+      {"sply_ty": "INTRAB2B", "nil_amt": 300.00, "expt_amt": 0.00, "ngsup_amt": 0.00},
+      {"sply_ty": "INTRAB2C", "nil_amt": 300.00, "expt_amt": 0.00, "ngsup_amt": 0.00}
+    ]
+  },
+  "hsn": {
+    "hsn_b2b": [
+      {"num": 1, "hsn_sc": "1001", "desc": "Hand-calculated commodity", "uqc": "KGS", "qty": 3.000, "val": 300.00, "rt": 0.00, "txval": 300.00, "iamt": 0.00, "camt": 0.00, "samt": 0.00, "csamt": 0.00},
+      {"num": 2, "hsn_sc": "1001", "desc": "Hand-calculated commodity", "uqc": "KGS", "qty": 5.000, "val": 1050.00, "rt": 5.00, "txval": 1000.00, "iamt": 50.00, "camt": 0.00, "samt": 0.00, "csamt": 0.00},
+      {"num": 3, "hsn_sc": "1001", "desc": "Hand-calculated commodity", "uqc": "KGS", "qty": 4.000, "val": 472.00, "rt": 18.00, "txval": 400.00, "iamt": 0.00, "camt": 36.00, "samt": 36.00, "csamt": 0.00}
+    ],
+    "hsn_b2c": [
+      {"num": 1, "hsn_sc": "1001", "desc": "Hand-calculated commodity", "uqc": "KGS", "qty": 3.000, "val": 300.00, "rt": 0.00, "txval": 300.00, "iamt": 0.00, "camt": 0.00, "samt": 0.00, "csamt": 0.00},
+      {"num": 2, "hsn_sc": "1001", "desc": "Hand-calculated commodity", "uqc": "KGS", "qty": 8.000, "val": 210630.00, "rt": 5.00, "txval": 200600.00, "iamt": 10030.00, "camt": 0.00, "samt": 0.00, "csamt": 0.00},
+      {"num": 3, "hsn_sc": "1001", "desc": "Hand-calculated commodity", "uqc": "KGS", "qty": 5.000, "val": 590.00, "rt": 18.00, "txval": 500.00, "iamt": 0.00, "camt": 45.00, "samt": 45.00, "csamt": 0.00}
+    ]
+  },
+  "doc_issue": {
+    "doc_det": [
+      {"doc_num": 4, "docs": [{"num": 1, "from": "C/0001", "to": "C/0002", "totnum": 2, "cancel": 0, "net_issue": 2}]},
+      {"doc_num": 1, "docs": [{"num": 1, "from": "S/0001", "to": "S/0030", "totnum": 30, "cancel": 0, "net_issue": 30}]}
+    ]
+  }
+}

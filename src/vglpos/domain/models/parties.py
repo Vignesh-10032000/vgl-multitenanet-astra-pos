@@ -118,6 +118,9 @@ class Supplier(TenantEntity):
     payment_terms_days: Mapped[int] = mapped_column(
         default=30, server_default=text("30"), nullable=False
     )
+    outstanding_balance: Mapped[Decimal] = mapped_column(
+        Numeric(14, 2), default=Decimal("0.00"), server_default=text("0.00"), nullable=False
+    )
     is_active: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=text("true"), nullable=False
     )

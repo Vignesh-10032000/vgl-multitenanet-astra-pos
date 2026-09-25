@@ -1,0 +1,43 @@
+{
+  "period": {"start": "2026-08-01", "end": "2026-08-31"},
+  "customers": {
+    "A": {"name": "Tamil Nadu Stores", "gstin": "33ABCDE1234F1Z5", "state_code": "33"},
+    "B": {"name": "Karnataka Stores", "gstin": "29ABCDE1234F1Z7", "state_code": "29"}
+  },
+  "invoices": [
+    {"number": "S/0001", "customer": "A", "supply": "INTRASTATE", "pos": "33", "taxable": "100.00", "rate": "18.00"},
+    {"number": "S/0002", "customer": "A", "supply": "INTRASTATE", "pos": "33", "taxable": "100.00", "rate": "18.00"},
+    {"number": "S/0003", "customer": "A", "supply": "INTRASTATE", "pos": "33", "taxable": "100.00", "rate": "18.00"},
+    {"number": "S/0004", "customer": "A", "supply": "INTRASTATE", "pos": "33", "taxable": "100.00", "rate": "18.00"},
+    {"number": "S/0005", "customer": "A", "supply": "INTRASTATE", "pos": "33", "taxable": "100.00", "rate": "18.00"},
+    {"number": "S/0006", "customer": "B", "supply": "INTERSTATE", "pos": "29", "taxable": "200.00", "rate": "5.00"},
+    {"number": "S/0007", "customer": "B", "supply": "INTERSTATE", "pos": "29", "taxable": "200.00", "rate": "5.00"},
+    {"number": "S/0008", "customer": "B", "supply": "INTERSTATE", "pos": "29", "taxable": "200.00", "rate": "5.00"},
+    {"number": "S/0009", "customer": "B", "supply": "INTERSTATE", "pos": "29", "taxable": "200.00", "rate": "5.00"},
+    {"number": "S/0010", "customer": "B", "supply": "INTERSTATE", "pos": "29", "taxable": "200.00", "rate": "5.00"},
+    {"number": "S/0011", "customer": null, "supply": "INTERSTATE", "pos": "29", "taxable": "100000.00", "rate": "5.00"},
+    {"number": "S/0012", "customer": null, "supply": "INTERSTATE", "pos": "29", "taxable": "100000.00", "rate": "5.00"},
+    {"number": "S/0013", "customer": null, "supply": "INTRASTATE", "pos": "33", "taxable": "100.00", "rate": "18.00"},
+    {"number": "S/0014", "customer": null, "supply": "INTRASTATE", "pos": "33", "taxable": "100.00", "rate": "18.00"},
+    {"number": "S/0015", "customer": null, "supply": "INTRASTATE", "pos": "33", "taxable": "100.00", "rate": "18.00"},
+    {"number": "S/0016", "customer": null, "supply": "INTRASTATE", "pos": "33", "taxable": "100.00", "rate": "18.00"},
+    {"number": "S/0017", "customer": null, "supply": "INTRASTATE", "pos": "33", "taxable": "100.00", "rate": "18.00"},
+    {"number": "S/0018", "customer": null, "supply": "INTRASTATE", "pos": "33", "taxable": "100.00", "rate": "18.00"},
+    {"number": "S/0019", "customer": null, "supply": "INTERSTATE", "pos": "29", "taxable": "100.00", "rate": "5.00"},
+    {"number": "S/0020", "customer": null, "supply": "INTERSTATE", "pos": "29", "taxable": "100.00", "rate": "5.00"},
+    {"number": "S/0021", "customer": null, "supply": "INTERSTATE", "pos": "29", "taxable": "100.00", "rate": "5.00"},
+    {"number": "S/0022", "customer": null, "supply": "INTERSTATE", "pos": "29", "taxable": "100.00", "rate": "5.00"},
+    {"number": "S/0023", "customer": null, "supply": "INTERSTATE", "pos": "29", "taxable": "100.00", "rate": "5.00"},
+    {"number": "S/0024", "customer": null, "supply": "INTERSTATE", "pos": "29", "taxable": "100.00", "rate": "5.00"},
+    {"number": "S/0025", "customer": null, "supply": "INTRASTATE", "pos": "33", "taxable": "100.00", "rate": "0.00"},
+    {"number": "S/0026", "customer": null, "supply": "INTRASTATE", "pos": "33", "taxable": "100.00", "rate": "0.00"},
+    {"number": "S/0027", "customer": null, "supply": "INTRASTATE", "pos": "33", "taxable": "100.00", "rate": "0.00"},
+    {"number": "S/0028", "customer": "A", "supply": "INTRASTATE", "pos": "33", "taxable": "100.00", "rate": "0.00"},
+    {"number": "S/0029", "customer": "A", "supply": "INTRASTATE", "pos": "33", "taxable": "100.00", "rate": "0.00"},
+    {"number": "S/0030", "customer": "A", "supply": "INTRASTATE", "pos": "33", "taxable": "100.00", "rate": "0.00"}
+  ],
+  "credit_notes": [
+    {"number": "C/0001", "invoice": "S/0001", "date": "2026-08-20"},
+    {"number": "C/0002", "invoice": "S/0013", "date": "2026-08-21"}
+  ]
+}

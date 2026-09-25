@@ -21,7 +21,7 @@ def test_all_migrations_upgrade_downgrade_and_reupgrade(
 
     command.upgrade(config, "head")
     engine = create_engine(database_url)
-    assert len(inspect(engine).get_table_names()) == 34  # 33 domain tables + alembic_version
+    assert len(inspect(engine).get_table_names()) == 48  # 47 domain tables + alembic_version
     assert "mv_daily_sales_summary" in inspect(engine).get_view_names()
     assert "total_cess" in (inspect(engine).get_view_definition("mv_daily_sales_summary") or "")
     assert {
@@ -43,6 +43,35 @@ def test_all_migrations_upgrade_downgrade_and_reupgrade(
         "variance_approved_by",
         "variance_reason",
     }.issubset({column["name"] for column in inspect(engine).get_columns("shifts")})
+    assert {
+        "goods_receipts",
+        "goods_receipt_items",
+        "credit_note_item_batches",
+        "purchase_orders",
+        "purchase_order_items",
+        "purchase_returns",
+        "purchase_return_items",
+        "report_jobs",
+        "sale_item_batches",
+        "stock_audits",
+        "stock_audit_items",
+        "stock_transfers",
+        "stock_transfer_items",
+        "supplier_ledger",
+    }.issubset(inspect(engine).get_table_names())
+    assert {
+        "batch_tracking_enabled",
+        "parent_product_id",
+        "preferred_supplier_id",
+        "safety_stock",
+    }.issubset({column["name"] for column in inspect(engine).get_columns("products")})
+    assert {"cost_at_sale", "hsn_code_at_sale", "supplier_id_at_sale", "uqc_at_sale"}.issubset(
+        {column["name"] for column in inspect(engine).get_columns("sale_items")}
+    )
+    assert {"customer_gstin_at_sale", "customer_name_at_sale", "place_of_supply"}.issubset(
+        {column["name"] for column in inspect(engine).get_columns("sales")}
+    )
+    assert "note_date" in {column["name"] for column in inspect(engine).get_columns("credit_notes")}
     open_shift_index = next(
         index
         for index in inspect(engine).get_indexes("shifts")
@@ -51,6 +80,25 @@ def test_all_migrations_upgrade_downgrade_and_reupgrade(
     assert bool(open_shift_index["unique"])
     engine.dispose()
     command.check(config)
+
+    command.downgrade(config, "0015")
+    engine = create_engine(database_url)
+    assert {
+        "goods_receipts",
+        "credit_note_item_batches",
+        "purchase_orders",
+        "purchase_returns",
+        "report_jobs",
+        "sale_item_batches",
+        "stock_audits",
+        "stock_transfers",
+        "supplier_ledger",
+    }.isdisjoint(inspect(engine).get_table_names())
+    assert "batch_tracking_enabled" not in {
+        column["name"] for column in inspect(engine).get_columns("products")
+    }
+    engine.dispose()
+    command.upgrade(config, "head")
 
     command.downgrade(config, "0014")
     engine = create_engine(database_url)
@@ -90,7 +138,7 @@ def test_all_migrations_upgrade_downgrade_and_reupgrade(
 
     command.upgrade(config, "head")
     engine = create_engine(database_url)
-    assert len(inspect(engine).get_table_names()) == 34
+    assert len(inspect(engine).get_table_names()) == 48
     assert "mv_daily_sales_summary" in inspect(engine).get_view_names()
     engine.dispose()
 

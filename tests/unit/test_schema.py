@@ -22,10 +22,13 @@ EXPECTED_TABLES = {
     "categories",
     "companies",
     "credit_note_items",
+    "credit_note_item_batches",
     "credit_notes",
     "customers",
     "document_series",
     "held_bills",
+    "goods_receipt_items",
+    "goods_receipts",
     "hsn_codes",
     "legacy_id_map",
     "loyalty_ledger",
@@ -34,16 +37,27 @@ EXPECTED_TABLES = {
     "product_price_history",
     "products",
     "purchase_items",
+    "purchase_order_items",
+    "purchase_orders",
+    "purchase_return_items",
+    "purchase_returns",
     "purchases",
+    "report_jobs",
     "role_permissions",
     "roles",
     "sale_items",
+    "sale_item_batches",
     "sale_payments",
     "sales",
     "shifts",
     "stock_batches",
+    "stock_audit_items",
+    "stock_audits",
     "stock_ledger",
+    "stock_transfer_items",
+    "stock_transfers",
     "suppliers",
+    "supplier_ledger",
     "tax_rates",
     "terminal_quick_keys",
     "terminals",
@@ -70,7 +84,14 @@ QUANTITY_COLUMNS = {
     "quantity",
     "quantity_available",
     "quantity_received",
+    "received_quantity",
     "reserved_quantity",
+    "safety_stock",
+    "unit_weight_kg",
+    "ordered_quantity",
+    "expected_quantity",
+    "counted_quantity",
+    "variance_quantity",
 }
 RATE_COLUMNS = {
     "rate",
@@ -81,6 +102,8 @@ RATE_COLUMNS = {
     "cess_rate",
     "max_discount_percent",
     "loyalty_redemption_cap_percent",
+    "purchase_quantity_tolerance_percent",
+    "purchase_price_tolerance_percent",
 }
 
 
@@ -146,7 +169,9 @@ def test_numeric_columns_use_statutory_precision() -> None:
         for column in table.columns:
             if not isinstance(column.type, Numeric):
                 continue
-            if column.name in QUANTITY_COLUMNS:
+            if table.name == "supplier_ledger" and column.name == "balance_after":
+                assert (column.type.precision, column.type.scale) == (14, 2)
+            elif column.name in QUANTITY_COLUMNS:
                 assert (column.type.precision, column.type.scale) == (12, 3), (
                     f"{table.name}.{column.name} is not NUMERIC(12,3)"
                 )
