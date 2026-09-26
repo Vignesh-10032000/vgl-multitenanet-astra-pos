@@ -25,6 +25,8 @@ dependencies = [
     "pyotp==2.9.0",
     "pillow==12.3.0",
     "qrcode[pil]==8.2",
+    "prometheus-client==0.26.0",
+    "sentry-sdk[celery,flask,sqlalchemy]==2.58.0",
 ]
 
 [dependency-groups]

@@ -6,6 +6,7 @@ on:
   pull_request:
   schedule:
     - cron: "30 20 * * *"
+    - cron: "0 2 1 * *"
   workflow_dispatch:
 
 jobs:
@@ -103,6 +104,7 @@ jobs:
       SECRET_KEY: nightly-performance-secret-key-not-for-real-deployments
       JWT_SECRET_KEY: nightly-performance-jwt-key-not-for-real-deployments
       OFFLINE_SYNC_SIGNING_SECRET: nightly-offline-sync-key-not-for-real-deployments
+      METRICS_AUTH_TOKEN: nightly-metrics-token-not-for-real-deployments
       RATELIMIT_ENABLED: "false"
       VGLPOS_ALLOW_PERFORMANCE_SEED: "1"
       PERF_LOGIN_CODE: PERF
@@ -147,20 +149,116 @@ jobs:
           cat gunicorn.log
           exit 1
 
-      - name: Run 50-cashier load gate
+      - name: Run 150-cashier Phase 10 load gate
         run: >-
           uv run locust -f tests/load/locustfile.py --headless
-          -u 50 -r 5 -t 5m --host http://127.0.0.1:8000
+          -u 150 -r 10 -t 15m --host http://127.0.0.1:8000
           --csv load-results --html load-report.html
+
+      - name: Prove authentication rate limits under load
+        run: |
+          RATELIMIT_ENABLED=true uv run gunicorn --bind 127.0.0.1:8001 --workers 2 --timeout 120 'vglpos.app:create_app()' > rate-limit-gunicorn.log 2>&1 &
+          rate_limit_ready=0
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8001/ready; then
+              rate_limit_ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [[ "$rate_limit_ready" != "1" ]]; then
+            cat rate-limit-gunicorn.log
+            exit 1
+          fi
+          uv run locust -f tests/load/rate_limit_locustfile.py --headless \
+            -u 25 -r 25 -t 30s --host http://127.0.0.1:8001
 
       - name: Upload load evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: phase4-load-results
+          name: phase10-load-results
           path: |
             load-results*.csv
             load-report.html
             gunicorn.log
+            rate-limit-gunicorn.log
             query-plans-before.txt
             query-plans-after.txt
+
+  security:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: security-owner-only
+          POSTGRES_DB: vglpos_security_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d vglpos_security_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql+psycopg://postgres:security-owner-only@127.0.0.1:5432/vglpos_security_test
+      SECURITY_DATABASE_OWNER_URL: postgresql://postgres:security-owner-only@127.0.0.1:5432/vglpos_security_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: {enable-cache: true}
+      - run: uv python install
+      - run: uv sync --frozen --all-groups
+      - name: Create schema and least-privilege role
+        run: |
+          uv run alembic upgrade head
+          psql "$SECURITY_DATABASE_OWNER_URL" -f scripts/configure_app_role.sql
+      - name: Exercise security controls
+        run: uv run pytest tests/security -q
+
+  monthly-restore-drill:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 2 1 * *'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: restore-drill-only
+          POSTGRES_DB: vglpos_restore_source_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d vglpos_restore_source_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql+psycopg://postgres:restore-drill-only@127.0.0.1:5432/vglpos_restore_source_test
+      BACKUP_DATABASE_URL: postgresql://postgres:restore-drill-only@127.0.0.1:5432/vglpos_restore_source_test
+      DRILL_ADMIN_URL: postgresql://postgres:restore-drill-only@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: {enable-cache: true}
+      - run: uv python install
+      - run: uv sync --frozen --all-groups
+      - name: Install PostgreSQL and age clients
+        run: sudo apt-get update && sudo apt-get install --yes postgresql-client age
+      - name: Prepare disposable encrypted backup
+        run: |
+          uv run alembic upgrade head
+          mkdir -p "$RUNNER_TEMP/backups"
+          age-keygen -o "$RUNNER_TEMP/age-identity.txt"
+          echo "AGE_RECIPIENT=$(age-keygen -y "$RUNNER_TEMP/age-identity.txt")" >> "$GITHUB_ENV"
+          echo "AGE_IDENTITY_FILE=$RUNNER_TEMP/age-identity.txt" >> "$GITHUB_ENV"
+          echo "BACKUP_OUTPUT_DIR=$RUNNER_TEMP/backups" >> "$GITHUB_ENV"
+      - name: Backup and prove restore RTO/integrity
+        run: |
+          bash scripts/backup_postgres.sh
+          bash scripts/restore_drill.sh | tee restore-drill.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: monthly-restore-drill
+          path: restore-drill.log

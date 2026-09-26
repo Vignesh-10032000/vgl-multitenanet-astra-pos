@@ -1,0 +1,11 @@
+pg_replication:
+  query: |
+    SELECT CASE
+      WHEN pg_is_in_recovery() THEN
+        COALESCE(EXTRACT(EPOCH FROM now() - pg_last_xact_replay_timestamp()), 0)
+      ELSE 0
+    END AS lag_seconds
+  metrics:
+    - lag_seconds:
+        usage: GAUGE
+        description: PostgreSQL replay lag in seconds (zero on primary)

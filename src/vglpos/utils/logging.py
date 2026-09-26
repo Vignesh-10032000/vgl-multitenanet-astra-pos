@@ -4,9 +4,22 @@ from __future__ import annotations
 
 import logging
 import sys
+from collections.abc import Mapping, MutableMapping
+from typing import Any
 
 import structlog
 from structlog.typing import Processor
+
+_CONTEXT_FIELDS = ("request_id", "user_id", "company_id", "branch_id")
+
+
+def _ensure_context_fields(
+    _logger: object, _method_name: str, event_dict: MutableMapping[str, Any]
+) -> Mapping[str, Any]:
+    """Keep the operational correlation schema present on every JSON line."""
+    for field in _CONTEXT_FIELDS:
+        event_dict.setdefault(field, None)
+    return event_dict
 
 
 def configure_logging(*, level: str = "INFO") -> None:
@@ -19,6 +32,7 @@ def configure_logging(*, level: str = "INFO") -> None:
     """
     shared_processors: list[Processor] = [
         structlog.contextvars.merge_contextvars,
+        _ensure_context_fields,
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
         structlog.processors.TimeStamper(fmt="iso", utc=True),

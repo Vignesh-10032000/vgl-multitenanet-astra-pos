@@ -1,0 +1,11 @@
+{
+  "title": "VGL POS - Business",
+  "uid": "vglpos-business",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "panels": [
+    {"id": 1, "type": "timeseries", "title": "Bills per hour", "targets": [{"expr": "sum(increase(checkout_total[1h]))"}], "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0}},
+    {"id": 2, "type": "timeseries", "title": "Revenue per hour", "targets": [{"expr": "sum(increase(checkout_revenue_rupees_total[1h]))"}], "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0}},
+    {"id": 3, "type": "timeseries", "title": "Average bill", "targets": [{"expr": "sum(rate(checkout_revenue_rupees_total[15m])) / clamp_min(sum(rate(checkout_total[15m])), 1)"}], "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0}}
+  ]
+}

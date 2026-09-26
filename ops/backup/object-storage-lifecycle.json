@@ -1,0 +1,16 @@
+{
+  "Rules": [
+    {
+      "ID": "expire-nightly-after-30-days",
+      "Status": "Enabled",
+      "Filter": {"Prefix": "nightly/"},
+      "Expiration": {"Days": 30}
+    },
+    {
+      "ID": "retain-monthly-eight-years",
+      "Status": "Enabled",
+      "Filter": {"Prefix": "monthly/"},
+      "Expiration": {"Days": 2922}
+    }
+  ]
+}

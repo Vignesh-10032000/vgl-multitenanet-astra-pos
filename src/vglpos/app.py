@@ -17,6 +17,7 @@ from vglpos.cli import register_cli
 from vglpos.config import BaseConfig, get_config
 from vglpos.errors import problem_response, register_error_handlers
 from vglpos.extensions import cache, celery, db, jwt, limiter, migrate
+from vglpos.observability import init_sentry, register_request_metrics
 from vglpos.routes import BLUEPRINTS, PUBLIC_ENDPOINTS
 from vglpos.security.tokens import register_jwt_callbacks
 from vglpos.utils.logging import configure_logging
@@ -43,10 +44,12 @@ def create_app(config_class: type[BaseConfig] | None = None) -> Flask:
     app.config.update(settings.flask_config())
 
     configure_logging(level=str(app.config["LOG_LEVEL"]))
+    init_sentry(app)
     # Request-context middleware registers BEFORE extensions so request_id is
     # bound even when an extension's own before_request hook (e.g. the rate
     # limiter's storage check) fails — otherwise errors log without an id.
     _register_request_context(app)
+    register_request_metrics(app)
     _init_extensions(app)
     _init_celery(app)
 
@@ -105,6 +108,7 @@ def _register_request_context(app: Flask) -> None:
             request_id=request_id,
             user_id=getattr(g, "user_id", None),
             company_id=getattr(g, "company_id", None),
+            branch_id=getattr(g, "branch_id", None),
         )
 
     @app.after_request

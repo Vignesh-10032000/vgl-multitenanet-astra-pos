@@ -1,0 +1,12 @@
+{
+  "title": "VGL POS - Technical",
+  "uid": "vglpos-technical",
+  "schemaVersion": 39,
+  "refresh": "15s",
+  "panels": [
+    {"id": 1, "type": "timeseries", "title": "HTTP p99 latency", "targets": [{"expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))"}], "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0}},
+    {"id": 2, "type": "timeseries", "title": "HTTP 5xx rate", "targets": [{"expr": "sum(rate(http_request_duration_seconds_count{status=~\"5..\"}[5m]))"}], "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0}},
+    {"id": 3, "type": "timeseries", "title": "DB pool in use", "targets": [{"expr": "db_pool_in_use"}], "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0}},
+    {"id": 4, "type": "timeseries", "title": "Queues", "targets": [{"expr": "offline_queue_depth"}, {"expr": "einvoice_pending_total"}], "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0}}
+  ]
+}

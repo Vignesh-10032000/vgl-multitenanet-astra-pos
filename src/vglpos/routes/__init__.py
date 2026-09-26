@@ -47,6 +47,8 @@ PUBLIC_ENDPOINTS: frozenset[str] = frozenset(
         # Unauthenticated liveness probe: load balancers, the Docker healthcheck
         # and the CI gate must reach it before any auth infrastructure exists.
         "health.health",
+        "health.ready",
+        "health.metrics",
         # Credential entry and refresh-token rotation must be reachable before
         # an access token exists; each endpoint enforces its own rate/JWT checks.
         "auth.login",

@@ -20,6 +20,7 @@ from vglpos.api.v1.schemas.sales import (
 )
 from vglpos.api.v1.serializers import sale_response
 from vglpos.extensions import db, limiter
+from vglpos.observability import OFFLINE_QUEUE_DEPTH
 from vglpos.security.decorators import require_permission
 from vglpos.services.checkout_service import CheckoutService
 from vglpos.services.sync_service import OfflineSyncService, SignedCheckoutOperation
@@ -81,22 +82,26 @@ def batch() -> tuple[Response, int]:
         )
         for operation in body.operations
     ]
-    with Session(db.engine) as session:
-        results = _sync_service(session).sync_batch(operations)
-        return model_response(
-            OfflineBatchResponse(
-                results=[
-                    OfflineOperationResult(
-                        uuid=result.uuid,
-                        status=result.status,
-                        sale=sale_response(result.sale) if result.sale is not None else None,
-                        error_type=result.error_type,
-                        detail=result.detail,
-                    )
-                    for result in results
-                ]
+    OFFLINE_QUEUE_DEPTH.inc(len(operations))
+    try:
+        with Session(db.engine) as session:
+            results = _sync_service(session).sync_batch(operations)
+            return model_response(
+                OfflineBatchResponse(
+                    results=[
+                        OfflineOperationResult(
+                            uuid=result.uuid,
+                            status=result.status,
+                            sale=sale_response(result.sale) if result.sale is not None else None,
+                            error_type=result.error_type,
+                            detail=result.detail,
+                        )
+                        for result in results
+                    ]
+                )
             )
-        )
+    finally:
+        OFFLINE_QUEUE_DEPTH.dec(len(operations))
 
 
 @sync_bp.post("/offline-push")
@@ -113,7 +118,11 @@ def offline_push() -> tuple[Response, int]:
     body = parse_body(OfflinePushRequest)
     context = counter_context()
     commands = [checkout_command(sale, context) for sale in body.sales]
-    with Session(db.engine) as session:
-        sales = CheckoutService(session).checkout_batch(commands)
-        response = OfflinePushResponse(sales=[sale_response(sale) for sale in sales])
-        return model_response(response, status=201)
+    OFFLINE_QUEUE_DEPTH.inc(len(commands))
+    try:
+        with Session(db.engine) as session:
+            sales = CheckoutService(session).checkout_batch(commands)
+            response = OfflinePushResponse(sales=[sale_response(sale) for sale in sales])
+            return model_response(response, status=201)
+    finally:
+        OFFLINE_QUEUE_DEPTH.dec(len(commands))

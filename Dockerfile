@@ -27,6 +27,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 COPY src ./src
 COPY --from=web-builder /app/src/vglpos/web/static/dist ./src/vglpos/web/static/dist
 COPY alembic.ini ./
+COPY gunicorn.conf.py ./
 COPY migrations ./migrations
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
@@ -34,13 +35,16 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # ---------- runtime stage ----------
 FROM python:3.12-slim AS runtime
 
-RUN groupadd --system vglpos && useradd --system --gid vglpos --create-home vglpos
+RUN groupadd --system vglpos && useradd --system --gid vglpos --create-home vglpos \
+    && mkdir -p /tmp/prometheus-multiproc \
+    && chown vglpos:vglpos /tmp/prometheus-multiproc
 
 WORKDIR /app
 COPY --from=builder --chown=vglpos:vglpos /app /app
 
 ENV PATH="/app/.venv/bin:$PATH" \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus-multiproc
 
 USER vglpos
 EXPOSE 8000
@@ -48,4 +52,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD ["python", "-c", "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).status == 200 else 1)"]
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--access-logfile", "-", "vglpos.app:create_app()"]
+CMD ["gunicorn", "--config", "gunicorn.conf.py", "vglpos.app:create_app()"]

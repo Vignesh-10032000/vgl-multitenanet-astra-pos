@@ -8,7 +8,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from sqlalchemy import select, update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from vglpos.domain.enums import DocType, PaymentMethod, SupplyType
@@ -28,6 +28,7 @@ from vglpos.domain.models import (
     Terminal,
     User,
 )
+from vglpos.observability import CHECKOUT_FAILURES, record_checkout_success
 from vglpos.repositories import SaleRepository
 from vglpos.services.event_dispatcher import publish_event
 from vglpos.services.exceptions import (
@@ -153,6 +154,7 @@ class CheckoutService:
             sale = self._build_checkout(cmd)
             self.session.commit()
             self.session.refresh(sale)
+            record_checkout_success((sale.net_amount,))
             publish_event(
                 SaleCompleted(
                     company_id=cmd.company_id,
@@ -170,16 +172,26 @@ class CheckoutService:
                 )
                 if existing is not None:
                     return existing
+            CHECKOUT_FAILURES.labels("persistence_conflict").inc()
             logger.exception(
                 "Checkout persistence conflict",
                 extra={"company_id": cmd.company_id, "offline_uuid": cmd.offline_uuid},
             )
             raise CheckoutError("Checkout conflicted with another transaction.") from exc
-        except ServiceError:
+        except SQLAlchemyError as exc:
             self.session.rollback()
+            CHECKOUT_FAILURES.labels("database_unavailable").inc()
+            logger.exception("Checkout database failure", extra={"company_id": cmd.company_id})
+            raise CheckoutError(
+                "Checkout is temporarily unavailable; no sale was committed."
+            ) from exc
+        except ServiceError as exc:
+            self.session.rollback()
+            CHECKOUT_FAILURES.labels(exc.error_type).inc()
             raise
         except ValueError as exc:
             self.session.rollback()
+            CHECKOUT_FAILURES.labels("validation_error").inc()
             raise ValidationError(str(exc)) from exc
 
     def checkout_batch(
@@ -217,17 +229,27 @@ class CheckoutService:
             self.session.commit()
             for sale in sales:
                 self.session.refresh(sale)
+            committed_ids = {event.sale_id for event in completed_events}
+            record_checkout_success(sale.net_amount for sale in sales if sale.id in committed_ids)
             for event in completed_events:
                 publish_event(event)
             return tuple(sales)
         except IntegrityError as exc:
             self.session.rollback()
+            CHECKOUT_FAILURES.labels("offline_persistence_conflict").inc()
             raise CheckoutError("Offline batch conflicted with another transaction.") from exc
-        except ServiceError:
+        except SQLAlchemyError as exc:
             self.session.rollback()
+            CHECKOUT_FAILURES.labels("database_unavailable").inc()
+            logger.exception("Offline checkout database failure")
+            raise CheckoutError("Offline checkout is temporarily unavailable.") from exc
+        except ServiceError as exc:
+            self.session.rollback()
+            CHECKOUT_FAILURES.labels(exc.error_type).inc()
             raise
         except ValueError as exc:
             self.session.rollback()
+            CHECKOUT_FAILURES.labels("validation_error").inc()
             raise ValidationError(str(exc)) from exc
 
     def quote(self, cmd: QuoteCommand) -> TaxResult:

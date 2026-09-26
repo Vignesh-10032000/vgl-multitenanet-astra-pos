@@ -21,6 +21,7 @@ from vglpos.domain.models import (
     Terminal,
     User,
 )
+from vglpos.observability import record_shift_variance
 from vglpos.security.audit import record_audit_event
 from vglpos.security.override_service import OverrideApprovalService
 from vglpos.services.exceptions import (
@@ -266,6 +267,7 @@ class ShiftService:
                 )
             self.session.commit()
             self.session.refresh(shift)
+            record_shift_variance(difference)
             return shift
         except ServiceError:
             self.session.rollback()

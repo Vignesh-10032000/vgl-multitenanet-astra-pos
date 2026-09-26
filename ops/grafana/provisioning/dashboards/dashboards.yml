@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: VGL POS
+    folder: VGL POS
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

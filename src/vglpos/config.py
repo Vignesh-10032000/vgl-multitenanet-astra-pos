@@ -70,6 +70,14 @@ class BaseConfig(BaseSettings):
     EMAIL_FROM: str = ""
     PRODUCT_IMAGE_DIR: str = ""
     REPORT_ARTIFACT_DIR: str = "var/reports"
+    METRICS_AUTH_TOKEN: str = ""
+    SENTRY_DSN: str = ""
+    SENTRY_ENVIRONMENT: str = ""
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.0
+
+    FEATURE_EINVOICE_ENABLED: bool = True
+    FEATURE_EWAY_BILL_ENABLED: bool = True
+    FEATURE_REPORT_JOBS_ENABLED: bool = True
 
     IRP_NIC_AUTH_URL: str = ""
     IRP_NIC_GENERATE_URL: str = ""
@@ -141,6 +149,13 @@ class BaseConfig(BaseSettings):
             "EMAIL_FROM": self.EMAIL_FROM,
             "PRODUCT_IMAGE_DIR": self.PRODUCT_IMAGE_DIR,
             "REPORT_ARTIFACT_DIR": self.REPORT_ARTIFACT_DIR,
+            "METRICS_AUTH_TOKEN": self.METRICS_AUTH_TOKEN,
+            "SENTRY_DSN": self.SENTRY_DSN,
+            "SENTRY_ENVIRONMENT": self.SENTRY_ENVIRONMENT or self.APP_ENV,
+            "SENTRY_TRACES_SAMPLE_RATE": self.SENTRY_TRACES_SAMPLE_RATE,
+            "FEATURE_EINVOICE_ENABLED": self.FEATURE_EINVOICE_ENABLED,
+            "FEATURE_EWAY_BILL_ENABLED": self.FEATURE_EWAY_BILL_ENABLED,
+            "FEATURE_REPORT_JOBS_ENABLED": self.FEATURE_REPORT_JOBS_ENABLED,
             "IRP_NIC_AUTH_URL": self.IRP_NIC_AUTH_URL,
             "IRP_NIC_GENERATE_URL": self.IRP_NIC_GENERATE_URL,
             "IRP_NIC_LOOKUP_URL": self.IRP_NIC_LOOKUP_URL,
@@ -280,7 +295,12 @@ class ProductionConfig(BaseConfig):
     def _refuse_missing_or_default_values(self) -> ProductionConfig:
         """Reject empty, short, or known-default secrets and database URLs."""
         problems: list[str] = []
-        for name in ("SECRET_KEY", "JWT_SECRET_KEY", "OFFLINE_SYNC_SIGNING_SECRET"):
+        for name in (
+            "SECRET_KEY",
+            "JWT_SECRET_KEY",
+            "OFFLINE_SYNC_SIGNING_SECRET",
+            "METRICS_AUTH_TOKEN",
+        ):
             value = getattr(self, name).strip()
             lowered = value.lower()
             if lowered in _INSECURE_SECRET_VALUES or any(

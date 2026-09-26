@@ -29,6 +29,7 @@ from vglpos.api.v1.schemas.compliance import (
 from vglpos.extensions import db, limiter
 from vglpos.security.decorators import require_permission
 from vglpos.services.einvoice_service import EInvoiceService, EWayBillCommand, EWayBillService
+from vglpos.services.feature_flags import require_feature
 from vglpos.services.invoice_compliance_service import (
     ComplianceSettingsCommand,
     InvoiceComplianceService,
@@ -72,6 +73,7 @@ def list_einvoices() -> tuple[Response, int]:
     success_status=202,
 )
 def retry_einvoice(record_id: int) -> tuple[Response, int]:
+    require_feature("einvoice")
     parse_body(EmptyCommandRequest)
     with Session(db.engine) as session:
         record = EInvoiceService(session, g.company_id).retry(record_id, user_id=g.user_id)
@@ -92,6 +94,7 @@ def retry_einvoice(record_id: int) -> tuple[Response, int]:
     success_status=202,
 )
 def cancel_einvoice(record_id: int) -> tuple[Response, int]:
+    require_feature("einvoice")
     body = parse_body(EInvoiceCancelRequest)
     with Session(db.engine) as session:
         record = EInvoiceService(session, g.company_id).request_cancellation(
@@ -139,6 +142,7 @@ def reconciliation() -> tuple[Response, int]:
     success_status=202,
 )
 def create_eway_bill(sale_id: int) -> tuple[Response, int]:
+    require_feature("eway_bill")
     body = parse_body(EWayBillRequest)
     with Session(db.engine) as session:
         record = EWayBillService(session, g.company_id).create(

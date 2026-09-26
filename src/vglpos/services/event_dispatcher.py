@@ -10,6 +10,7 @@ from vglpos.domain.events import ProductUpdated, SaleCompleted, SaleUpdated
 from vglpos.extensions import db
 from vglpos.services.cache_service import invalidate_catalogue, invalidate_dashboard
 from vglpos.services.einvoice_service import EInvoiceService
+from vglpos.services.feature_flags import feature_enabled
 from vglpos.tasks.compliance import process_einvoice
 
 logger = logging.getLogger(__name__)
@@ -23,7 +24,7 @@ def publish_event(event: DomainEvent) -> None:
         invalidate_catalogue(event.company_id)
     else:
         invalidate_dashboard(event.company_id, event.branch_id)
-    if isinstance(event, SaleCompleted):
+    if isinstance(event, SaleCompleted) and feature_enabled("einvoice"):
         try:
             with Session(db.engine) as session:
                 record = EInvoiceService(session, event.company_id).queue_sale(event.sale_id)

@@ -32,6 +32,7 @@ from vglpos.domain.models import ReportJob
 from vglpos.extensions import db, limiter
 from vglpos.security.decorators import require_permission
 from vglpos.services.cache_service import dashboard_key, get_mapping, set_mapping
+from vglpos.services.feature_flags import require_feature
 from vglpos.services.report_job_service import ReportJobService
 from vglpos.services.report_service import ReportService
 from vglpos.tasks.reports import generate_report_artifact
@@ -154,6 +155,7 @@ def _report_job_response(job: ReportJob) -> ReportJobResponse:
     success_status=202,
 )
 def create_report_job() -> tuple[Response, int]:
+    require_feature("report_jobs")
     body = parse_body(ReportJobCreateRequest)
     with Session(db.engine) as session:
         job = ReportJobService(session, g.company_id).create(

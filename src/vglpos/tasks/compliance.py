@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from vglpos.domain.models import Company, EInvoice, EWayBill
 from vglpos.extensions import celery, db
 from vglpos.services.einvoice_service import EInvoiceService, EWayBillService
+from vglpos.services.feature_flags import feature_enabled
 from vglpos.services.irp_client import IRPTransientError, configured_irp_client
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,8 @@ logger = logging.getLogger(__name__)
 @celery.task(bind=True, name="vglpos.process_einvoice", max_retries=20)
 def process_einvoice(self: Task, *, company_id: int, record_id: int) -> dict[str, int | str]:
     """Generate or cancel an IRN with exponential backoff and bounded jitter."""
+    if not feature_enabled("einvoice"):
+        return {"record_id": record_id, "status": "feature-disabled"}
     with Session(db.engine) as session:
         record = EInvoiceService(session, company_id).process(record_id, configured_irp_client())
         if record.status in {"RETRY", "CANCEL_RETRY"}:
@@ -43,6 +46,8 @@ def process_einvoice(self: Task, *, company_id: int, record_id: int) -> dict[str
 @celery.task(bind=True, name="vglpos.process_eway_bill", max_retries=20)
 def process_eway_bill(self: Task, *, company_id: int, record_id: int) -> dict[str, int | str]:
     """Generate an e-way bill with the same durable retry policy as e-invoices."""
+    if not feature_enabled("eway_bill"):
+        return {"record_id": record_id, "status": "feature-disabled"}
     with Session(db.engine) as session:
         record = EWayBillService(session, company_id).process(record_id, configured_irp_client())
         if record.status == "RETRY":
@@ -62,6 +67,8 @@ def process_eway_bill(self: Task, *, company_id: int, record_id: int) -> dict[st
 @celery.task(name="vglpos.reconcile_einvoices")
 def reconcile_einvoices() -> dict[str, int | str]:
     """Backfill missing queue rows and re-dispatch due retries for every enabled tenant."""
+    if not feature_enabled("einvoice"):
+        return {"status": "feature-disabled", "queued": 0, "retried": 0}
     queued = 0
     retried = 0
     now = datetime.now(UTC)

@@ -98,3 +98,10 @@ class SessionLockedError(AuthorizationError):
 
     status_code = 423
     error_type = "session-locked"
+
+
+class FeatureDisabledError(ServiceError):
+    """Stop a risky integration cleanly when its operational flag is disabled."""
+
+    status_code = 503
+    error_type = "feature-disabled"

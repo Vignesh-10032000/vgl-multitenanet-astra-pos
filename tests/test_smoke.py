@@ -87,7 +87,13 @@ def test_db_session_executes_inside_savepoint_transaction(
 def test_production_config_refuses_missing_secrets(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    for name in ("SECRET_KEY", "JWT_SECRET_KEY", "OFFLINE_SYNC_SIGNING_SECRET", "DATABASE_URL"):
+    for name in (
+        "SECRET_KEY",
+        "JWT_SECRET_KEY",
+        "OFFLINE_SYNC_SIGNING_SECRET",
+        "METRICS_AUTH_TOKEN",
+        "DATABASE_URL",
+    ):
         monkeypatch.delenv(name, raising=False)
     with pytest.raises(ValidationError):
         ProductionConfig(_env_file=None)
@@ -109,12 +115,32 @@ def test_production_config_accepts_strong_values(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setenv("SECRET_KEY", "k" * 48)
     monkeypatch.setenv("JWT_SECRET_KEY", "j" * 48)
     monkeypatch.setenv("OFFLINE_SYNC_SIGNING_SECRET", "o" * 48)
+    monkeypatch.setenv("METRICS_AUTH_TOKEN", "m" * 48)
     monkeypatch.setenv(
         "DATABASE_URL", "postgresql+psycopg://pos:example-strong-password@db.internal:5432/pos"
     )
     config = ProductionConfig(_env_file=None)
     assert config.DEBUG is False
     assert config.TESTING is False
+
+
+def test_readiness_checks_database(client: FlaskClient) -> None:
+    response = client.get("/ready")
+    assert response.status_code == 200
+    assert response.get_json()["checks"] == {"database": "ok", "redis": "not-required"}
+
+
+def test_metrics_exposes_required_series(client: FlaskClient) -> None:
+    response = client.get("/metrics")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "http_request_duration_seconds" in body
+    assert "checkout_total" in body
+    assert "checkout_failures_total" in body
+    assert "offline_queue_depth" in body
+    assert "einvoice_pending_total" in body
+    assert "shift_variance_rupees" in body
+    assert "db_pool_in_use" in body
 
 
 def test_get_config_rejects_unknown_env() -> None:

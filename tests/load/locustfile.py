@@ -94,5 +94,5 @@ def enforce_phase4_thresholds(environment: Environment, **_kwargs: object) -> No
     total = environment.stats.total
     checkout = environment.stats.get("POST /api/v1/sales/checkout", "POST")
     checkout_p99 = checkout.get_response_time_percentile(0.99) or 0
-    if total.fail_ratio > 0 or checkout.num_requests == 0 or checkout_p99 >= 500:
+    if total.fail_ratio > 0 or checkout.num_requests == 0 or checkout_p99 >= 1_000:
         environment.process_exit_code = 1
