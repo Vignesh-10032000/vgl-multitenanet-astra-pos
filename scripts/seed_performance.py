@@ -24,6 +24,7 @@ from vglpos.domain.models import (
     Role,
     RolePermission,
     Sale,
+    Shift,
     TaxRate,
     Terminal,
     User,
@@ -141,6 +142,17 @@ def main() -> None:
         )
         session.add_all([terminal, user, role, rate])
         session.flush()
+        session.add(
+            Shift(
+                company_id=company.id,
+                branch_id=branch.id,
+                terminal_id=terminal.id,
+                cashier_id=user.id,
+                opening_cash=Decimal("0.00"),
+                status="OPEN",
+                opening_denominations={},
+            )
+        )
         session.add_all(
             RolePermission(
                 company_id=company.id,

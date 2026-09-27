@@ -1,4 +1,7 @@
 .git
+.antigravity/
+.claude/
+.pytest-*/
 .venv
 node_modules/
 .env
@@ -9,6 +12,7 @@ tests/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+test-results/
 .mypy_cache/
 .ruff_cache/
 .hypothesis/

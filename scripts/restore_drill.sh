@@ -45,7 +45,8 @@ age --decrypt --identity "$AGE_IDENTITY_FILE" --output "$work_dir/expected.json"
 createdb --maintenance-db="$DRILL_ADMIN_URL" "$scratch"
 scratch_url="${DRILL_ADMIN_URL%/*}/$scratch"
 pg_restore --dbname="$scratch_url" --no-owner --no-acl --exit-on-error "$work_dir/backup.dump"
-actual="$(psql "$scratch_url" --no-psqlrc --tuples-only --no-align --file=scripts/restore_integrity.sql | head -1)"
+integrity_output="$(psql "$scratch_url" --no-psqlrc --tuples-only --no-align --file=scripts/restore_integrity.sql)"
+actual="${integrity_output%%$'\n'*}"
 expected="$(tr -d '\r\n' < "$work_dir/expected.json")"
 if [[ "$actual" != "$expected" ]]; then
   echo "Integrity totals differ: expected=$expected actual=$actual" >&2
