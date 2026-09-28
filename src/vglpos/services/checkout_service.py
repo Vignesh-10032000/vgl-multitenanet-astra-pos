@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
-from sqlalchemy import select, update
+from sqlalchemy import and_, select, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -396,6 +396,7 @@ class CheckoutService:
             cmd.terminal_id,
             DocType.SALE.value,
             cmd.business_date,
+            terminal_validated=True,
         )
         amount_paid = money(sum((payment.amount for payment in payments), ZERO))
         sale = Sale(
@@ -460,24 +461,85 @@ class CheckoutService:
                 expired_policy=company.expired_stock_policy,
                 user_id=cmd.cashier_id,
             )
-        for product_id in sorted(requested):
-            product = products[product_id]
-            if product.is_inventory_tracked and product_id not in batch_product_ids:
-                inventory.record_movement(
-                    product,
-                    cmd.branch_id,
-                    -requested[product_id],
-                    "SALE",
-                    "sales",
-                    sale.id,
-                    cmd.cashier_id,
-                )
+        with self.session.no_autoflush:
+            for product_id in sorted(requested):
+                product = products[product_id]
+                if product.is_inventory_tracked and product_id not in batch_product_ids:
+                    inventory.record_movement(
+                        product,
+                        cmd.branch_id,
+                        -requested[product_id],
+                        "SALE",
+                        "sales",
+                        sale.id,
+                        cmd.cashier_id,
+                        validated_branch=branch,
+                        flush=False,
+                    )
         if customer is not None:
             self._apply_customer_totals(cmd, sale, customer, company, result, payments)
         self.session.flush()
         return sale
 
     def _require_context(self, cmd: CheckoutCommand) -> tuple[Branch, Shift, Company]:
+        shift_filter = (
+            Shift.id == cmd.shift_id if cmd.shift_id is not None else Shift.status == "OPEN"
+        )
+        context = self.session.execute(
+            select(Branch, Shift, Company)
+            .join(
+                Company,
+                and_(
+                    Company.id == Branch.company_id,
+                    Company.deleted_at.is_(None),
+                    Company.is_active.is_(True),
+                ),
+            )
+            .join(
+                Terminal,
+                and_(
+                    Terminal.id == cmd.terminal_id,
+                    Terminal.company_id == Branch.company_id,
+                    Terminal.branch_id == Branch.id,
+                    Terminal.deleted_at.is_(None),
+                    Terminal.is_active.is_(True),
+                ),
+            )
+            .join(
+                User,
+                and_(
+                    User.id == cmd.cashier_id,
+                    User.company_id == Branch.company_id,
+                    User.deleted_at.is_(None),
+                    User.is_active.is_(True),
+                ),
+            )
+            .join(
+                Shift,
+                and_(
+                    Shift.company_id == Branch.company_id,
+                    Shift.branch_id == Branch.id,
+                    Shift.terminal_id == Terminal.id,
+                    Shift.cashier_id == User.id,
+                    Shift.deleted_at.is_(None),
+                    shift_filter,
+                ),
+            )
+            .where(
+                Branch.id == cmd.branch_id,
+                Branch.company_id == cmd.company_id,
+                Branch.deleted_at.is_(None),
+                Branch.is_active.is_(True),
+            )
+            .with_for_update(of=Shift)
+        ).one_or_none()
+        if context is not None:
+            branch, shift, company = context
+            if shift.status == "OPEN" or cmd.offline_uuid is not None:
+                return branch, shift, company
+
+        # Invalid contexts are uncommon. Keep the specific 404 and closed-shift
+        # diagnostics without paying for four round trips on every good sale.
         branch = self._require_branch(cmd.company_id, cmd.branch_id)
         company = self._load_company(cmd.company_id)
         terminal = self.session.scalar(
@@ -739,15 +801,19 @@ class CheckoutService:
         result: TaxResult,
     ) -> tuple[SaleItem, ...]:
         hsn_ids = {product.hsn_id for product in products.values() if product.hsn_id is not None}
-        hsn_codes = {
-            hsn.id: hsn.code
-            for hsn in self.session.scalars(
-                select(HsnCode).where(
-                    HsnCode.id.in_(sorted(hsn_ids)),
-                    HsnCode.deleted_at.is_(None),
+        hsn_codes = (
+            {
+                hsn.id: hsn.code
+                for hsn in self.session.scalars(
+                    select(HsnCode).where(
+                        HsnCode.id.in_(sorted(hsn_ids)),
+                        HsnCode.deleted_at.is_(None),
+                    )
                 )
-            )
-        }
+            }
+            if hsn_ids
+            else {}
+        )
         items: list[SaleItem] = []
         for line_number, (command_line, calculated) in enumerate(
             zip(cmd.lines, result.lines, strict=True), start=1

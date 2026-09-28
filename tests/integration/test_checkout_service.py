@@ -108,6 +108,49 @@ def test_duplicate_lines_are_aggregated_before_stock_check(
     assert service_session.get(Product, service_context.product.id).on_hand == Decimal("1.000")
 
 
+def test_checkout_records_each_product_after_batched_ledger_flush(
+    service_session: Session, service_context: ServiceContext
+) -> None:
+    open_service_shift(service_session, service_context)
+    second_product = Product(
+        company_id=service_context.company.id,
+        sku="SKU-002",
+        name="Second Test Product",
+        tax_rate_id=service_context.tax_rate.id,
+        barcode="8900000000002",
+        cost_price=Decimal("60.00"),
+        selling_price=Decimal("100.00"),
+        mrp=Decimal("118.00"),
+        on_hand=Decimal("1000.000"),
+    )
+    service_session.add(second_product)
+    service_session.commit()
+
+    sale = CheckoutService(service_session).checkout(
+        _command(
+            service_context,
+            lines=[
+                CheckoutLineCommand(service_context.product.id, "1"),
+                CheckoutLineCommand(second_product.id, "1"),
+            ],
+            payments=[PaymentCommand("CASH", "236.00")],
+        )
+    )
+
+    ledgers = service_session.scalars(
+        select(StockLedger).where(StockLedger.reference_id == str(sale.id))
+    ).all()
+    assert len(ledgers) == 2
+    assert {ledger.product_id for ledger in ledgers} == {
+        service_context.product.id,
+        second_product.id,
+    }
+    assert all(ledger.balance_after == Decimal("999.000") for ledger in ledgers)
+    service_session.refresh(service_context.product)
+    service_session.refresh(second_product)
+    assert service_context.product.on_hand == second_product.on_hand == Decimal("999.000")
+
+
 def test_idempotent_replay_returns_original_sale(
     service_session: Session, service_context: ServiceContext
 ) -> None:
@@ -156,6 +199,17 @@ def test_checkout_rejected_without_an_open_shift(
     service_session: Session, service_context: ServiceContext
 ) -> None:
     with pytest.raises(EntityNotFoundError, match="open shift"):
+        CheckoutService(service_session).checkout(_command(service_context))
+
+
+def test_checkout_rejects_inactive_branch_on_fast_context_path(
+    service_session: Session, service_context: ServiceContext
+) -> None:
+    open_service_shift(service_session, service_context)
+    service_context.branch.is_active = False
+    service_session.commit()
+
+    with pytest.raises(EntityNotFoundError, match="Branch was not found"):
         CheckoutService(service_session).checkout(_command(service_context))
 
 

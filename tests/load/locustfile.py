@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import os
 from datetime import date
-from itertools import cycle
+from itertools import count, cycle
 from uuid import uuid4
 
 from locust import HttpUser, between, events, task
 from locust.env import Environment
 from locust.exception import StopUser
+
+from vglpos.performance_workload import lane_for_index
+
+_lane_indices = count()
 
 
 def _required_env(name: str) -> str:
@@ -23,22 +27,36 @@ class CashierUser(HttpUser):
     wait_time = between(6, 6)
 
     def on_start(self) -> None:
+        cashier_count = int(os.environ.get("PERF_CASHIER_COUNT", "1"))
+        if cashier_count < 1:
+            raise ValueError("PERF_CASHIER_COUNT must be positive.")
+        lane = lane_for_index(
+            next(_lane_indices) % cashier_count,
+            cashier_count,
+            username=_required_env("PERF_USERNAME"),
+            first_branch_id=int(_required_env("PERF_BRANCH_ID")),
+            first_terminal_id=int(_required_env("PERF_TERMINAL_ID")),
+        )
         response = self.client.post(
             "/api/v1/auth/login",
             name="POST /api/v1/auth/login",
             headers={"Idempotency-Key": str(uuid4())},
             json={
                 "company_code": _required_env("PERF_LOGIN_CODE"),
-                "username": _required_env("PERF_USERNAME"),
+                "username": lane.username,
                 "password": _required_env("PERF_PASSWORD"),
-                "branch_id": int(_required_env("PERF_BRANCH_ID")),
-                "terminal_id": int(_required_env("PERF_TERMINAL_ID")),
+                "branch_id": lane.branch_id,
+                "terminal_id": lane.terminal_id,
             },
         )
         if response.status_code != 200:
             raise StopUser()
         self.headers = {"Authorization": f"Bearer {response.json()['access_token']}"}
-        barcodes = [item.strip() for item in _required_env("PERF_BARCODES").split(",")]
+        barcodes = (
+            lane.barcodes
+            if cashier_count > 1
+            else tuple(item.strip() for item in _required_env("PERF_BARCODES").split(","))
+        )
         self.barcodes = cycle(barcodes)
 
     @task

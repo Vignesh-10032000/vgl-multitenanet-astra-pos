@@ -25,25 +25,28 @@ class InvoiceNumberService:
         terminal_id: int,
         doc_type: str,
         on_date: date,
+        *,
+        terminal_validated: bool = False,
     ) -> tuple[str, str]:
-        """Lock and advance a series without committing, so rollback never burns a number."""
+        """Atomically advance a series without committing, so rollback never burns a number."""
         if not company_id or not branch_id or not terminal_id:
             raise ValidationError("Company, branch, and terminal are required for numbering.")
-        terminal_exists = self.session.scalar(
-            select(Terminal.id).where(
-                Terminal.id == terminal_id,
-                Terminal.company_id == company_id,
-                Terminal.branch_id == branch_id,
-                Terminal.deleted_at.is_(None),
-                Terminal.is_active.is_(True),
+        if not terminal_validated:
+            terminal_exists = self.session.scalar(
+                select(Terminal.id).where(
+                    Terminal.id == terminal_id,
+                    Terminal.company_id == company_id,
+                    Terminal.branch_id == branch_id,
+                    Terminal.deleted_at.is_(None),
+                    Terminal.is_active.is_(True),
+                )
             )
-        )
-        if terminal_exists is None:
-            raise EntityNotFoundError("Terminal was not found for the branch.")
+            if terminal_exists is None:
+                raise EntityNotFoundError("Terminal was not found for the branch.")
 
         fy_code = financial_year_code(on_date)
-        series = self.session.scalar(
-            select(DocumentSeries)
+        allocated = self.session.execute(
+            update(DocumentSeries)
             .where(
                 DocumentSeries.company_id == company_id,
                 DocumentSeries.branch_id == branch_id,
@@ -51,29 +54,19 @@ class InvoiceNumberService:
                 DocumentSeries.financial_year == fy_code,
                 DocumentSeries.deleted_at.is_(None),
             )
-            .with_for_update()
-        )
-        if series is None:
+            .values(current_number=DocumentSeries.current_number + 1)
+            .returning(
+                DocumentSeries.prefix,
+                DocumentSeries.current_number,
+                DocumentSeries.suffix,
+            )
+        ).one_or_none()
+        if allocated is None:
             raise InvoiceNumberError(
                 f"No {doc_type} document series is configured for financial year {fy_code}."
             )
-
-        next_number = series.current_number + 1
-        document_no = f"{series.prefix}{next_number:06d}{series.suffix or ''}"
-        if len(document_no) > 16:
-            raise InvoiceNumberError("Fiscal document number cannot exceed 16 characters.")
-        allocated_number = self.session.scalar(
-            update(DocumentSeries)
-            .where(
-                DocumentSeries.id == series.id,
-                DocumentSeries.company_id == company_id,
-            )
-            .values(current_number=DocumentSeries.current_number + 1)
-            .returning(DocumentSeries.current_number)
-        )
-        if allocated_number is None:
-            raise InvoiceNumberError("Fiscal document series could not be advanced.")
-        document_no = f"{series.prefix}{allocated_number:06d}{series.suffix or ''}"
+        prefix, number, suffix = allocated
+        document_no = f"{prefix}{number:06d}{suffix or ''}"
         if len(document_no) > 16:
             raise InvoiceNumberError("Fiscal document number cannot exceed 16 characters.")
         return document_no, fy_code

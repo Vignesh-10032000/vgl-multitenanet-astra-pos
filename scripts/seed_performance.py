@@ -30,12 +30,13 @@ from vglpos.domain.models import (
     User,
     UserRole,
 )
+from vglpos.performance_workload import PRODUCT_COUNT, lane_for_index
 from vglpos.security.password import hash_password
 from vglpos.security.permissions import PERMISSION_DEFINITIONS
+from vglpos.utils.gst import financial_year_code
 
 logger = logging.getLogger("vglpos.performance_seed")
 
-PRODUCT_COUNT = 5_000
 CUSTOMER_COUNT = 2_000
 SALE_COUNT = 100_000
 CHUNK_SIZE = 5_000
@@ -68,10 +69,22 @@ def main() -> None:
     login_code = _required_env("PERF_LOGIN_CODE")
     username = _required_env("PERF_USERNAME")
     password = _required_env("PERF_PASSWORD")
+    cashier_count = int(os.environ.get("PERF_CASHIER_COUNT", "1"))
+    first_branch_id = int(os.environ.get("PERF_BRANCH_ID", "1"))
+    first_terminal_id = int(os.environ.get("PERF_TERMINAL_ID", "1"))
+    lane_for_index(
+        0,
+        cashier_count,
+        username=username,
+        first_branch_id=first_branch_id,
+        first_terminal_id=first_terminal_id,
+    )
     engine = create_engine(database_url, pool_pre_ping=True)
     with Session(engine) as session:
         if session.scalar(select(Company.id).where(Company.login_code == login_code)) is not None:
             raise RuntimeError(f"Performance company {login_code!r} already exists.")
+        if cashier_count > 1 and session.scalar(select(Branch.id).limit(1)) is not None:
+            raise RuntimeError("Multi-cashier seeding requires a fresh test database.")
 
         permissions = [
             Permission(
@@ -96,33 +109,6 @@ def main() -> None:
         )
         session.add(company)
         session.flush()
-        branch = Branch(
-            company_id=company.id,
-            code="MAIN",
-            name="Performance Branch",
-            state_code="33",
-            address_line1="1 Benchmark Road",
-            city="Chennai",
-            state="Tamil Nadu",
-            postal_code="600001",
-            phone="9000000001",
-            is_head_office=True,
-        )
-        session.add(branch)
-        session.flush()
-        terminal = Terminal(
-            company_id=company.id,
-            branch_id=branch.id,
-            code="LOAD-01",
-            name="Load Test Counter",
-        )
-        user = User(
-            company_id=company.id,
-            username=username,
-            email="cashier@example.invalid",
-            password_hash=hash_password(password),
-            full_name="Performance Cashier",
-        )
         role = Role(
             company_id=company.id,
             name="OWNER",
@@ -140,19 +126,8 @@ def main() -> None:
             cess_rate=Decimal("0.00"),
             effective_from=date(2017, 7, 1),
         )
-        session.add_all([terminal, user, role, rate])
+        session.add_all([role, rate])
         session.flush()
-        session.add(
-            Shift(
-                company_id=company.id,
-                branch_id=branch.id,
-                terminal_id=terminal.id,
-                cashier_id=user.id,
-                opening_cash=Decimal("0.00"),
-                status="OPEN",
-                opening_denominations={},
-            )
-        )
         session.add_all(
             RolePermission(
                 company_id=company.id,
@@ -161,25 +136,83 @@ def main() -> None:
             )
             for permission in permissions
         )
-        session.add(
-            UserRole(
-                company_id=company.id,
-                user_id=user.id,
-                role_id=role.id,
-                branch_id=branch.id,
+        password_hash = hash_password(password)
+        first_branch: Branch | None = None
+        first_terminal: Terminal | None = None
+        first_user: User | None = None
+        for index in range(cashier_count):
+            lane = lane_for_index(
+                index,
+                cashier_count,
+                username=username,
+                first_branch_id=first_branch_id,
+                first_terminal_id=first_terminal_id,
             )
-        )
-        session.add(
-            DocumentSeries(
+            branch = Branch(
+                company_id=company.id,
+                code="MAIN" if cashier_count == 1 else f"LOAD-{index + 1:03d}",
+                name=f"Performance Branch {index + 1:03d}",
+                state_code="33",
+                address_line1="1 Benchmark Road",
+                city="Chennai",
+                state="Tamil Nadu",
+                postal_code="600001",
+                phone=f"9{index + 1:09d}",
+                is_head_office=index == 0,
+            )
+            session.add(branch)
+            session.flush()
+            terminal = Terminal(
                 company_id=company.id,
                 branch_id=branch.id,
-                doc_type="SALE",
-                prefix="P/",
-                current_number=SALE_COUNT,
-                financial_year="26-27",
+                code=f"LOAD-{index + 1:03d}",
+                name=f"Load Test Counter {index + 1:03d}",
             )
-        )
+            user = User(
+                company_id=company.id,
+                username=lane.username,
+                email=f"cashier-{index + 1:03d}@example.invalid",
+                password_hash=password_hash,
+                full_name=f"Performance Cashier {index + 1:03d}",
+            )
+            session.add_all([terminal, user])
+            session.flush()
+            if branch.id != lane.branch_id or terminal.id != lane.terminal_id:
+                raise RuntimeError(
+                    "Performance lane IDs require a fresh, sequential test database."
+                )
+            session.add_all(
+                [
+                    Shift(
+                        company_id=company.id,
+                        branch_id=branch.id,
+                        terminal_id=terminal.id,
+                        cashier_id=user.id,
+                        opening_cash=Decimal("0.00"),
+                        status="OPEN",
+                        opening_denominations={},
+                    ),
+                    UserRole(
+                        company_id=company.id,
+                        user_id=user.id,
+                        role_id=role.id,
+                        branch_id=branch.id,
+                    ),
+                    DocumentSeries(
+                        company_id=company.id,
+                        branch_id=branch.id,
+                        doc_type="SALE",
+                        prefix=f"P{index + 1:03d}/",
+                        current_number=SALE_COUNT if index == 0 else 0,
+                        financial_year=financial_year_code(date.today()),
+                    ),
+                ]
+            )
+            if index == 0:
+                first_branch, first_terminal, first_user = branch, terminal, user
         session.flush()
+        assert first_branch is not None and first_terminal is not None and first_user is not None
+        branch, terminal, user = first_branch, first_terminal, first_user
 
         _insert_chunks(
             session,
@@ -256,10 +289,11 @@ def main() -> None:
         if engine.dialect.name == "postgresql":
             connection.execute(text("REFRESH MATERIALIZED VIEW mv_daily_sales_summary"))
     logger.info(
-        "Performance seed complete: %s sales, %s products, %s customers; barcodes PERF-00001..",
+        "Performance seed complete: %s sales, %s products, %s customers, %s cashiers",
         SALE_COUNT,
         PRODUCT_COUNT,
         CUSTOMER_COUNT,
+        cashier_count,
     )
 
 

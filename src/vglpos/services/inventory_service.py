@@ -42,6 +42,8 @@ class InventoryService:
         *,
         notes: str | None = None,
         allow_deleted: bool = False,
+        validated_branch: Branch | None = None,
+        flush: bool = True,
     ) -> StockLedger:
         """Atomically update stock with SQL arithmetic and append its balance snapshot."""
         if product.company_id != self.company_id:
@@ -54,15 +56,23 @@ class InventoryService:
             raise ValidationError("Quantity delta cannot be zero.")
         if not txn_type or not ref_table or not str(ref_id) or not user_id:
             raise ValidationError("Stock movement transaction, reference, and user are required.")
-        branch_exists = self.session.scalar(
-            select(Branch.id).where(
-                Branch.id == branch_id,
-                Branch.company_id == self.company_id,
-                Branch.deleted_at.is_(None),
+        if validated_branch is not None:
+            if (
+                validated_branch.id != branch_id
+                or validated_branch.company_id != self.company_id
+                or validated_branch.deleted_at is not None
+            ):
+                raise EntityNotFoundError("Inventory branch was not found.")
+        else:
+            branch_exists = self.session.scalar(
+                select(Branch.id).where(
+                    Branch.id == branch_id,
+                    Branch.company_id == self.company_id,
+                    Branch.deleted_at.is_(None),
+                )
             )
-        )
-        if branch_exists is None:
-            raise EntityNotFoundError("Inventory branch was not found.")
+            if branch_exists is None:
+                raise EntityNotFoundError("Inventory branch was not found.")
         if batch_id is not None:
             batch_exists = self.session.scalar(
                 select(StockBatch.id).where(
@@ -116,7 +126,8 @@ class InventoryService:
             created_by=user_id,
         )
         self.session.add(ledger)
-        self.session.flush()
+        if flush:
+            self.session.flush()
         return ledger
 
     def reserve_stock(self, product: Product, quantity: object) -> Decimal:

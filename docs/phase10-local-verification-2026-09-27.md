@@ -31,3 +31,37 @@ NIC sandbox generation/cancellation plus signed-QR verification. No staging
 Kubernetes configuration, Tally/GST utility installation, or NIC sandbox
 configuration was present in this environment. Do not treat the local drills as
 substitutes for these external gates.
+
+## Checkout latency follow-up — 2026-09-28
+
+The original 150-user dataset sent every cashier through one open shift, one
+document series, and the same five product stock rows. A revised disposable
+seed and Locust topology give 150 cashiers independent shifts, document series,
+and five-product sets while retaining 100,000 historical sales, 5,000 products,
+and 2,000 customers. Checkout was also reduced from 38 to 17 SQL statements in
+a warmed local profile by reusing validated context, avoiding per-ledger flushes,
+and allocating document numbers with one atomic UPDATE.
+
+These changes are **not** a pass of the 150-user gate. Two-minute diagnostic
+pilots on the same four-core/eight-thread workstation produced:
+
+| Setup | Checkout p99 | Failures |
+| --- | ---: | ---: |
+| Revised topology, 4 synchronous workers, pre-optimization image | 11,000 ms | 0 |
+| Revised topology, 4 workers × 8 threads, pre-optimization image | 5,300 ms | 0 |
+| Revised topology, 4 workers × 8 threads, optimized image | 4,500 ms | 37 |
+
+The optimized pilot's 9,252 requests included 32 failed product lookups, four
+failed quotes, and one disconnected checkout. The application consumed about
+5.6 CPU cores and PostgreSQL about 1.2 cores during that pilot; these are
+capacity observations, not proof that the code will meet the target elsewhere.
+The pilot CSVs are `phase10-perf2-pilot-*_*.csv` at the repository root.
+
+The Python regression suite passed after the changes, including a test that
+an inactive branch cannot bypass checkout validation. A fresh 15-minute run
+could not be started on 2026-09-28 because Docker Desktop failed to initialize
+its engine (stale `sailor-ingest.sock` startup error). The next acceptance run
+must use a healthy, adequately provisioned staging stack, capture server and
+database CPU/connection metrics, and satisfy both zero failures and checkout
+p99 below 1,000 ms for the full 15 minutes. Government sandboxes remain a
+separate subsequent gate.
