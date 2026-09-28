@@ -65,3 +65,31 @@ must use a healthy, adequately provisioned staging stack, capture server and
 database CPU/connection metrics, and satisfy both zero failures and checkout
 p99 below 1,000 ms for the full 15 minutes. Government sandboxes remain a
 separate subsequent gate.
+
+### Docker recovery and capacity comparison — 2026-09-28
+
+Docker Desktop subsequently recovered. Its data disk is on D:, and the app
+was rebuilt from commit `1214589` as `vglpos:phase10-perf3`. A new disposable
+PostgreSQL/Redis stack was migrated and seeded with the same 150-lane dataset.
+The one-cashier smoke test completed four checkouts with no failures and a
+checkout p99 of 100 ms.
+
+| Local load | Duration | Checkouts | Failures | Checkout p99 |
+| --- | ---: | ---: | ---: | ---: |
+| 50 cashiers | 1 minute | 464 | 0 | 900 ms |
+| 100 cashiers | 1 minute | 766 | 0 | 2,600 ms |
+| 150 cashiers | 2 minutes | 1,300 | 0 | 3,700 ms |
+
+The 150-cashier pilot recorded 10,901 total requests. At full load the app
+used about 5.9 logical CPUs, PostgreSQL about 1.3, and Redis about 0.2 on a
+machine with eight logical CPUs; the Locust generator also ran on that same
+machine. Throughput stopped scaling as concurrency increased, so these results
+point to a local capacity ceiling rather than a remaining single-row lock
+convoy. The comparison CSVs are `phase10-perf3-*_stats.csv` at the repository
+root. The 150-user HTML report is `phase10-perf3-pilot.html`.
+
+The full 15-minute 150-user rerun with these changes remains **unperformed**;
+the diagnostic p99 already misses its target. Short pilots cannot substitute
+for the full gate. Run the app, database, and load generator on appropriately
+provisioned separate machines, then tune capacity and repeat the complete gate
+before beginning the GST/NIC sandbox work.
