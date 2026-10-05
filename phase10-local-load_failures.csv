@@ -1,0 +1,2 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+POST,POST /api/v1/sales/checkout,HTTPError('404 Client Error: NOT FOUND for url: POST /api/v1/sales/checkout'),1583,2026-09-27T06:14:02Z,2026-09-27T06:16:48Z

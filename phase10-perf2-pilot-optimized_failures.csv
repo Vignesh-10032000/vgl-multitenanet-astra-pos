@@ -1,0 +1,4 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+POST,POST /api/v1/sales/quote,CatchResponseError('quote returned 0'),4,2026-09-27T07:43:15Z,2026-09-27T07:43:15Z
+POST,POST /api/v1/sales/checkout,RemoteDisconnected('Remote end closed connection without response'),1,2026-09-27T07:43:15Z,2026-09-27T07:43:15Z
+GET,GET /api/v1/products/lookup,CatchResponseError('barcode lookup returned 0'),32,2026-09-27T07:43:15Z,2026-09-27T07:43:15Z
