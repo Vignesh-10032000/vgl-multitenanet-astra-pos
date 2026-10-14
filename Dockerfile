@@ -5,7 +5,8 @@ FROM node:24-alpine AS web-builder
 
 WORKDIR /app
 COPY package.json package-lock.json vite.config.js ./
-RUN --mount=type=cache,target=/root/.npm npm ci
+# Use Docker layer caching without host-specific BuildKit cache-mount IDs.
+RUN npm ci
 COPY src/vglpos/web/static/src ./src/vglpos/web/static/src
 RUN npm run build
 
@@ -21,16 +22,14 @@ WORKDIR /app
 
 # Dependency layer first so code edits don't bust the dependency cache.
 COPY pyproject.toml uv.lock README.md ./
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-install-project --no-dev
+RUN uv sync --frozen --no-install-project --no-dev
 
 COPY src ./src
 COPY --from=web-builder /app/src/vglpos/web/static/dist ./src/vglpos/web/static/dist
 COPY alembic.ini ./
 COPY gunicorn.conf.py ./
 COPY migrations ./migrations
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev
 
 # ---------- runtime stage ----------
 FROM python:3.12-slim AS runtime
