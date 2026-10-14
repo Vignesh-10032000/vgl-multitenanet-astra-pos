@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---------- web asset stage ----------
-FROM node:24-alpine AS web-builder
+FROM node:26-alpine AS web-builder
 
 WORKDIR /app
 COPY package.json package-lock.json vite.config.js ./
