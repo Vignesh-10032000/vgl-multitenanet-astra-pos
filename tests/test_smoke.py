@@ -18,7 +18,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session, scoped_session
 
 from vglpos.app import create_app
-from vglpos.config import ProductionConfig, TestingConfig, get_config
+from vglpos.config import DemoConfig, ProductionConfig, TestingConfig, get_config
 
 
 def test_health_returns_200(client: FlaskClient) -> None:
@@ -122,6 +122,18 @@ def test_production_config_accepts_strong_values(monkeypatch: pytest.MonkeyPatch
     config = ProductionConfig(_env_file=None)
     assert config.DEBUG is False
     assert config.TESTING is False
+
+
+def test_demo_config_uses_disposable_local_services(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SECRET_KEY", "k" * 48)
+    monkeypatch.setenv("JWT_SECRET_KEY", "j" * 48)
+    monkeypatch.setenv("OFFLINE_SYNC_SIGNING_SECRET", "o" * 48)
+    monkeypatch.setenv("METRICS_AUTH_TOKEN", "m" * 48)
+    config = DemoConfig(_env_file=None)
+    assert config.DEMO_MODE_ENABLED is True
+    assert config.DATABASE_URL == "sqlite+pysqlite:////tmp/vglpos-demo.db"
+    assert config.CACHE_TYPE == "SimpleCache"
+    assert config._engine_options()["connect_args"]["timeout"] == 30
 
 
 def test_readiness_checks_database(client: FlaskClient) -> None:
