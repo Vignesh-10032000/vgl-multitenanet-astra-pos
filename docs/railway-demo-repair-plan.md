@@ -10,7 +10,7 @@ production environment:
   before the demo endpoint can seed or authenticate a session.
 - `/ready` returns 503 with both database and Redis unavailable.
 
-## Proposed changes requiring approval
+## Approved repair applied on 15 October 2026
 
 1. Apply the staged, Railway-verified Redis 8.2 template, including its `/data`
    volume and generated Redis password. This adds normal Railway service and
@@ -23,6 +23,7 @@ production environment:
    | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
    | `REDIS_URL` | `${{Redis.REDIS_URL}}` |
    | `DEMO_MODE_ENABLED` | `true` |
+   | `PORT` | `8000`, matching the existing Gunicorn listener and public domain |
    | `SECRET_KEY` | Independently generated random value |
    | `JWT_SECRET_KEY` | Independently generated random value |
    | `OFFLINE_SYNC_SIGNING_SECRET` | Independently generated random value |
@@ -36,7 +37,18 @@ place. Secrets are supplied directly to Railway, never committed to GitHub.
 The public demo remains an isolated tenant with its existing restricted role.
 The preserved `legacy/` application stays inactive.
 
-At preparation time, only Redis and its volume are staged; they are not yet
-provisioned. Automatic approval review blocked staging the Flask production
-variables because production credentials and demo settings need explicit user
-approval. Applying the plan is therefore pending approval.
+The user explicitly approved the production changes, including additional Redis
+and storage usage. Redis and its persistent volume are now online. The existing
+PostgreSQL database was migrated through revision `0017`; it was not replaced.
+The app's old source-commit pin was removed, restoring deployment from `main`.
+
+Railway's current connector rejects the legacy `railway.toml` configuration
+field. The Dockerfile, `alembic upgrade head` pre-deploy command, `/ready` health
+check and 120-second timeouts were therefore configured directly on the service.
+`PORT=8000` also aligns Railway's health check with the existing Flask listener.
+
+Production verification for dashboard commit `c8bfdb9` succeeded: `/ready` returns
+200 with both dependencies healthy; demo authentication succeeds; the dashboard
+contains eight products, five customers, three low-stock alerts, five ranked
+products, three payment groups and eight recent sales. GitHub quality and
+security checks both passed for this commit. No credentials are recorded here.

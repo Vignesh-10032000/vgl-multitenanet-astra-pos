@@ -11,6 +11,7 @@ APP_ENV=production
 DATABASE_URL=${{Postgres.DATABASE_URL}}
 REDIS_URL=${{Redis.REDIS_URL}}
 DEMO_MODE_ENABLED=true
+PORT=8000
 ```
 
 Supply the four independent secrets described below, including
@@ -18,8 +19,12 @@ Supply the four independent secrets described below, including
 The app and Alembic accept Railway's `postgresql://` URL and select the installed
 Psycopg 3 driver automatically. Never use localhost database URLs in Railway.
 
-The root `railway.toml` runs `alembic upgrade head` before deployment and gates
-traffic on `/ready`, which checks both PostgreSQL and Redis. The pre-deploy
+Configure `alembic upgrade head` as the pre-deploy command and `/ready` as the
+health-check path, with 120-second timeouts. `/ready` checks both PostgreSQL and
+Redis. The root `railway.toml` retains these settings for compatible deployments;
+the current Railway connector rejects that legacy configuration field, so the
+production service has these settings configured directly. `PORT=8000` matches
+the current Gunicorn listener and Railway health-check target. The pre-deploy
 command requires a schema-owner credential; deployments using separate roles
 must instead run migrations in their owner release job before the app deploy.
 The `/health` endpoint checks only the web process and does not prove that

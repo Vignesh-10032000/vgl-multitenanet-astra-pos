@@ -108,7 +108,9 @@ whenAppReady(() => {
   if (getSession()) location.replace("/pos");
   const form = document.querySelector("#login-form");
   form.addEventListener("submit", submitLogin);
-  document.querySelector("#demo-login").addEventListener("click", submitDemoLogin);
+  const demoButton = document.querySelector("#demo-login");
+  demoButton.addEventListener("click", submitDemoLogin);
+  demoButton.disabled = false;
   document.querySelector("#password-toggle").addEventListener("click", (event) => {
     const password = form.elements.password;
     password.type = password.type === "password" ? "text" : "password";

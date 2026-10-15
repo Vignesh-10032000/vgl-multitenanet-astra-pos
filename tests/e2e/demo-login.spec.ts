@@ -57,6 +57,27 @@ test("demo network failure allows retry", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Explore the demo" })).toBeEnabled();
 });
 
+test("demo waits for initialization before accepting clicks", async ({ page }) => {
+  let releaseLocale;
+  const localeGate = new Promise((resolve) => { releaseLocale = resolve; });
+  await page.route("**/static/i18n/en.json", async (route) => {
+    await localeGate;
+    await route.continue();
+  });
+  try {
+    await page.goto("/login");
+    await expect(page.locator("#demo-login")).toBeDisabled();
+  } finally {
+    releaseLocale();
+  }
+  await expect(page.locator("#demo-login")).toBeEnabled();
+  await Promise.all([
+    page.waitForURL("**/pos"),
+    page.locator("#demo-login").click(),
+  ]);
+  await expect(page.locator("#pos-product-grid")).toHaveAttribute("aria-busy", "false");
+});
+
 test("branded demo login opens a populated workspace", async ({ page }) => {
   await page.goto("/login");
 
