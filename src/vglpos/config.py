@@ -280,44 +280,6 @@ class TestingConfig(BaseConfig):
         return super()._engine_options()
 
 
-class DemoConfig(BaseConfig):
-    """Self-contained public showcase configuration with disposable data."""
-
-    APP_ENV: str = "demo"
-    DEBUG: bool = Field(default=False, validation_alias="VGLPOS_DEMO_DEBUG")
-    TESTING: bool = False
-    DEMO_MODE_ENABLED: bool = True
-    DATABASE_URL: str = "sqlite+pysqlite:////tmp/vglpos-demo.db"
-    REDIS_URL: str = "memory://"
-    CACHE_TYPE: str = "SimpleCache"
-    CELERY_BROKER_URL: str = "memory://"
-    CELERY_RESULT_BACKEND: str = "cache+memory://"
-
-    @model_validator(mode="after")
-    def _require_runtime_secrets(self) -> DemoConfig:
-        """Keep the public showcase secure without committing credentials."""
-        problems: list[str] = []
-        for name in (
-            "SECRET_KEY",
-            "JWT_SECRET_KEY",
-            "OFFLINE_SYNC_SIGNING_SECRET",
-            "METRICS_AUTH_TOKEN",
-        ):
-            value = getattr(self, name).strip()
-            if len(value) < _MIN_SECRET_LENGTH:
-                problems.append(f"{name} must be at least {_MIN_SECRET_LENGTH} characters")
-        if not self.DATABASE_URL.startswith(("sqlite", "postgresql")):
-            problems.append("DATABASE_URL must be SQLite or PostgreSQL for the demo")
-        if problems:
-            raise ValueError("refusing to start unsafe demo configuration: " + "; ".join(problems))
-        return self
-
-    def _engine_options(self) -> dict[str, Any]:
-        if self.DATABASE_URL.startswith("sqlite"):
-            return {"connect_args": {"check_same_thread": False, "timeout": 30}}
-        return super()._engine_options()
-
-
 class ProductionConfig(BaseConfig):
     """Production settings: everything security-relevant must come from the
     environment, and construction fails hard if it does not.
@@ -365,7 +327,6 @@ class ProductionConfig(BaseConfig):
 
 
 _CONFIGS: dict[str, type[BaseConfig]] = {
-    "demo": DemoConfig,
     "development": DevelopmentConfig,
     "testing": TestingConfig,
     "production": ProductionConfig,
