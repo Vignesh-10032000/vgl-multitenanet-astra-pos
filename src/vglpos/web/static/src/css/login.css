@@ -2,6 +2,9 @@
   padding: 36px clamp(28px, 3.5vw, 72px);
 }
 
+.login-panel .button-primary { border-color: #073f7d; background: #073f7d; }
+.login-panel .button-primary:hover { border-color: #052d5e; background: #052d5e; }
+
 .login-panel input { width: 100%; min-width: 0; }
 .login-panel .form-stack > label { display: grid; gap: 5px; }
 .login-panel .form-stack > .is-hidden { display: none; }
