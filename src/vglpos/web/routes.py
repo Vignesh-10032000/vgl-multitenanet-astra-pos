@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
+from urllib.parse import urlsplit
 from uuid import UUID
 
 from flask import Blueprint, Response, current_app, jsonify, render_template, send_from_directory
@@ -21,7 +22,20 @@ def _page(template: str, **context: object) -> Response:
 @web_bp.get("/login")
 def login() -> Response:
     """Render the credential-entry shell used before a token exists."""
-    return _page("login.html", page_name="login", shell="auth")
+    website_url = str(current_app.config.get("OFFICIAL_WEBSITE_URL", ""))
+    try:
+        parsed = urlsplit(website_url)
+        valid_website = (
+            parsed.scheme == "https"
+            and bool(parsed.hostname)
+            and not parsed.username
+            and not parsed.password
+        )
+    except ValueError:
+        valid_website = False
+    if not valid_website:
+        website_url = ""
+    return _page("login.html", page_name="login", shell="auth", official_website_url=website_url)
 
 
 @web_bp.get("/")

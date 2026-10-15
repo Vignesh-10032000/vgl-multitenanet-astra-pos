@@ -1,4 +1,4 @@
-import { ArrowRight, Eye, EyeOff, Sparkles } from "lucide";
+import { ArrowRight, CloudOff, ExternalLink, Eye, EyeOff, Mail, MessageCircle, PauseCircle, Phone, Sparkles, WalletCards } from "lucide";
 
 import "../css/login.css";
 
@@ -7,7 +7,7 @@ import { getLocale, loadLocale, t } from "./i18n.js";
 import { getSession, saveSession } from "./session.js";
 import { refreshIcons, registerIcons, setBusy } from "./ui.js";
 
-registerIcons({ ArrowRight, Eye, EyeOff, Sparkles });
+registerIcons({ ArrowRight, CloudOff, ExternalLink, Eye, EyeOff, Mail, MessageCircle, PauseCircle, Phone, Sparkles, WalletCards });
 
 function optionalInteger(form, name) {
   const value = form.elements[name].value.trim();
@@ -16,7 +16,11 @@ function optionalInteger(form, name) {
 
 function redirectAfterLogin() {
   const next = new URLSearchParams(location.search).get("next");
-  location.replace(next?.startsWith("/") && !next.startsWith("//") ? next : "/pos");
+  const safePath = next?.startsWith("/") && !next.startsWith("//") && !next.includes("\\");
+  const target = safePath ? new URL(next, location.origin) : null;
+  location.replace(target?.origin === location.origin
+    ? `${target.pathname}${target.search}${target.hash}`
+    : "/pos");
 }
 
 async function requestLogin(path, payload) {
@@ -66,8 +70,12 @@ function showLoginError(element, failure, demo = false) {
 async function submitLogin(event) {
   event.preventDefault();
   const form = event.currentTarget;
+  if (form.getAttribute("aria-busy") === "true") return;
   const error = document.querySelector("#login-error");
   error.textContent = "";
+  form.elements.company_code.value = form.elements.company_code.value.trim();
+  form.elements.username.value = form.elements.username.value.trim();
+  if (!form.reportValidity()) return;
   setBusy(form, true);
   const payload = {
     company_code: form.elements.company_code.value.trim(),
@@ -82,6 +90,7 @@ async function submitLogin(event) {
   } catch (failure) {
     if (/mfa|authentication code/i.test(failure.message || "")) {
       document.querySelector("#mfa-field").classList.remove("is-hidden");
+      form.elements.mfa_code.required = true;
       form.elements.mfa_code.focus();
     }
     showLoginError(error, failure);
@@ -92,6 +101,7 @@ async function submitLogin(event) {
 
 async function submitDemoLogin() {
   const container = document.querySelector(".demo-access");
+  if (container.getAttribute("aria-busy") === "true") return;
   const error = document.querySelector("#demo-error");
   error.textContent = "";
   setBusy(container, true);
@@ -105,15 +115,25 @@ async function submitDemoLogin() {
 }
 
 whenAppReady(() => {
-  if (getSession()) location.replace("/pos");
+  if (getSession()) redirectAfterLogin();
   const form = document.querySelector("#login-form");
   form.addEventListener("submit", submitLogin);
   const demoButton = document.querySelector("#demo-login");
   demoButton.addEventListener("click", submitDemoLogin);
   demoButton.disabled = false;
-  document.querySelector("#password-toggle").addEventListener("click", (event) => {
+  const localeButton = document.querySelector("#login-locale");
+  const passwordToggle = document.querySelector("#password-toggle");
+  const syncControls = () => {
+    localeButton.querySelector("span").textContent = getLocale() === "en" ? "தமிழ்" : "EN";
+    const label = t(form.elements.password.type === "password" ? "login.show_password" : "login.hide_password");
+    passwordToggle.setAttribute("aria-label", label);
+    passwordToggle.title = label;
+  };
+  syncControls();
+  passwordToggle.addEventListener("click", (event) => {
     const password = form.elements.password;
     password.type = password.type === "password" ? "text" : "password";
+    syncControls();
     event.currentTarget.querySelector("svg")?.remove();
     event.currentTarget.querySelector("i")?.remove();
     const icon = document.createElement("i");
@@ -121,8 +141,12 @@ whenAppReady(() => {
     event.currentTarget.prepend(icon);
     refreshIcons(event.currentTarget);
   });
-  document.querySelector("#login-locale").addEventListener("click", async (event) => {
-    await loadLocale(getLocale() === "en" ? "ta" : "en");
-    event.currentTarget.querySelector("span").textContent = getLocale() === "en" ? "தமிழ்" : "EN";
+  localeButton.addEventListener("click", async () => {
+    try {
+      await loadLocale(getLocale() === "en" ? "ta" : "en");
+      syncControls();
+    } catch {
+      document.querySelector("#login-error").textContent = t("login.language_failed");
+    }
   });
 });

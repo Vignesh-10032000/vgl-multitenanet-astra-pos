@@ -72,6 +72,7 @@ class BaseConfig(BaseSettings):
     WHATSAPP_WEBHOOK_URL: str = ""
     WHATSAPP_API_TOKEN: str = ""
     PUBLIC_RECEIPT_BASE_URL: str = ""
+    OFFICIAL_WEBSITE_URL: str = ""
     SMS_WEBHOOK_URL: str = ""
     SMS_API_TOKEN: str = ""
     EMAIL_WEBHOOK_URL: str = ""
@@ -157,6 +158,7 @@ class BaseConfig(BaseSettings):
             "WHATSAPP_WEBHOOK_URL": self.WHATSAPP_WEBHOOK_URL,
             "WHATSAPP_API_TOKEN": self.WHATSAPP_API_TOKEN,
             "PUBLIC_RECEIPT_BASE_URL": self.PUBLIC_RECEIPT_BASE_URL,
+            "OFFICIAL_WEBSITE_URL": self.OFFICIAL_WEBSITE_URL,
             "SMS_WEBHOOK_URL": self.SMS_WEBHOOK_URL,
             "SMS_API_TOKEN": self.SMS_API_TOKEN,
             "EMAIL_WEBHOOK_URL": self.EMAIL_WEBHOOK_URL,

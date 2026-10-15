@@ -15,10 +15,10 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   webServer: {
-    command: "uv run python scripts/run_phase5_e2e.py",
+    command: process.env.PHASE5_E2E_SERVER_COMMAND || "uv run python scripts/run_phase5_e2e.py",
     env: { PHASE5_E2E_PORT: port },
     url: `http://127.0.0.1:${port}/health`,
-    reuseExistingServer: false,
+    reuseExistingServer: process.env.PHASE5_E2E_REUSE_SERVER === "1",
     timeout: 120_000,
   },
 });

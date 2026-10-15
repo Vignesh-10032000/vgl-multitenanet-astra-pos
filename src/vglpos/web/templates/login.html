@@ -3,7 +3,7 @@
 {% block auth_content %}
   <section class="login-panel" aria-labelledby="login-title">
     <div class="login-brand">
-      <img src="{{ url_for('static', filename='icons/vgl-logo.png') }}" alt="Vignesh Growth Lab" class="login-logo">
+      <img src="{{ url_for('static', filename='icons/vgl-logo.png') }}" alt="Vignesh Growth Lab" class="login-logo" width="684" height="318">
       <div class="login-brand-copy"><strong>VGL POS</strong><span data-i18n="brand.subtitle">Retail operations</span></div>
     </div>
     <div class="login-heading">
@@ -26,14 +26,16 @@
     <p class="form-error" id="login-error" role="alert"></p>
     <div class="login-divider"><span data-i18n="login.member_signin">Store team sign in</span></div>
     <form id="login-form" class="form-stack" novalidate>
-      <label>
-        <span data-i18n="login.company_code">Company code</span>
-        <input name="company_code" autocomplete="organization" maxlength="50" required autofocus>
-      </label>
-      <label>
-        <span data-i18n="login.username">Username</span>
-        <input name="username" autocomplete="username" maxlength="100" required>
-      </label>
+      <div class="field-grid login-identity-grid">
+        <label>
+          <span data-i18n="login.company_code">Company code</span>
+          <input name="company_code" autocomplete="organization" maxlength="50" required autofocus>
+        </label>
+        <label>
+          <span data-i18n="login.username">Username</span>
+          <input name="username" autocomplete="username" maxlength="100" required>
+        </label>
+      </div>
       <label>
         <span data-i18n="login.password">Password</span>
         <span class="input-action">
@@ -44,11 +46,11 @@
       <div class="field-grid">
         <label>
           <span data-i18n="login.branch_optional">Branch ID (optional)</span>
-          <input name="branch_id" type="number" min="1" inputmode="numeric">
+          <input name="branch_id" type="number" min="1" step="1" inputmode="numeric">
         </label>
         <label>
           <span data-i18n="login.terminal_optional">Terminal ID (optional)</span>
-          <input name="terminal_id" type="number" min="1" inputmode="numeric">
+          <input name="terminal_id" type="number" min="1" step="1" inputmode="numeric">
         </label>
       </div>
       <label class="is-hidden" id="mfa-field">
@@ -63,6 +65,19 @@
       <button class="text-button" type="button" id="login-locale"><i data-lucide="languages"></i><span>தமிழ்</span></button>
       <span data-i18n="login.secure_notice">Encrypted, tenant-isolated session</span>
     </div>
+    <section class="login-contact" aria-labelledby="login-contact-title">
+      <div>
+        <p class="login-contact-kicker" data-i18n="login.tailored_kicker">Made for your kind of business</p>
+        <h2 id="login-contact-title" data-i18n="login.tailored_title">Need a POS tailored to your store?</h2>
+        <p data-i18n="login.tailored_body">We build tailored POS workflows for restaurants, nut shops and other businesses.</p>
+      </div>
+      <div class="login-contact-links">
+        {% if official_website_url %}<a href="{{ official_website_url }}" target="_blank" rel="noopener noreferrer"><i data-lucide="external-link"></i><span data-i18n="login.website">Official website</span></a>{% endif %}
+        <a href="mailto:vigneshgrowthlab@gmail.com"><i data-lucide="mail"></i><span data-i18n="login.email">vigneshgrowthlab@gmail.com</span></a>
+        <a href="https://wa.me/918220034139" target="_blank" rel="noopener noreferrer"><i data-lucide="message-circle"></i><span data-i18n="login.whatsapp">WhatsApp</span></a>
+        <a href="tel:+918220034139"><i data-lucide="phone"></i><span data-i18n="login.call">Call +91 82200 34139</span></a>
+      </div>
+    </section>
   </section>
   <aside class="login-visual" aria-label="Point of sale preview">
     <div class="login-orb login-orb-one" aria-hidden="true"></div>
@@ -72,6 +87,12 @@
       <h2 data-i18n="login.preview_title">Every sale. Every shelf. One clear view.</h2>
       <p data-i18n="login.preview_body">Serve customers with confidence. Keep stock visible. Turn everyday store activity into better business decisions.</p>
     </div>
+    <ul class="checkout-capabilities" aria-label="Fast billing features">
+      <li><i data-lucide="scan-line"></i><span data-i18n="login.capability_scan">Barcode scan & quick keys</span></li>
+      <li><i data-lucide="pause-circle"></i><span data-i18n="login.capability_hold">Hold & recall bills</span></li>
+      <li><i data-lucide="wallet-cards"></i><span data-i18n="login.capability_split">Split payments</span></li>
+      <li><i data-lucide="cloud-off"></i><span data-i18n="login.capability_offline">Offline bill queue</span></li>
+    </ul>
     <section class="store-preview" aria-labelledby="store-preview-title">
       <header class="store-preview-header">
         <div class="store-preview-brand"><span class="store-preview-mark" aria-hidden="true">V</span><div><strong id="store-preview-title">VGL Demo Mart</strong><small data-i18n="login.preview_store">Your store, at a glance</small></div></div>
