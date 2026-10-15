@@ -8,14 +8,12 @@ lives in the Phase 1B test modules.
 
 from __future__ import annotations
 
-import os
 import uuid
 
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
 from pydantic import ValidationError
-from scripts.start_web import _set_runtime_defaults
 from sqlalchemy import text
 from sqlalchemy.orm import Session, scoped_session
 
@@ -136,17 +134,6 @@ def test_demo_config_uses_disposable_local_services(monkeypatch: pytest.MonkeyPa
     assert config.DATABASE_URL == "sqlite+pysqlite:////tmp/vglpos-demo.db"
     assert config.CACHE_TYPE == "SimpleCache"
     assert config._engine_options()["connect_args"]["timeout"] == 30
-
-
-def test_demo_launcher_isolates_railway_service_variables(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setenv("APP_ENV", "production")
-    monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://unreachable/production")
-    monkeypatch.delenv("DEMO_DATABASE_URL", raising=False)
-    _set_runtime_defaults()
-    assert os.environ["APP_ENV"] == "demo"
-    assert os.environ["DATABASE_URL"] == "sqlite+pysqlite:////tmp/vglpos-demo.db"
 
 
 def test_readiness_checks_database(client: FlaskClient) -> None:

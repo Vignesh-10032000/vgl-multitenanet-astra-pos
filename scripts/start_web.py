@@ -8,10 +8,8 @@ import subprocess
 
 
 def _set_runtime_defaults() -> None:
-    os.environ["APP_ENV"] = "demo"
-    os.environ["DATABASE_URL"] = os.environ.get(
-        "DEMO_DATABASE_URL", "sqlite+pysqlite:////tmp/vglpos-demo.db"
-    )
+    os.environ.setdefault("APP_ENV", "demo")
+    os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:////tmp/vglpos-demo.db")
     for name in (
         "SECRET_KEY",
         "JWT_SECRET_KEY",
