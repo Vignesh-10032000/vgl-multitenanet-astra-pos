@@ -15,12 +15,13 @@
       <div class="demo-access-copy">
         <span class="demo-badge" data-i18n="login.demo_badge">Interactive demo</span>
         <h2 id="demo-title" data-i18n="login.demo_title">See VGL POS in action</h2>
-        <p data-i18n="login.demo_body">Enter instantly with sample products, customers and live-looking sales data.</p>
+        <p data-i18n="login.demo_body">Try a real checkout, browse stocked products and explore customer history with sample data.</p>
       </div>
       <button class="button button-large button-demo" type="button" id="demo-login">
         <i data-lucide="sparkles"></i><span data-i18n="login.demo_submit">Explore the demo</span>
       </button>
       <small data-i18n="login.demo_notice">Safe sample workspace · No account required</small>
+      <p class="form-error" id="demo-error" role="alert" aria-live="polite"></p>
     </section>
     <p class="form-error" id="login-error" role="alert"></p>
     <div class="login-divider"><span data-i18n="login.member_signin">Store team sign in</span></div>
@@ -69,20 +70,43 @@
     <div class="visual-intro">
       <span class="visual-pill" data-i18n="login.visual_pill">Built by Vignesh Growth Lab</span>
       <h2 data-i18n="login.preview_title">Every sale. Every shelf. One clear view.</h2>
-      <p data-i18n="login.preview_body">A fast, GST-ready operating system designed for modern Indian retail.</p>
+      <p data-i18n="login.preview_body">Serve customers with confidence. Keep stock visible. Turn everyday store activity into better business decisions.</p>
     </div>
-    <div class="counter-preview">
-      <div class="preview-header"><span></span><span></span><span></span></div>
-      <div class="preview-body">
-        <div class="preview-products"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-        <div class="preview-cart"><b></b><span></span><span></span><span></span><strong></strong></div>
+    <section class="store-preview" aria-labelledby="store-preview-title">
+      <header class="store-preview-header">
+        <div class="store-preview-brand"><span class="store-preview-mark" aria-hidden="true">V</span><div><strong id="store-preview-title">VGL Demo Mart</strong><small data-i18n="login.preview_store">Your store, at a glance</small></div></div>
+        <span class="sample-label" data-i18n="login.sample_data">Illustrative sample data</span>
+      </header>
+      <dl class="store-preview-metrics">
+        <div><dt data-i18n="login.sample_sales">Today's sales</dt><dd>₹8,420<span data-i18n="login.sample_payments">Cash · Card · UPI</span></dd></div>
+        <div><dt data-i18n="login.sample_bills">Bills completed</dt><dd>24<span data-i18n="login.sample_counter">One connected counter</span></dd></div>
+        <div><dt data-i18n="login.sample_stock">Stock alerts</dt><dd>3<span data-i18n="login.sample_reorder">Ready to reorder</span></dd></div>
+      </dl>
+      <div class="store-preview-detail">
+        <section class="sample-inventory" aria-labelledby="inventory-preview-title">
+          <div class="sample-section-heading"><h3 id="inventory-preview-title" data-i18n="login.sample_products">Popular on your shelves</h3><i data-lucide="package-search"></i></div>
+          <div class="sample-product"><span class="sample-product-symbol" aria-hidden="true">R</span><div><strong data-i18n="login.sample_rice">Ponni Rice · 5 kg</strong><small data-i18n="login.sample_essentials">Daily essentials</small></div><b>₹310</b></div>
+          <div class="sample-product"><span class="sample-product-symbol" aria-hidden="true">O</span><div><strong data-i18n="login.sample_oil">Groundnut Oil · 1 L</strong><small data-i18n="login.sample_essentials">Daily essentials</small></div><b>₹185</b></div>
+          <div class="sample-product"><span class="sample-product-symbol" aria-hidden="true">C</span><div><strong data-i18n="login.sample_coffee">Filter Coffee · 200 g</strong><small data-i18n="login.sample_beverages">Beverages</small></div><b>₹125</b></div>
+          <div class="sample-stock-note"><i data-lucide="package-search"></i><span data-i18n="login.sample_stock_note">Spot low stock before the next rush.</span></div>
+        </section>
+        <section class="sample-checkout" aria-labelledby="checkout-preview-title">
+          <div class="sample-section-heading"><h3 id="checkout-preview-title" data-i18n="login.sample_checkout">Current bill</h3><span>#DEMO-024</span></div>
+          <div class="sample-bill-line"><span data-i18n="login.sample_rice_short">Ponni Rice × 1</span><b>₹310.00</b></div>
+          <div class="sample-bill-line"><span data-i18n="login.sample_oil_short">Groundnut Oil × 1</span><b>₹185.00</b></div>
+          <div class="sample-bill-line"><span data-i18n="login.sample_tax">GST (5%)</span><b>₹24.75</b></div>
+          <div class="sample-bill-total"><span data-i18n="login.sample_total">Total</span><strong>₹519.75</strong></div>
+          <p class="sample-paid"><i data-lucide="check"></i><span data-i18n="login.sample_paid">Payment received · UPI</span></p>
+          <small class="sample-receipt" data-i18n="login.sample_receipt">A clear bill. A confident checkout.</small>
+        </section>
       </div>
-    </div>
+    </section>
     <div class="visual-proof" aria-label="Product highlights">
-      <span><b>01</b><span data-i18n="login.proof_billing">Fast counter billing</span></span>
-      <span><b>02</b><span data-i18n="login.proof_inventory">Live inventory control</span></span>
-      <span><b>03</b><span data-i18n="login.proof_gst">GST-ready reporting</span></span>
+      <article><i data-lucide="scan-line"></i><h3 data-i18n="login.benefit_checkout">Keep the queue moving</h3><p data-i18n="login.benefit_checkout_body">Scan, bill and collect cash, card or UPI in one flow.</p></article>
+      <article><i data-lucide="package-search"></i><h3 data-i18n="login.benefit_stock">Protect every shelf</h3><p data-i18n="login.benefit_stock_body">Track stock and see what needs replenishing.</p></article>
+      <article><i data-lucide="users"></i><h3 data-i18n="login.benefit_customers">Build repeat business</h3><p data-i18n="login.benefit_customers_body">Keep customer history and loyalty points close at hand.</p></article>
     </div>
+    <p class="login-value-note"><i data-lucide="check"></i><span data-i18n="login.value_note">Built for Indian retail · English & Tamil · GST reporting</span></p>
   </aside>
 {% endblock %}
 {% block scripts %}

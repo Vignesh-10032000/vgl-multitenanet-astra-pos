@@ -6,6 +6,8 @@ import json
 
 import structlog
 from flask import Flask, Response, g, request
+from redis.exceptions import RedisError
+from sqlalchemy.exc import OperationalError
 from werkzeug.exceptions import HTTPException
 
 from vglpos.services.exceptions import ServiceError
@@ -51,6 +53,20 @@ def problem_response(
 
 def register_error_handlers(app: Flask) -> None:
     """Attach the three handlers that make every error response RFC 7807."""
+
+    @app.errorhandler(OperationalError)
+    @app.errorhandler(RedisError)
+    def _handle_dependency_outage(exc: Exception) -> Response:
+        logger.error("dependency_unavailable", error_type=type(exc).__name__)
+        response = problem_response(
+            status=503,
+            title="Service temporarily unavailable",
+            detail="The service is temporarily unavailable. Please try again shortly.",
+            type_="urn:vglpos:error:dependency-unavailable",
+        )
+        response.headers["Retry-After"] = "30"
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     @app.errorhandler(VglPosError)
     def _handle_application_error(exc: VglPosError) -> Response:

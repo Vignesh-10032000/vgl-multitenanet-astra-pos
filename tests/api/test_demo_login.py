@@ -4,13 +4,16 @@ from __future__ import annotations
 
 from uuid import uuid4
 
+import pytest
 from flask import Flask
 from flask.testing import FlaskClient
+from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy import func, select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from vglpos.domain.models import Company, Customer, Product, Sale
-from vglpos.extensions import db
+from vglpos.extensions import cache, db
 from vglpos.services.demo_service import DEMO_LOGIN_CODE
 
 
@@ -25,6 +28,35 @@ def _demo_login(client: FlaskClient) -> object:
 def test_demo_login_is_hidden_when_disabled(api_app: Flask, api_client: FlaskClient) -> None:
     api_app.config["DEMO_MODE_ENABLED"] = False
     assert _demo_login(api_client).status_code == 404
+
+
+@pytest.mark.parametrize("dependency", ["database", "redis"])
+def test_demo_dependency_outage_is_retryable_without_exposing_credentials(
+    api_app: Flask,
+    api_client: FlaskClient,
+    monkeypatch: pytest.MonkeyPatch,
+    dependency: str,
+) -> None:
+    monkeypatch.setitem(api_app.config, "DEMO_MODE_ENABLED", True)
+
+    def unavailable(*args: object, **kwargs: object) -> None:
+        if dependency == "redis":
+            raise RedisConnectionError("redis://private-password@internal")
+        raise OperationalError("SELECT 1", {}, Exception("private-database-password"))
+
+    if dependency == "redis":
+        monkeypatch.setattr(cache, "get", unavailable)
+    else:
+        monkeypatch.setattr("vglpos.services.demo_service.DemoWorkspaceService.ensure", unavailable)
+
+    response = _demo_login(api_client)
+    assert response.status_code == 503
+    assert response.headers["Retry-After"] == "30"
+    assert response.headers["Cache-Control"] == "no-store"
+    body = response.get_json()
+    assert body["type"] == "urn:vglpos:error:dependency-unavailable"
+    assert body["request_id"] == response.headers["X-Request-Id"]
+    assert "private-" not in response.get_data(as_text=True)
 
 
 def test_demo_login_seeds_populated_isolated_workspace(

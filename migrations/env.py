@@ -8,7 +8,7 @@ import os
 from alembic import context
 from sqlalchemy import create_engine, pool
 
-from vglpos.config import get_config
+from vglpos.config import get_config, normalize_database_url
 from vglpos.domain import models as domain_models
 from vglpos.extensions import db
 
@@ -32,7 +32,7 @@ def _database_url() -> str:
     """
     explicit = os.environ.get("DATABASE_URL")
     if explicit:
-        return explicit
+        return normalize_database_url(explicit)
     settings = get_config()()
     if not settings.DATABASE_URL:
         raise RuntimeError(

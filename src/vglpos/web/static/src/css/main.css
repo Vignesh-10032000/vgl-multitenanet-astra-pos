@@ -1152,13 +1152,13 @@ textarea:focus {
 .auth-shell {
   display: grid;
   min-height: 100vh;
-  grid-template-columns: minmax(480px, 0.9fr) minmax(560px, 1.1fr);
+  grid-template-columns: minmax(420px, 38%) minmax(0, 1fr);
   background: #f7faff;
 }
 
 .login-panel {
   display: flex;
-  width: min(100%, 620px);
+  width: 100%;
   min-height: 100vh;
   flex-direction: column;
   justify-content: center;

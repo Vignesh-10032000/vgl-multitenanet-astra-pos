@@ -9,7 +9,7 @@ export default defineConfig({
   build: {
     outDir: resolve(import.meta.dirname, "src/vglpos/web/static/dist"),
     emptyOutDir: true,
-    cssCodeSplit: false,
+    cssCodeSplit: true,
     manifest: "manifest.json",
     rollupOptions: {
       input: {

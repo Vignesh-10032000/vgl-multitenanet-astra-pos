@@ -1,0 +1,81 @@
+.login-panel {
+  padding: 36px clamp(28px, 3.5vw, 72px);
+}
+
+.login-panel input { width: 100%; min-width: 0; }
+.login-panel .form-stack > label { display: grid; gap: 5px; }
+.login-panel .form-stack > .is-hidden { display: none; }
+.login-panel .field-grid > label { min-width: 0; }
+.login-panel .form-error:empty { display: none; }
+.login-panel .form-error:not(:empty) {
+  padding: 12px;
+  border: 1px solid #f0c2bd;
+  border-radius: 8px;
+  background: #fff6f5;
+  color: #9d2920;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.login-panel .form-error small { display: block; margin-top: 6px; color: #7d4742; text-align: left; }
+.login-panel .demo-access .form-error { margin: 0; }
+.login-visual { gap: 28px; padding: 48px clamp(28px, 4vw, 76px); }
+.visual-intro h2 { font-size: clamp(32px, 3.1vw, 52px); line-height: 1.12; }
+.visual-intro p { line-height: 1.7; }
+.store-preview, .login-value-note { position: relative; z-index: 1; width: min(780px, 100%); margin: 0 auto; }
+.store-preview { overflow: hidden; border: 1px solid #bdd1e9; border-radius: 18px; background: #f4f7fb; color: #173455; box-shadow: 0 24px 64px #001b4266; }
+.store-preview-header, .store-preview-brand, .sample-section-heading, .sample-bill-line, .sample-bill-total, .sample-paid { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.store-preview-header { padding: 18px 20px; border-bottom: 1px solid #e1e8f1; background: #fff; }
+.store-preview-brand { justify-content: flex-start; }
+.store-preview-brand strong { font-size: 14px; }
+.store-preview-brand small { display: block; margin-top: 3px; color: #60748b; font-size: 10px; }
+.store-preview-mark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 9px; background: #073f7d; color: #fff; font-weight: 600; }
+.sample-label { padding: 5px 8px; border: 1px solid #dbe5f1; border-radius: 6px; color: #526985; font-size: 10px; }
+.store-preview-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 16px; }
+.store-preview-metrics > div { padding: 13px; border: 1px solid #e1e8f1; border-radius: 10px; background: #fff; }
+.store-preview-metrics dt { color: #536981; font-size: 11px; }
+.store-preview-metrics dd { margin: 7px 0 0; color: #093d76; font-size: clamp(19px, 2vw, 28px); font-weight: 600; letter-spacing: -0.04em; }
+.store-preview-metrics dd span { display: block; margin-top: 5px; color: #62758b; font-size: 9px; font-weight: 400; letter-spacing: normal; }
+.store-preview-detail { display: grid; grid-template-columns: 1.15fr 1fr; gap: 12px; padding: 0 16px 16px; }
+.sample-inventory, .sample-checkout { min-width: 0; padding: 15px; border: 1px solid #e1e8f1; border-radius: 10px; background: #fff; }
+.sample-section-heading { margin-bottom: 12px; }
+.sample-section-heading h3 { margin: 0; font-size: 11px; }
+.sample-section-heading > span { color: #5d6f85; font: 9px var(--font-mono); }
+.sample-section-heading svg, .sample-stock-note svg, .sample-paid svg, .login-value-note svg { width: 14px; height: 14px; flex-shrink: 0; }
+.sample-product { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 10px 0; border-top: 1px solid #edf1f7; }
+.sample-product-symbol { display: grid; width: 28px; height: 32px; place-items: center; border-radius: 6px; background: #e8f3ee; color: #256b50; font-size: 11px; font-weight: 600; }
+.sample-product:nth-of-type(3) .sample-product-symbol { background: #fff3d7; color: #956415; }
+.sample-product:nth-of-type(4) .sample-product-symbol { background: #f1eae5; color: #856046; }
+.sample-product strong, .sample-product b { font-size: 10px; font-weight: 600; }
+.sample-product small { display: block; margin-top: 3px; color: #5d6f85; font-size: 9px; }
+.sample-stock-note { display: flex; align-items: center; gap: 6px; margin-top: 9px; color: #536981; font-size: 9px; }
+.sample-bill-line { padding: 9px 0; color: #536981; font-size: 10px; }
+.sample-bill-line b { color: #173455; font-weight: 600; }
+.sample-bill-total { margin-top: 5px; padding: 14px 0; border-top: 1px dashed #d1dce9; font-size: 12px; }
+.sample-bill-total strong { color: #073f7d; font-size: 21px; letter-spacing: -0.04em; }
+.sample-paid { justify-content: center; margin: 2px 0 9px; padding: 10px 7px; border-radius: 6px; background: #e8f6f0; color: #126348; font-size: 10px; }
+.sample-receipt { display: block; color: #5d6f85; font-size: 9px; text-align: center; }
+.visual-proof { gap: 12px; }
+.visual-proof article { padding: 16px; border: 1px solid #8bc6e033; border-radius: 12px; background: #ffffff08; }
+.visual-proof article > svg { width: 20px; height: 20px; margin-bottom: 10px; color: #73e6d8; }
+.visual-proof h3 { margin: 0 0 7px; color: #fff; font-size: 13px; }
+.visual-proof p { margin: 0; color: #cde3ff; font-size: 11px; line-height: 1.7; }
+.login-value-note { display: flex; align-items: center; justify-content: center; gap: 7px; color: #cde3ff; font-size: 11px; }
+.login-value-note svg { color: #73e6d8; }
+
+@media (max-width: 1200px) and (min-width: 1001px) {
+  .login-panel { padding-inline: 28px; }
+  .login-visual { padding-inline: 24px; }
+  .store-preview-header { padding: 14px; }
+  .sample-label { max-width: 100px; }
+  .store-preview-detail { grid-template-columns: 1fr; }
+  .sample-inventory { display: none; }
+  .visual-proof article { padding: 12px; }
+}
+
+@media (max-width: 1000px) {
+  .login-panel { max-width: 580px; padding: 32px 28px; box-shadow: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-access[aria-busy="true"] .button-demo svg { animation: none; }
+}

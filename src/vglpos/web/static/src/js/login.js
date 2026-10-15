@@ -1,5 +1,7 @@
 import { ArrowRight, Eye, EyeOff, Sparkles } from "lucide";
 
+import "../css/login.css";
+
 import { whenAppReady } from "./app.js";
 import { getLocale, loadLocale, t } from "./i18n.js";
 import { getSession, saveSession } from "./session.js";
@@ -26,11 +28,39 @@ async function requestLogin(path, payload) {
       "Idempotency-Key": crypto.randomUUID(),
     },
     body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(20000),
   });
   const result = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(result.detail || t("login.failed"));
+  if (!response.ok) {
+    const failure = new Error(result.detail || t("login.failed"));
+    failure.status = response.status;
+    failure.requestId = result.request_id || response.headers.get("X-Request-Id");
+    throw failure;
+  }
+  if (!result.access_token || !result.refresh_token || !result.user) {
+    throw new Error(t("login.failed"));
+  }
   saveSession(result);
   redirectAfterLogin();
+}
+
+function showLoginError(element, failure, demo = false) {
+  let message = failure.message || t(demo ? "login.demo_failed" : "login.failed");
+  if (failure.status >= 500) {
+    message = t(demo ? "login.demo_unavailable" : "login.service_unavailable");
+  } else if (failure.status === 429) {
+    message = t("login.rate_limited");
+  } else if (demo && failure.status === 404) {
+    message = t("login.demo_failed");
+  } else if (failure.name === "TimeoutError" || failure.name === "TypeError") {
+    message = t("login.connection_failed");
+  }
+  element.replaceChildren(document.createTextNode(message));
+  if (failure.requestId) {
+    const reference = document.createElement("small");
+    reference.textContent = t("login.error_reference", { reference: failure.requestId });
+    element.append(reference);
+  }
 }
 
 async function submitLogin(event) {
@@ -54,7 +84,7 @@ async function submitLogin(event) {
       document.querySelector("#mfa-field").classList.remove("is-hidden");
       form.elements.mfa_code.focus();
     }
-    error.textContent = failure.message || t("login.failed");
+    showLoginError(error, failure);
   } finally {
     setBusy(form, false);
   }
@@ -62,13 +92,13 @@ async function submitLogin(event) {
 
 async function submitDemoLogin() {
   const container = document.querySelector(".demo-access");
-  const error = document.querySelector("#login-error");
+  const error = document.querySelector("#demo-error");
   error.textContent = "";
   setBusy(container, true);
   try {
     await requestLogin("/api/v1/auth/demo-login", {});
   } catch (failure) {
-    error.textContent = failure.message || t("login.demo_failed");
+    showLoginError(error, failure, true);
   } finally {
     setBusy(container, false);
   }

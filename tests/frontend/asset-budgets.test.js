@@ -34,7 +34,6 @@ test("Vite emits hashed production assets within the POS budgets", async () => {
     ...collectEntryFiles(entries, "js/app.js"),
     ...collectEntryFiles(entries, "js/pos.js"),
   ]);
-  files.add(entries["style.css"].file);
   const jsBytes = await bytes(files, ".js");
   const cssBytes = await bytes(files, ".css");
   const fontFiles = (await readdir(fonts)).filter((file) => file.endsWith(".woff2"));

@@ -18,7 +18,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session, scoped_session
 
 from vglpos.app import create_app
-from vglpos.config import ProductionConfig, TestingConfig, get_config
+from vglpos.config import ProductionConfig, TestingConfig, get_config, normalize_database_url
 
 
 def test_health_returns_200(client: FlaskClient) -> None:
@@ -146,6 +146,22 @@ def test_metrics_exposes_required_series(client: FlaskClient) -> None:
 def test_get_config_rejects_unknown_env() -> None:
     with pytest.raises(RuntimeError):
         get_config("staging-typo")
+
+
+@pytest.mark.parametrize("scheme", ["postgres", "postgresql", "postgresql+psycopg"])
+def test_provider_database_urls_use_installed_driver(scheme: str) -> None:
+    provider_url = f"{scheme}://user:encoded%40password@db.internal:5432/store?sslmode=require"
+    expected = "postgresql+psycopg://user:encoded%40password@db.internal:5432/store?sslmode=require"
+    assert normalize_database_url(provider_url) == expected
+    config = ProductionConfig(
+        _env_file=None,
+        SECRET_KEY="k" * 48,
+        JWT_SECRET_KEY="j" * 48,
+        OFFLINE_SYNC_SIGNING_SECRET="o" * 48,
+        METRICS_AUTH_TOKEN="m" * 48,
+        DATABASE_URL=provider_url,
+    )
+    assert config.flask_config()["SQLALCHEMY_DATABASE_URI"] == expected
 
 
 def test_testing_config_ignores_database_url_env(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -12,7 +12,7 @@ import os
 from typing import Any
 
 from celery.schedules import crontab
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.pool import StaticPool
 
@@ -38,6 +38,15 @@ _INSECURE_SECRET_VALUES: frozenset[str] = frozenset(
 _INSECURE_SECRET_MARKERS: tuple[str, ...] = ("not-for-production", "dev-only-", "testing-only-")
 
 _MIN_SECRET_LENGTH = 32
+
+
+def normalize_database_url(value: str) -> str:
+    """Select the installed Psycopg 3 driver for provider PostgreSQL URLs."""
+    value = value.strip()
+    for prefix in ("postgres://", "postgresql://"):
+        if value.startswith(prefix):
+            return "postgresql+psycopg://" + value[len(prefix) :]
+    return value
 
 
 class BaseConfig(BaseSettings):
@@ -105,6 +114,11 @@ class BaseConfig(BaseSettings):
     # move off the cache Redis without a code change.
     CELERY_BROKER_URL: str = ""
     CELERY_RESULT_BACKEND: str = ""
+
+    @field_validator("DATABASE_URL")
+    @classmethod
+    def _normalize_database_driver(cls, value: str) -> str:
+        return normalize_database_url(value)
 
     def _engine_options(self) -> dict[str, Any]:
         """Connection-pool sizing for PostgreSQL.
