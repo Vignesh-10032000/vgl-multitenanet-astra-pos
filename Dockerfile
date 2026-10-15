@@ -43,6 +43,7 @@ COPY --from=builder --chown=vglpos:vglpos /app /app
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
+    DEMO_MODE_ENABLED=1 \
     PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus-multiproc
 
 USER vglpos

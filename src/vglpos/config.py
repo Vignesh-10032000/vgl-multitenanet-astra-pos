@@ -78,6 +78,7 @@ class BaseConfig(BaseSettings):
     FEATURE_EINVOICE_ENABLED: bool = True
     FEATURE_EWAY_BILL_ENABLED: bool = True
     FEATURE_REPORT_JOBS_ENABLED: bool = True
+    DEMO_MODE_ENABLED: bool = False
 
     IRP_NIC_AUTH_URL: str = ""
     IRP_NIC_GENERATE_URL: str = ""
@@ -156,6 +157,7 @@ class BaseConfig(BaseSettings):
             "FEATURE_EINVOICE_ENABLED": self.FEATURE_EINVOICE_ENABLED,
             "FEATURE_EWAY_BILL_ENABLED": self.FEATURE_EWAY_BILL_ENABLED,
             "FEATURE_REPORT_JOBS_ENABLED": self.FEATURE_REPORT_JOBS_ENABLED,
+            "DEMO_MODE_ENABLED": self.DEMO_MODE_ENABLED,
             "IRP_NIC_AUTH_URL": self.IRP_NIC_AUTH_URL,
             "IRP_NIC_GENERATE_URL": self.IRP_NIC_GENERATE_URL,
             "IRP_NIC_LOOKUP_URL": self.IRP_NIC_LOOKUP_URL,

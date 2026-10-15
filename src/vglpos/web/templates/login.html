@@ -3,14 +3,27 @@
 {% block auth_content %}
   <section class="login-panel" aria-labelledby="login-title">
     <div class="login-brand">
-      <span class="brand-mark brand-mark-large" aria-hidden="true">V</span>
-      <div><strong>VGL POS</strong><span data-i18n="brand.subtitle">Retail operations</span></div>
+      <img src="{{ url_for('static', filename='icons/vgl-logo.png') }}" alt="Vignesh Growth Lab" class="login-logo">
+      <div class="login-brand-copy"><strong>VGL POS</strong><span data-i18n="brand.subtitle">Retail operations</span></div>
     </div>
     <div class="login-heading">
-      <p class="eyebrow" data-i18n="login.counter_access">Secure counter access</p>
-      <h1 id="login-title" data-i18n="login.title">Sign in to your store</h1>
-      <p data-i18n="login.subtitle">Use the company code provided by your administrator.</p>
+      <p class="eyebrow" data-i18n="login.counter_access">Retail growth, beautifully managed</p>
+      <h1 id="login-title" data-i18n="login.title">Welcome to smarter retail</h1>
+      <p data-i18n="login.subtitle">Run billing, stock, customers, GST and reports from one focused workspace.</p>
     </div>
+    <section class="demo-access" aria-labelledby="demo-title">
+      <div class="demo-access-copy">
+        <span class="demo-badge" data-i18n="login.demo_badge">Interactive demo</span>
+        <h2 id="demo-title" data-i18n="login.demo_title">See VGL POS in action</h2>
+        <p data-i18n="login.demo_body">Enter instantly with sample products, customers and live-looking sales data.</p>
+      </div>
+      <button class="button button-large button-demo" type="button" id="demo-login">
+        <i data-lucide="sparkles"></i><span data-i18n="login.demo_submit">Explore the demo</span>
+      </button>
+      <small data-i18n="login.demo_notice">Safe sample workspace · No account required</small>
+    </section>
+    <p class="form-error" id="login-error" role="alert"></p>
+    <div class="login-divider"><span data-i18n="login.member_signin">Store team sign in</span></div>
     <form id="login-form" class="form-stack" novalidate>
       <label>
         <span data-i18n="login.company_code">Company code</span>
@@ -41,7 +54,6 @@
         <span data-i18n="login.mfa">6-digit authentication code</span>
         <input name="mfa_code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code">
       </label>
-      <p class="form-error" id="login-error" role="alert"></p>
       <button class="button button-primary button-large" type="submit">
         <span data-i18n="login.submit">Sign in</span><i data-lucide="arrow-right"></i>
       </button>
@@ -52,6 +64,13 @@
     </div>
   </section>
   <aside class="login-visual" aria-label="Point of sale preview">
+    <div class="login-orb login-orb-one" aria-hidden="true"></div>
+    <div class="login-orb login-orb-two" aria-hidden="true"></div>
+    <div class="visual-intro">
+      <span class="visual-pill" data-i18n="login.visual_pill">Built by Vignesh Growth Lab</span>
+      <h2 data-i18n="login.preview_title">Every sale. Every shelf. One clear view.</h2>
+      <p data-i18n="login.preview_body">A fast, GST-ready operating system designed for modern Indian retail.</p>
+    </div>
     <div class="counter-preview">
       <div class="preview-header"><span></span><span></span><span></span></div>
       <div class="preview-body">
@@ -59,10 +78,10 @@
         <div class="preview-cart"><b></b><span></span><span></span><span></span><strong></strong></div>
       </div>
     </div>
-    <div class="visual-caption">
-      <p class="eyebrow" data-i18n="login.preview_eyebrow">Built for the checkout rush</p>
-      <h2 data-i18n="login.preview_title">Scan, collect, complete.</h2>
-      <p data-i18n="login.preview_body">Fast keyboard billing with authoritative GST totals from the server.</p>
+    <div class="visual-proof" aria-label="Product highlights">
+      <span><b>01</b><span data-i18n="login.proof_billing">Fast counter billing</span></span>
+      <span><b>02</b><span data-i18n="login.proof_inventory">Live inventory control</span></span>
+      <span><b>03</b><span data-i18n="login.proof_gst">GST-ready reporting</span></span>
     </div>
   </aside>
 {% endblock %}

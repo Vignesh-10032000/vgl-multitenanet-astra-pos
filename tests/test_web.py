@@ -64,6 +64,15 @@ def test_frontend_never_uses_native_prompt_or_confirm() -> None:
     assert "window.confirm(" not in source
 
 
+def test_login_page_uses_vgl_branding_and_demo_entry(web_app: Flask) -> None:
+    response = web_app.test_client().get("/login")
+    source = response.get_data(as_text=True)
+
+    assert 'src="/static/icons/vgl-logo.png"' in source
+    assert 'id="demo-login"' in source
+    assert "Vignesh Growth Lab" in source
+
+
 def test_locale_catalogues_have_matching_keys() -> None:
     locale_root = Path("src/vglpos/web/static/i18n")
     english = json.loads((locale_root / "en.json").read_text(encoding="utf-8"))

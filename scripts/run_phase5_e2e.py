@@ -180,6 +180,7 @@ def main() -> None:
 
         class Phase5BrowserConfig(TestingConfig):
             DATABASE_URL: str = database_url
+            DEMO_MODE_ENABLED: bool = True
 
         app = create_app(Phase5BrowserConfig)
         _seed(app)

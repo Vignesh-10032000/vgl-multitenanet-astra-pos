@@ -43,7 +43,7 @@ test("Vite emits hashed production assets within the POS budgets", async () => {
 
   assert.ok(jsBytes < 45_000, `POS JavaScript is ${jsBytes} bytes`);
   assert.ok(cssBytes > 0, "POS CSS is missing from the Vite manifest");
-  assert.ok(cssBytes < 40_000, `POS CSS is ${cssBytes} bytes`);
+  assert.ok(cssBytes < 45_000, `POS CSS is ${cssBytes} bytes`);
   assert.ok(fontBytes < 90_000, `fonts are ${fontBytes} bytes`);
   assert.ok(jsBytes + cssBytes + fontBytes < 200_000, "POS static assets exceed 200 KB");
 

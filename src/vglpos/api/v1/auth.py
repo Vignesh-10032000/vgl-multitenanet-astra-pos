@@ -5,8 +5,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from functools import wraps
 
-from flask import Blueprint, Response, current_app, g, jsonify, request
+from flask import Blueprint, Response, abort, current_app, g, jsonify, request
 from flask_jwt_extended import get_jwt, get_jwt_identity, verify_jwt_in_request
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from vglpos.api.v1.http import model_response, parse_body
@@ -25,6 +27,12 @@ from vglpos.extensions import db, limiter
 from vglpos.security.auth_service import AuthenticationResult, AuthService, UserProfile
 from vglpos.security.decorators import require_permission
 from vglpos.security.tokens import TokenService
+from vglpos.services.demo_service import (
+    DEMO_LOGIN_CODE,
+    DEMO_PASSWORD,
+    DEMO_USERNAME,
+    DemoWorkspaceService,
+)
 from vglpos.services.exceptions import AuthenticationError
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/v1/auth")
@@ -123,6 +131,46 @@ def login() -> tuple[Response, int]:
             branch_id=command.branch_id,
             terminal_id=command.terminal_id,
             mfa_code=command.mfa_code,
+        )
+    return _result_response(result)
+
+
+@auth_bp.post("/demo-login")
+@limiter.limit("20 per 15 minutes", key_func=_remote_rate_key)
+@idempotent
+@documented(
+    summary="Enter the isolated public demonstration workspace",
+    response_model=AuthenticationResponse,
+    public=True,
+)
+def demo_login() -> tuple[Response, int]:
+    """Provision and authenticate the shared demo tenant when explicitly enabled."""
+    if not current_app.config.get("DEMO_MODE_ENABLED", False):
+        abort(404)
+
+    with Session(db.engine) as session:
+        workspace_service = DemoWorkspaceService(session)
+        try:
+            identity = workspace_service.ensure()
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            identity = workspace_service.existing()
+
+        if (
+            identity.seeded
+            and session.bind is not None
+            and session.bind.dialect.name == "postgresql"
+        ):
+            session.execute(text("REFRESH MATERIALIZED VIEW mv_daily_sales_summary"))
+            session.commit()
+
+        result = AuthService(session).authenticate(
+            DEMO_LOGIN_CODE,
+            DEMO_USERNAME,
+            DEMO_PASSWORD,
+            branch_id=identity.branch_id,
+            terminal_id=identity.terminal_id,
         )
     return _result_response(result)
 

@@ -52,6 +52,7 @@ PUBLIC_ENDPOINTS: frozenset[str] = frozenset(
         # Credential entry and refresh-token rotation must be reachable before
         # an access token exists; each endpoint enforces its own rate/JWT checks.
         "auth.login",
+        "auth.demo_login",
         "auth.pin_login",
         "auth.refresh",
         # Flask's built-in static-file endpoint: assets contain no data and must
