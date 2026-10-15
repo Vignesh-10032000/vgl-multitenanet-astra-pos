@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from vglpos.api.v1.http import model_response, parse_body, parse_query
 from vglpos.api.v1.idempotency import idempotent
 from vglpos.api.v1.openapi import documented
+from vglpos.api.v1.schemas.dashboard import DashboardOverviewResponse, DashboardQuery
 from vglpos.api.v1.schemas.reports import (
     DailySummaryQuery,
     DailySummaryResponse,
@@ -32,6 +33,7 @@ from vglpos.domain.models import ReportJob
 from vglpos.extensions import db, limiter
 from vglpos.security.decorators import require_permission
 from vglpos.services.cache_service import dashboard_key, get_mapping, set_mapping
+from vglpos.services.dashboard_service import DashboardService
 from vglpos.services.feature_flags import require_feature
 from vglpos.services.report_job_service import ReportJobService
 from vglpos.services.report_service import ReportService
@@ -42,6 +44,23 @@ reports_bp = Blueprint("reports", __name__, url_prefix="/api/v1/reports")
 
 def _user_rate_key() -> str:
     return f"{g.company_id}:{g.user_id}"
+
+
+@reports_bp.get("/dashboard")
+@require_permission("report.view")
+@limiter.limit("20 per minute", key_func=_user_rate_key)
+@documented(
+    summary="Get the tenant and branch scoped business dashboard",
+    query_model=DashboardQuery,
+    response_model=DashboardOverviewResponse,
+)
+def dashboard_overview() -> tuple[Response, int]:
+    query = parse_query(DashboardQuery)
+    with Session(db.engine) as session:
+        overview = DashboardService(session, g.company_id).overview(
+            query.on_date, branch_id=g.branch_id
+        )
+        return model_response(DashboardOverviewResponse.model_validate(overview))
 
 
 @reports_bp.get("/daily-summary")

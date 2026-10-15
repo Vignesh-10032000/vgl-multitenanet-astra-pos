@@ -73,5 +73,5 @@ test("branded demo login opens a populated workspace", async ({ page }) => {
 
   await page.goto("/");
   await expect(page.locator('[data-metric="bills"] .metric-value')).not.toHaveText("—");
-  await expect(page.locator("#recent-sales tr")).toHaveCount(4);
+  await expect(page.locator("#recent-sales tr")).toHaveCount(8);
 });

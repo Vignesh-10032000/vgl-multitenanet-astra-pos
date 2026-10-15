@@ -23,6 +23,7 @@ from vglpos.domain.models import (
     SaleItem,
     SalePayment,
     Shift,
+    StockLedger,
     TaxRate,
     Terminal,
     User,
@@ -215,6 +216,23 @@ class DemoWorkspaceService:
         self.session.add_all([*products, *customers])
         self.session.flush()
 
+        self.session.add_all(
+            StockLedger(
+                company_id=company.id,
+                branch_id=branch.id,
+                product_id=product.id,
+                txn_type="ADJUSTMENT",
+                reference_type="DEMO_OPENING",
+                reference_id=f"DEMO-OPENING-{product.id}",
+                quantity=product.on_hand,
+                balance_after=product.on_hand,
+                unit_cost=product.cost_price,
+                notes="Sample current branch stock for the demo workspace",
+                created_by=user.id,
+            )
+            for product in products
+        )
+
         shift = Shift(
             company_id=company.id,
             branch_id=branch.id,
@@ -396,7 +414,7 @@ class DemoWorkspaceService:
                 "92.00",
                 "125.00",
                 "130.00",
-                "54.000",
+                "8.000",
             ),
             (
                 "VGL-JUICE-1L",
@@ -408,7 +426,7 @@ class DemoWorkspaceService:
                 "62.00",
                 "85.00",
                 "95.00",
-                "38.000",
+                "6.000",
             ),
             (
                 "VGL-BISCUIT-300",
@@ -444,7 +462,7 @@ class DemoWorkspaceService:
                 "138.00",
                 "189.00",
                 "210.00",
-                "29.000",
+                "4.000",
             ),
         )
         return [

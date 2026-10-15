@@ -1,36 +1,47 @@
 {% extends "base.html" %}
 {% block title %}Dashboard · VGL POS{% endblock %}
-{% block page_title %}<span data-i18n="dashboard.title">Today at a glance</span>{% endblock %}
+{% block page_title %}<span data-i18n="dashboard.title">Business overview</span>{% endblock %}
 {% block content %}
-  <section class="metric-grid" aria-label="Daily performance" id="dashboard-metrics">
-    {% for key, icon in [('net', 'indian-rupee'), ('bills', 'receipt'), ('tax', 'landmark'), ('discount', 'badge-percent')] %}
-      <article class="metric-card skeleton-host" data-metric="{{ key }}">
-        <div class="metric-icon"><i data-lucide="{{ icon }}"></i></div>
-        <div><p data-i18n="dashboard.{{ key }}">{{ key }}</p><strong class="skeleton-line metric-value">—</strong></div>
-      </article>
-    {% endfor %}
+  <section class="dashboard-welcome" aria-labelledby="dashboard-heading">
+    <div><p class="eyebrow" data-i18n="dashboard.brand">VIGNESH GROWTH LAB · RETAIL OPERATIONS</p><h1 id="dashboard-heading" data-i18n="dashboard.heading">A clearer view of your business.</h1><p data-i18n="dashboard.subtitle">Sales, shelves and customers. Every detail that moves your store forward.</p></div>
+    <a href="/pos" class="button dashboard-hero-button" data-permission="sale.create"><i data-lucide="scan-line"></i><span data-i18n="dashboard.new_bill">Start a new bill</span><i data-lucide="arrow-up-right"></i></a>
   </section>
-  <section class="dashboard-grid">
-    <article class="panel chart-panel">
-      <div class="section-heading">
-        <div><p class="eyebrow" data-i18n="dashboard.seven_days">Last 7 days</p><h2 data-i18n="dashboard.revenue">Revenue</h2></div>
-        <a class="text-button" href="/reports"><span data-i18n="common.view_report">View report</span><i data-lucide="arrow-up-right"></i></a>
-      </div>
-      <div class="chart-frame bar-chart" id="revenue-chart" aria-label="Seven-day revenue chart"></div>
-    </article>
-    <article class="panel action-panel">
-      <div class="section-heading"><div><p class="eyebrow" data-i18n="dashboard.counter">Counter</p><h2 data-i18n="dashboard.quick_actions">Quick actions</h2></div></div>
-      <div class="action-list">
+  <div class="dashboard-toolbar">
+    <div><strong data-i18n="dashboard.performance">Store performance</strong><p data-i18n="dashboard.scope">Sales and stock for your branch · Catalogue and customers for your company</p></div>
+    <div class="dashboard-controls"><label for="dashboard-date" data-i18n="dashboard.trading_date">Trading date</label><input id="dashboard-date" type="date" required><button class="button" type="button" id="dashboard-refresh"><i data-lucide="refresh-cw"></i><span data-i18n="common.refresh">Refresh</span></button></div>
+  </div>
+  <div class="dashboard-error is-hidden" id="dashboard-error" role="alert"><i data-lucide="circle-alert"></i><span></span></div>
+  <div id="dashboard-content" aria-busy="true">
+    <section class="metric-grid" aria-label="Sales performance" id="dashboard-metrics">
+      {% for key, icon, hint in [('net', 'indian-rupee', 'selected_day'), ('bills', 'receipt', 'completed_bills'), ('week', 'calendar-days', 'rolling_week'), ('month', 'chart-no-axes-combined', 'rolling_month')] %}
+        <article class="metric-card" data-metric="{{ key }}"><div class="metric-icon"><i data-lucide="{{ icon }}"></i></div><div><p data-i18n="dashboard.{{ key }}">{{ key }}</p><strong class="skeleton-line metric-value">—</strong><small data-i18n="dashboard.{{ hint }}">{{ hint }}</small></div></article>
+      {% endfor %}
+    </section>
+    <section class="metric-grid dashboard-secondary-metrics" aria-label="Store health">
+      {% for key, icon, hint in [('products', 'package-search', 'active_catalogue'), ('customers', 'users', 'registered_customers'), ('low_stock', 'triangle-alert', 'branch_stock'), ('average', 'badge-indian-rupee', 'per_completed_bill')] %}
+        <article class="metric-card" data-metric="{{ key }}"><div class="metric-icon"><i data-lucide="{{ icon }}"></i></div><div><p data-i18n="dashboard.{{ key }}">{{ key }}</p><strong class="skeleton-line metric-value">—</strong><small data-i18n="dashboard.{{ hint }}">{{ hint }}</small></div></article>
+      {% endfor %}
+    </section>
+    <section class="dashboard-gst" aria-label="Selected day GST and discounts">
+      {% for key, label in [('cgst', 'CGST'), ('sgst', 'SGST'), ('igst', 'IGST'), ('cess', 'Cess'), ('tax', 'Total GST'), ('discount', 'Discounts')] %}
+        <div data-metric="{{ key }}"><span data-i18n="dashboard.{{ key }}">{{ label }}</span><strong class="metric-value">—</strong></div>
+      {% endfor %}
+    </section>
+    <section class="dashboard-overview-grid">
+      <article class="panel chart-panel"><div class="section-heading"><div><p class="eyebrow" data-i18n="dashboard.seven_days">Last 7 days</p><h2 data-i18n="dashboard.revenue">Revenue trend</h2></div><a class="text-button" href="/reports" data-permission="report.view"><span data-i18n="common.view_report">View report</span><i data-lucide="arrow-up-right"></i></a></div><div class="chart-frame bar-chart" id="revenue-chart" aria-label="Seven-day revenue chart"></div></article>
+      <article class="panel"><div class="section-heading"><div><p class="eyebrow" data-i18n="dashboard.rolling_month">Last 30 days</p><h2 data-i18n="dashboard.top_products">Top-selling products</h2></div><i data-lucide="chart-no-axes-combined"></i></div><div class="dashboard-ranked-list" id="top-products"><p class="dashboard-placeholder" data-i18n="dashboard.loading">Loading your store data…</p></div></article>
+    </section>
+    <section class="dashboard-operations-grid">
+      <article class="panel"><div class="section-heading"><div><p class="eyebrow" data-i18n="dashboard.selected_day">Selected day</p><h2 data-i18n="dashboard.payments">Payment breakdown</h2></div><i data-lucide="wallet"></i></div><div class="dashboard-payment-list" id="payment-mix"><p class="dashboard-placeholder" data-i18n="dashboard.loading">Loading your store data…</p></div></article>
+      <article class="panel"><div class="section-heading"><div><p class="eyebrow" data-i18n="dashboard.stock_attention">Needs attention now</p><h2 data-i18n="dashboard.stock_alerts">Low-stock alerts</h2></div><a href="/products" class="text-button" data-permission="product.view" data-i18n="dashboard.manage_stock">Manage stock</a></div><div class="dashboard-stock-list" id="low-stock"><p class="dashboard-placeholder" data-i18n="dashboard.loading">Loading your store data…</p></div></article>
+      <article class="panel action-panel"><div class="section-heading"><div><p class="eyebrow" data-i18n="dashboard.counter">Counter</p><h2 data-i18n="dashboard.quick_actions">Quick actions</h2></div></div><div class="action-list">
         <a href="/pos" class="action-link" data-permission="sale.create"><i data-lucide="scan-line"></i><span><strong data-i18n="dashboard.new_bill">Start a new bill</strong><small data-i18n="dashboard.new_bill_hint">Open scanner-first billing</small></span><i data-lucide="chevron-right"></i></a>
-        <a href="/products" class="action-link" data-permission="product.view"><i data-lucide="package-search"></i><span><strong data-i18n="dashboard.find_stock">Find stock</strong><small data-i18n="dashboard.find_stock_hint">Search catalogue and levels</small></span><i data-lucide="chevron-right"></i></a>
+        <a href="/customers" class="action-link" data-permission="customer.view"><i data-lucide="users"></i><span><strong data-i18n="dashboard.customer_book">Customer book</strong><small data-i18n="dashboard.customer_book_hint">Purchase history and loyalty</small></span><i data-lucide="chevron-right"></i></a>
         <button type="button" class="action-link" id="day-close-button" data-permission="shift.close"><i data-lucide="lock-keyhole"></i><span><strong data-i18n="dashboard.day_close">Close shift</strong><small data-i18n="dashboard.day_close_hint">Enter a blind cash count</small></span><i data-lucide="chevron-right"></i></button>
-      </div>
-    </article>
-  </section>
-  <section class="panel table-panel">
-    <div class="section-heading"><div><p class="eyebrow" data-i18n="dashboard.activity">Activity</p><h2 data-i18n="dashboard.recent_sales">Recent sales</h2></div><a href="/sales" class="text-button" data-i18n="common.view_all">View all</a></div>
-    <div class="table-scroll"><table><thead><tr><th data-i18n="sales.invoice">Invoice</th><th data-i18n="sales.time">Time</th><th data-i18n="sales.method">Method</th><th data-i18n="sales.status">Status</th><th class="numeric" data-i18n="sales.amount">Amount</th></tr></thead><tbody id="recent-sales"><tr><td colspan="5"><div class="table-skeleton"></div></td></tr></tbody></table></div>
-  </section>
+      </div></article>
+    </section>
+    <section class="panel table-panel"><div class="section-heading"><div><p class="eyebrow" data-i18n="dashboard.activity">Activity through the selected date</p><h2 data-i18n="dashboard.recent_sales">Recent transactions</h2></div><a href="/sales" class="text-button" data-permission="sale.view" data-i18n="common.view_all">View all</a></div><div class="table-scroll"><table><thead><tr><th data-i18n="sales.invoice">Invoice</th><th data-i18n="dashboard.customer">Customer</th><th class="numeric" data-i18n="dashboard.items">Items</th><th data-i18n="sales.time">Time</th><th data-i18n="sales.method">Method</th><th data-i18n="sales.status">Status</th><th class="numeric" data-i18n="sales.amount">Amount</th></tr></thead><tbody id="recent-sales"><tr><td colspan="7"><div class="table-skeleton"></div></td></tr></tbody></table></div></section>
+  </div>
 {% endblock %}
 {% block scripts %}
   {% set bundle = vite_entry('js/dashboard.js') %}
