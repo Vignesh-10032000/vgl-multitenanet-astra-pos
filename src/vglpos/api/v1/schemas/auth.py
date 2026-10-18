@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import Field
 
 from vglpos.api.v1.schemas.common import RequestModel, ResponseModel
@@ -14,6 +16,7 @@ class LoginRequest(RequestModel):
     branch_id: int | None = Field(default=None, gt=0)
     terminal_id: int | None = Field(default=None, gt=0)
     mfa_code: str | None = Field(default=None, pattern=r"^\d{6}$")
+    login_role: Literal["staff", "admin", "super_admin"] | None = None
 
 
 class PinLoginRequest(RequestModel):
@@ -26,6 +29,11 @@ class PinLoginRequest(RequestModel):
 
 class MfaCodeRequest(RequestModel):
     code: str = Field(pattern=r"^\d{6}$")
+
+
+class ConfirmCredentialsRequest(RequestModel):
+    password: str = Field(min_length=1, max_length=1024)
+    mfa_code: str | None = Field(default=None, pattern=r"^\d{6}$")
 
 
 class AuthUserResponse(ResponseModel):

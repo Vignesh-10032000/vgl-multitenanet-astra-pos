@@ -71,6 +71,16 @@ KNOWN_PERMISSION_CODES: frozenset[str] = frozenset(
 )
 
 STANDARD_ROLES: tuple[StandardRoleDefinition, ...] = (
+    StandardRoleDefinition(
+        "SUPER_ADMIN",
+        "Company administrator who controls administrator access",
+        KNOWN_PERMISSION_CODES,
+    ),
+    StandardRoleDefinition(
+        "ADMIN",
+        "Company administrator who manages store operations and staff",
+        KNOWN_PERMISSION_CODES,
+    ),
     StandardRoleDefinition("OWNER", "Company owner with every permission", KNOWN_PERMISSION_CODES),
     StandardRoleDefinition(
         "MANAGER",

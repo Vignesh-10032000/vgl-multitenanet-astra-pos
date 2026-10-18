@@ -1,4 +1,4 @@
-import { ArrowRight, CloudOff, ExternalLink, Eye, EyeOff, Mail, MessageCircle, PauseCircle, Phone, Sparkles, WalletCards } from "lucide";
+import { ArrowRight, ArrowUpRight, CloudOff, ExternalLink, Eye, EyeOff, Keyboard, Mail, MessageCircle, PauseCircle, Phone, Scale, Sparkles, WalletCards } from "lucide";
 
 import "../css/login.css";
 
@@ -7,20 +7,20 @@ import { getLocale, loadLocale, t } from "./i18n.js";
 import { getSession, saveSession } from "./session.js";
 import { refreshIcons, registerIcons, setBusy } from "./ui.js";
 
-registerIcons({ ArrowRight, CloudOff, ExternalLink, Eye, EyeOff, Mail, MessageCircle, PauseCircle, Phone, Sparkles, WalletCards });
+registerIcons({ ArrowRight, ArrowUpRight, CloudOff, ExternalLink, Eye, EyeOff, Keyboard, Mail, MessageCircle, PauseCircle, Phone, Scale, Sparkles, WalletCards });
 
 function optionalInteger(form, name) {
   const value = form.elements[name].value.trim();
   return value ? Number.parseInt(value, 10) : null;
 }
 
-function redirectAfterLogin() {
+function redirectAfterLogin(loginRole = "staff") {
   const next = new URLSearchParams(location.search).get("next");
   const safePath = next?.startsWith("/") && !next.startsWith("//") && !next.includes("\\");
   const target = safePath ? new URL(next, location.origin) : null;
   location.replace(target?.origin === location.origin
     ? `${target.pathname}${target.search}${target.hash}`
-    : "/pos");
+    : loginRole === "staff" ? "/pos" : "/");
 }
 
 async function requestLogin(path, payload) {
@@ -45,7 +45,7 @@ async function requestLogin(path, payload) {
     throw new Error(t("login.failed"));
   }
   saveSession(result);
-  redirectAfterLogin();
+  redirectAfterLogin(payload.login_role);
 }
 
 function showLoginError(element, failure, demo = false) {
@@ -84,6 +84,7 @@ async function submitLogin(event) {
     branch_id: optionalInteger(form, "branch_id"),
     terminal_id: optionalInteger(form, "terminal_id"),
     mfa_code: form.elements.mfa_code.value.trim() || null,
+    login_role: form.elements.login_role.value,
   };
   try {
     await requestLogin("/api/v1/auth/login", payload);
@@ -118,6 +119,18 @@ whenAppReady(() => {
   if (getSession()) redirectAfterLogin();
   const form = document.querySelector("#login-form");
   form.addEventListener("submit", submitLogin);
+  const syncRole = () => {
+    const label = document.querySelector("#login-submit-label");
+    label.dataset.i18n = `login.submit_${form.elements.login_role.value}`;
+    label.textContent = t(label.dataset.i18n);
+  };
+  form.querySelectorAll('[name="login_role"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      document.querySelector("#login-error").textContent = "";
+      syncRole();
+    });
+  });
+  syncRole();
   const demoButton = document.querySelector("#demo-login");
   demoButton.addEventListener("click", submitDemoLogin);
   demoButton.disabled = false;

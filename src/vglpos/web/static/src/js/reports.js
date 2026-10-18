@@ -3,7 +3,7 @@ import { Download, IndianRupee, Printer, Receipt, RefreshCw, Warehouse } from "l
 import { whenAppReady } from "./app.js";
 import { renderRevenueBars } from "./charts.js";
 import { localDateIso } from "./data.js";
-import { formatInteger, formatMoney, localizedName, t } from "./i18n.js";
+import { formatDate, formatInteger, formatMoney, localizedName, t } from "./i18n.js";
 import { apiFetch, apiJson } from "./session.js";
 import { clearChildren, createCell, registerIcons, showToast } from "./ui.js";
 
@@ -38,6 +38,11 @@ async function loadReports() {
     document.querySelector("#report-revenue").textContent = formatMoney(revenue.net_amount);
     document.querySelector("#report-bills").textContent = formatInteger(revenue.total_bills);
     renderValuation(valuation);
+    if (revenue.items.length) {
+      const dates = revenue.items.map((item) => item.business_date).sort();
+      const display = (value) => formatDate(`${value}T00:00:00`, { dateStyle: "medium" });
+      document.querySelector("#report-date-range").textContent = `${display(dates[0])} – ${display(dates.at(-1))}`;
+    }
   } catch (error) {
     showToast(`${t("errors.reports")}: ${error.message}`, { tone: "danger" });
   }
@@ -86,6 +91,8 @@ whenAppReady(() => {
   document.querySelector("#gstr-to").value = today;
   loadReports();
   document.querySelector("#reports-refresh").addEventListener("click", loadReports);
+  document.querySelector("#report-days").addEventListener("change", loadReports);
+  document.querySelector("#valuation-method").addEventListener("change", loadReports);
   document.querySelector("#report-print").addEventListener("click", () => window.print());
   document.querySelector("#gstr-export").addEventListener("click", exportGstr1);
 });

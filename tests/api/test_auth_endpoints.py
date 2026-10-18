@@ -97,7 +97,11 @@ def test_mfa_setup_enable_disable_and_invalid_code(
 ) -> None:
     tokens = _login(api_client, login_payload)
     auth = {"Authorization": f"Bearer {tokens['access_token']}"}
-    setup = api_client.post("/api/v1/auth/mfa/setup", headers={**auth, **_key()})
+    setup = api_client.post(
+        "/api/v1/auth/mfa/setup",
+        headers={**auth, **_key()},
+        json={"password": login_payload["password"]},
+    )
     assert setup.status_code == 200
     uri = setup.get_json()["provisioning_uri"]
     secret = parse_qs(urlparse(uri).query)["secret"][0]
@@ -107,7 +111,8 @@ def test_mfa_setup_enable_disable_and_invalid_code(
         headers={**auth, **_key()},
         json={"code": "000000"},
     )
-    assert invalid.status_code == 401
+    assert invalid.status_code == 403
+    assert api_client.get("/api/v1/auth/me", headers=auth).status_code == 200
 
     code = pyotp.TOTP(secret).now()
     enabled = api_client.post(

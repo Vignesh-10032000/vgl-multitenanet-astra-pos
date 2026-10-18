@@ -36,6 +36,9 @@ class User(TenantEntity):
     )
 
     username: Mapped[str] = mapped_column(String(100), nullable=False)
+    session_version: Mapped[int] = mapped_column(
+        default=0, server_default=text("0"), nullable=False
+    )
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     pin_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)

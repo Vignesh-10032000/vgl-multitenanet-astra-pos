@@ -14,11 +14,11 @@ function applyTheme(theme) {
 function applyPermissions(session) {
   const permissions = new Set(session?.user?.permissions || []);
   document.querySelectorAll("[data-permission]").forEach((element) => {
-    element.classList.toggle("is-hidden", !permissions.has(element.dataset.permission));
+    element.classList.toggle("permission-denied", !permissions.has(element.dataset.permission));
   });
   document.querySelectorAll("[data-permission-all]").forEach((element) => {
     const required = element.dataset.permissionAll.split(",");
-    element.classList.toggle("is-hidden", !required.every((code) => permissions.has(code)));
+    element.classList.toggle("permission-denied", !required.every((code) => permissions.has(code)));
   });
 }
 
@@ -29,13 +29,20 @@ function populateUser(session) {
   const roleElement = document.querySelector("#user-role");
   const avatar = document.querySelector("#user-avatar");
   if (nameElement) nameElement.textContent = name;
-  if (roleElement) roleElement.textContent = roles.join(", ") || "—";
+  if (roleElement) roleElement.textContent = roles.map((role) => role.replaceAll("_", " ")).join(", ") || "—";
   if (avatar) avatar.textContent = name.trim().slice(0, 1).toUpperCase() || "U";
 }
 
 function initializeNavigation() {
   const page = document.body.dataset.page;
-  document.querySelector(`[data-nav="${page}"]`)?.classList.add("is-active");
+  const active = document.querySelector(`[data-nav="${page}"]`);
+  active?.classList.add("is-active");
+  if (active && matchMedia("(max-width: 720px)").matches) {
+    requestAnimationFrame(() => {
+      const nav = active.parentElement;
+      nav.scrollLeft = active.offsetLeft - (nav.clientWidth - active.clientWidth) / 2;
+    });
+  }
 }
 
 function initializeConnectivity() {

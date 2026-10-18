@@ -40,6 +40,7 @@ class Company(AuditMixin, SurrogateKeyMixin, Base):
     )
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    logo_data_uri: Mapped[str | None] = mapped_column(Text, nullable=True)
     legal_name: Mapped[str] = mapped_column(String(255), nullable=False)
     login_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
     gstin: Mapped[str | None] = mapped_column(String(15), nullable=True)

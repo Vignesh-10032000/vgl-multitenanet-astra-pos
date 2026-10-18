@@ -1,4 +1,5 @@
 const SESSION_KEY = "vglpos.session";
+let refreshInFlight = null;
 
 export function getSession() {
   const raw = sessionStorage.getItem(SESSION_KEY);
@@ -29,7 +30,7 @@ export function requireSession() {
   return session;
 }
 
-async function rotateTokens(session) {
+async function rotateOnce(session) {
   const response = await fetch("/api/v1/auth/refresh", {
     method: "POST",
     headers: {
@@ -42,8 +43,14 @@ async function rotateTokens(session) {
   });
   if (!response.ok) return null;
   const refreshed = await response.json();
+  if (getSession()?.refresh_token !== session.refresh_token) return null;
   saveSession(refreshed);
   return refreshed;
+}
+
+function rotateTokens(session) {
+  if (!refreshInFlight) refreshInFlight = rotateOnce(session).finally(() => { refreshInFlight = null; });
+  return refreshInFlight;
 }
 
 export class ApiError extends Error {
@@ -83,7 +90,8 @@ export async function apiFetch(path, options = {}, allowRefresh = true) {
 
   let response = await fetch(path, { ...options, method, headers });
   if (response.status === 401 && allowRefresh) {
-    session = await rotateTokens(session);
+    const latest = getSession();
+    session = latest && latest.access_token !== session.access_token ? latest : await rotateTokens(session);
     if (session) {
       headers.set("Authorization", `Bearer ${session.access_token}`);
       response = await fetch(path, { ...options, method, headers });

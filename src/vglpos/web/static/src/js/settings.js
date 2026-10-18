@@ -1,11 +1,48 @@
-import { LockKeyhole, MonitorCog, Moon, Save, ShieldCheck, Store, Sun } from "lucide";
+import { LockKeyhole, MonitorCog, Moon, Save, ShieldCheck, Store, Sun, Users } from "lucide";
+import { initializeAccessSettings } from "./settings-access.js";
 
 import { getLocale, loadLocale, t } from "./i18n.js";
 import { apiJson, logout } from "./session.js";
 import { registerIcons, showToast } from "./ui.js";
 import { applyTheme, whenAppReady } from "./app.js";
 
-registerIcons({ LockKeyhole, MonitorCog, Moon, Save, ShieldCheck, Store, Sun });
+registerIcons({ LockKeyhole, MonitorCog, Moon, Save, ShieldCheck, Store, Sun, Users });
+
+function renderLogo(profile) {
+  const image = document.querySelector("#store-logo-preview");
+  image.hidden = !profile.logo_data_uri;
+  if (profile.logo_data_uri) image.src = profile.logo_data_uri;
+  else image.removeAttribute("src");
+  document.querySelector("#remove-store-logo").disabled = !profile.logo_data_uri;
+}
+
+async function saveLogo(imageBase64) {
+  const error = document.querySelector("#logo-error");
+  error.textContent = "";
+  document.querySelector("#store-logo-file").disabled = true;
+  document.querySelector("#remove-store-logo").disabled = true;
+  try {
+    renderLogo(await apiJson("/api/v1/settings/store-logo", { method: "PUT", body: JSON.stringify({ image_base64: imageBase64 }) }));
+    showToast(t("settings.saved"), { tone: "success" });
+  } catch (failure) {
+    error.textContent = failure.message;
+    document.querySelector("#remove-store-logo").disabled = document.querySelector("#store-logo-preview").hidden;
+  } finally { document.querySelector("#store-logo-file").disabled = false; }
+}
+
+function uploadLogo(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 512000 || !["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+    document.querySelector("#logo-error").textContent = t("settings.logo_hint");
+    event.target.value = "";
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => { saveLogo(String(reader.result).split(",")[1]); event.target.value = ""; };
+  reader.onerror = () => { document.querySelector("#logo-error").textContent = t("settings.logo_read_error"); };
+  reader.readAsDataURL(file);
+}
 
 function selectSegment(group, value, attribute) {
   group.querySelectorAll(`[${attribute}]`).forEach((button) => {
@@ -45,6 +82,7 @@ async function loadStoreProfile() {
     form.elements.city.value = profile.city;
     form.elements.state.value = profile.state;
     form.elements.postal_code.value = profile.postal_code;
+    renderLogo(profile);
   } catch (error) {
     showToast(error.message, { tone: "danger" });
   }
@@ -87,6 +125,9 @@ async function lockCounter() {
 }
 
 whenAppReady(() => {
+  initializeAccessSettings();
+  document.querySelector("#store-logo-file").addEventListener("change", uploadLogo);
+  document.querySelector("#remove-store-logo").addEventListener("click", () => saveLogo(null));
   loadWorkstationSettings();
   loadStoreProfile();
   document.querySelectorAll("[data-tab-target]").forEach((tab) => {

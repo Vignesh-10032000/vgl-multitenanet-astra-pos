@@ -29,6 +29,7 @@ const state = {
   quote: null,
   payments: [],
   paymentPreview: null,
+  paymentSequence: 0,
   selectedCategory: "",
   focusedProductId: null,
   weighedProduct: null,
@@ -43,6 +44,7 @@ const state = {
 };
 
 let cartKey = "";
+let paymentView = null;
 let quoteController = null;
 let audioContext = null;
 let offlinePromise = null;
@@ -50,7 +52,14 @@ let offlineDatabasePromise = null;
 let taxEnginePromise = null;
 let retailOperationsPromise = null;
 const scheduleQuote = debounce(requestQuote, 150);
-const schedulePaymentPreview = debounce(requestPaymentPreview, 150);
+const debouncedPaymentPreview = debounce(requestPaymentPreview, 150);
+
+function schedulePaymentPreview() {
+  state.paymentSequence += 1;
+  state.paymentPreview = null;
+  renderPaymentPreview();
+  debouncedPaymentPreview();
+}
 
 function offlineApi() {
   offlinePromise ||= import("./offline.js");
@@ -779,53 +788,6 @@ function initializeScanner() {
   }, true);
 }
 
-function paymentRow(payment, index) {
-  const row = document.createElement("div");
-  row.className = "payment-row";
-  row.dataset.paymentId = payment.id;
-  const method = document.createElement("select");
-  method.setAttribute("aria-label", t("pos.payment_method"));
-  ["CASH", "UPI", "CARD", "BANK_TRANSFER", "CREDIT", "LOYALTY", "OTHER"].forEach((value) => {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = value.replace("_", " ");
-    option.selected = payment.method === value;
-    method.append(option);
-  });
-  method.dataset.paymentMethod = payment.id;
-  const amount = document.createElement("input");
-  amount.inputMode = "decimal";
-  amount.placeholder = "0.00";
-  amount.value = payment.amount;
-  amount.dataset.paymentAmount = payment.id;
-  amount.setAttribute("aria-label", t("pos.payment_amount"));
-  const reference = document.createElement("input");
-  reference.value = payment.reference || "";
-  reference.placeholder = t("pos.reference_optional");
-  reference.dataset.paymentReference = payment.id;
-  reference.setAttribute("aria-label", t("pos.reference_optional"));
-  const remove = document.createElement("button");
-  remove.type = "button";
-  remove.className = "icon-button";
-  remove.dataset.removePayment = payment.id;
-  remove.title = t("pos.remove_payment");
-  remove.setAttribute("aria-label", t("pos.remove_payment"));
-  const icon = document.createElement("i");
-  icon.dataset.lucide = "x";
-  remove.append(icon);
-  if (index === 0 && state.payments.length === 1) remove.disabled = true;
-  row.append(method, amount, reference, remove);
-  return row;
-}
-
-function renderPayments() {
-  const container = document.querySelector("#payment-rows");
-  clearChildren(container);
-  state.payments.forEach((payment, index) => container.append(paymentRow(payment, index)));
-  document.querySelector("#add-payment-row").disabled = state.payments.length >= 5;
-  refreshIcons(container);
-}
-
 function paymentPayload() {
   return state.payments
     .filter((payment) => scaledInteger(payment.amount, 2) > 0n)
@@ -836,22 +798,25 @@ function paymentPayload() {
     }));
 }
 
-function renderPaymentPreview() {
-  const preview = state.paymentPreview;
-  document.querySelector("#payment-received").textContent = formatMoney(preview?.amount_received || "0.00");
-  document.querySelector("#payment-balance").textContent = formatMoney(preview?.balance_due || state.quote?.net_amount || "0.00");
-  document.querySelector("#payment-change").textContent = formatMoney(preview?.change_due || "0.00");
-  document.querySelector("#complete-sale").disabled = !preview || scaledInteger(preview.balance_due, 2) !== 0n;
-}
+function renderPayments() { paymentView?.renderPayments(); }
+function renderPaymentPreview() { paymentView?.renderPaymentPreview(); }
+function paymentSummary(...args) { return paymentView.summary(...args); }
 
 async function requestPaymentPreview() {
-  const payments = paymentPayload();
+  const sequence = ++state.paymentSequence;
   state.paymentPreview = null;
   renderPaymentPreview();
+  let payments;
+  try {
+    paymentSummary(state.quote?.net_amount || "0.00", state.payments);
+    payments = paymentPayload();
+  } catch { return; }
   if (!state.quote || !payments.length) return;
   if (!navigator.onLine || state.usingOfflineQuote) {
     try {
-      state.paymentPreview = (await taxEngine()).computePaymentPreview(state.quote, payments);
+      const engine = await taxEngine();
+      if (sequence !== state.paymentSequence) return;
+      state.paymentPreview = engine.computePaymentPreview(state.quote, payments);
       document.querySelector("#payment-error").textContent = "";
     } catch (error) {
       document.querySelector("#payment-error").textContent = error.message;
@@ -860,15 +825,20 @@ async function requestPaymentPreview() {
     return;
   }
   try {
-    state.paymentPreview = await apiJson("/api/v1/sales/payment-preview", {
+    const preview = await apiJson("/api/v1/sales/payment-preview", {
       method: "POST",
       body: JSON.stringify({ ...quotePayload(), payments }),
     });
+    if (sequence !== state.paymentSequence) return;
+    state.paymentPreview = preview;
     document.querySelector("#payment-error").textContent = "";
   } catch (error) {
+    if (sequence !== state.paymentSequence) return;
     if (!navigator.onLine || error instanceof TypeError) {
       try {
-        state.paymentPreview = (await taxEngine()).computePaymentPreview(state.quote, payments);
+        const engine = await taxEngine();
+        if (sequence !== state.paymentSequence) return;
+        state.paymentPreview = engine.computePaymentPreview(state.quote, payments);
         state.usingOfflineQuote = true;
         document.querySelector("#payment-error").textContent = "";
       } catch (offlineError) {
@@ -881,12 +851,14 @@ async function requestPaymentPreview() {
   renderPaymentPreview();
 }
 
-function openPayment() {
+async function openPayment() {
+  try { paymentView ||= (await import("./payment-view.js")).createPaymentView(state); }
+  catch (error) { showToast(error.message, { tone: "danger" }); return; }
   if (!state.quote) {
     showToast(t("pos.wait_for_total"), { tone: "warning" });
     return;
   }
-  state.payments = [{ id: crypto.randomUUID(), method: "CASH", amount: "", reference: "" }];
+  state.payments = [{ id: crypto.randomUUID(), method: "CASH", amount: state.quote.net_amount, reference: "" }];
   state.paymentPreview = null;
   document.querySelector("#payment-total").textContent = formatMoney(state.quote.net_amount);
   document.querySelector("#payment-error").textContent = "";
@@ -894,6 +866,8 @@ function openPayment() {
   renderPaymentPreview();
   openDialog("#payment-dialog", document.querySelector("#pay-button"));
   document.querySelector("[data-payment-amount]")?.focus();
+  document.querySelector("[data-payment-amount]")?.select();
+  requestPaymentPreview();
 }
 
 async function saveOfflineCheckout(payload) {
@@ -1366,8 +1340,11 @@ function initializeEvents() {
 
   document.querySelector("#add-payment-row").addEventListener("click", () => {
     if (state.payments.length >= 5) return;
-    state.payments.push({ id: crypto.randomUUID(), method: "UPI", amount: "", reference: "" });
+    let amount = "0.00";
+    try { amount = paymentSummary(state.quote.net_amount, state.payments).balance; } catch { return; }
+    state.payments.push({ id: crypto.randomUUID(), method: "UPI", amount, reference: "" });
     renderPayments();
+    schedulePaymentPreview();
   });
   document.querySelector("#payment-rows").addEventListener("input", (event) => {
     const id = event.target.dataset.paymentAmount || event.target.dataset.paymentReference || event.target.dataset.paymentMethod;
@@ -1376,9 +1353,18 @@ function initializeEvents() {
     if (event.target.dataset.paymentAmount) payment.amount = event.target.value.trim();
     if (event.target.dataset.paymentReference) payment.reference = event.target.value;
     if (event.target.dataset.paymentMethod) payment.method = event.target.value;
+    if (event.target.dataset.paymentMethod) {
+      const reference = event.target.closest(".payment-row").querySelector("[data-payment-reference]");
+      const required = ["UPI", "CARD"].includes(payment.method);
+      reference.required = required;
+      reference.placeholder = t(required ? "pos.reference_required" : "pos.reference_optional");
+      reference.setAttribute("aria-label", reference.placeholder);
+    }
     schedulePaymentPreview();
   });
-  document.querySelector("#payment-rows").addEventListener("change", (event) => event.target.dispatchEvent(new Event("input", { bubbles: true })));
+  document.querySelector("#payment-rows").addEventListener("change", (event) => {
+    if (event.target.matches("select")) event.target.dispatchEvent(new Event("input", { bubbles: true }));
+  });
   document.querySelector("#payment-rows").addEventListener("click", (event) => {
     const remove = event.target.closest("[data-remove-payment]");
     if (!remove) return;
@@ -1394,7 +1380,10 @@ function initializeEvents() {
         state.payments.push(cash);
       }
       if (!cash) return;
-      cash.amount = button.dataset.cash === "exact" ? state.quote.net_amount : `${button.dataset.cash}.00`;
+      if (button.dataset.cash === "exact") {
+        try { cash.amount = paymentSummary(state.quote.net_amount, state.payments.filter((item) => item !== cash)).balance; }
+        catch { return; }
+      } else cash.amount = `${button.dataset.cash}.00`;
       renderPayments();
       schedulePaymentPreview();
     });

@@ -16,6 +16,7 @@ from vglpos.api.v1.idempotency import idempotent
 from vglpos.api.v1.openapi import documented
 from vglpos.api.v1.schemas.auth import (
     AuthenticationResponse,
+    ConfirmCredentialsRequest,
     LoginRequest,
     MfaCodeRequest,
     MfaSetupResponse,
@@ -34,8 +35,14 @@ from vglpos.services.demo_service import (
     DemoWorkspaceService,
 )
 from vglpos.services.exceptions import AuthenticationError
+from vglpos.services.session_security_service import SessionSecurityService
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/v1/auth")
+
+
+def _security_actor_rate_key() -> str:
+    """Rate-limit credential confirmation by company account across network addresses."""
+    return f"security:{g.company_id}:{g.user_id}"
 
 
 def _result_response(result: AuthenticationResult) -> tuple[Response, int]:
@@ -131,6 +138,7 @@ def login() -> tuple[Response, int]:
             branch_id=command.branch_id,
             terminal_id=command.terminal_id,
             mfa_code=command.mfa_code,
+            login_role=command.login_role,
         )
     return _result_response(result)
 
@@ -259,11 +267,23 @@ def screen_lock() -> tuple[Response, int]:
 
 @auth_bp.post("/mfa/setup")
 @require_permission("user.manage")
+@limiter.limit("5 per 15 minutes", key_func=_security_actor_rate_key)
 @idempotent
-@documented(summary="Create a TOTP provisioning secret", response_model=MfaSetupResponse)
+@documented(
+    summary="Create a TOTP provisioning secret",
+    request_model=ConfirmCredentialsRequest,
+    response_model=MfaSetupResponse,
+)
 def setup_mfa() -> tuple[Response, int]:
     """Return a provisioning URI only to privileged authenticated users."""
+    body = parse_body(ConfirmCredentialsRequest)
     with Session(db.engine) as session:
+        AuthService(session).confirm_password(
+            company_id=g.company_id,
+            user_id=g.user_id,
+            password=body.password,
+            mfa_code=body.mfa_code,
+        )
         uri = AuthService(session).setup_mfa(
             company_id=g.company_id,
             user_id=g.user_id,
@@ -272,8 +292,32 @@ def setup_mfa() -> tuple[Response, int]:
     return jsonify({"provisioning_uri": uri}), 200
 
 
+@auth_bp.post("/logout-all")
+@require_permission()
+@limiter.limit("5 per 15 minutes", key_func=_security_actor_rate_key)
+@idempotent
+@documented(
+    summary="Revoke all devices after a fresh password proof",
+    request_model=ConfirmCredentialsRequest,
+    response_model=StatusResponse,
+)
+def logout_all() -> tuple[Response, int]:
+    """Revoke access and refresh tokens together on every signed-in device."""
+    body = parse_body(ConfirmCredentialsRequest)
+    with Session(db.engine) as session:
+        AuthService(session).confirm_password(
+            company_id=g.company_id,
+            user_id=g.user_id,
+            password=body.password,
+            mfa_code=body.mfa_code,
+        )
+        SessionSecurityService(session, g.company_id).revoke_all(g.user_id)
+    return jsonify({"status": "logged_out_everywhere"}), 200
+
+
 @auth_bp.post("/mfa/enable")
 @require_permission("user.manage")
+@limiter.limit("5 per 15 minutes", key_func=_security_actor_rate_key)
 @idempotent
 @documented(
     summary="Enable TOTP MFA",
@@ -292,6 +336,7 @@ def enable_mfa() -> tuple[Response, int]:
 
 @auth_bp.post("/mfa/disable")
 @require_permission("user.manage")
+@limiter.limit("5 per 15 minutes", key_func=_security_actor_rate_key)
 @idempotent
 @documented(
     summary="Disable TOTP MFA",

@@ -21,6 +21,7 @@ node_modules/
 test-results/
 playwright-report/
 .pytest_cache/
+.pytest-*/
 .mypy_cache/
 .ruff_cache/
 .hypothesis/

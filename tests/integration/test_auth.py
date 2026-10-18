@@ -211,7 +211,11 @@ def test_privileged_user_can_enable_and_require_totp_mfa(
     login_body = _login(auth_client, identity_context)
     headers = {"Authorization": f"Bearer {login_body['access_token']}"}
 
-    setup = auth_client.post("/api/v1/auth/mfa/setup", headers=_headers(**headers))
+    setup = auth_client.post(
+        "/api/v1/auth/mfa/setup",
+        headers=_headers(**headers),
+        json={"password": identity_context.password},
+    )
     assert setup.status_code == 200
     provisioning_uri = setup.get_json()["provisioning_uri"]
     secret = parse_qs(urlparse(provisioning_uri).query)["secret"][0]

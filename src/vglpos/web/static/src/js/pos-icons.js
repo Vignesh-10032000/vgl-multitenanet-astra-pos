@@ -1,4 +1,5 @@
 import {
+  CircleDot,
   CreditCard,
   Delete,
   LockKeyhole,
@@ -13,6 +14,7 @@ import {
 } from "lucide";
 
 export const posIcons = {
+  CircleDot,
   CreditCard,
   Delete,
   LockKeyhole,

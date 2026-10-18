@@ -2,14 +2,15 @@
 {% block title %}Compliance · VGL POS{% endblock %}
 {% block page_title %}E-invoice compliance{% endblock %}
 {% block content %}
+  <section class="report-intro"><div><p class="eyebrow" data-i18n="compliance.kicker">GST E-INVOICES</p><h2 data-i18n="compliance.overview">Invoice submission status</h2><p data-i18n="compliance.hint">See invoices waiting for submission, issues to resolve and differences between store records and the invoice portal.</p></div></section>
   <section class="toolbar filter-toolbar" aria-label="Compliance actions">
     <label>Status<select id="einvoice-status"><option value="">All</option><option>PENDING</option><option>RETRY</option><option>GENERATED</option><option>DEAD</option><option>CANCEL_PENDING</option><option>CANCELLED</option></select></label>
     <button class="button button-secondary filter-apply" type="button" id="compliance-refresh"><i data-lucide="refresh-cw"></i><span>Refresh</span></button>
   </section>
   <section class="metric-grid metric-grid-three">
-    <article class="metric-card"><div class="metric-icon"><i data-lucide="clock-3"></i></div><div><p>Pending</p><strong id="compliance-pending">—</strong></div></article>
-    <article class="metric-card"><div class="metric-icon"><i data-lucide="triangle-alert"></i></div><div><p>Dead letters</p><strong id="compliance-dead">—</strong></div></article>
-    <article class="metric-card"><div class="metric-icon"><i data-lucide="list-checks"></i></div><div><p>Reconciliation gaps</p><strong id="compliance-gaps">—</strong></div></article>
+    <article class="metric-card"><div class="metric-icon"><i data-lucide="clock-3"></i></div><div><p data-i18n="compliance.pending">Waiting for submission</p><strong id="compliance-pending">—</strong></div></article>
+    <article class="metric-card"><div class="metric-icon"><i data-lucide="triangle-alert"></i></div><div><p data-i18n="compliance.attention">Needs attention</p><strong id="compliance-dead">—</strong></div></article>
+    <article class="metric-card"><div class="metric-icon"><i data-lucide="list-checks"></i></div><div><p data-i18n="compliance.mismatches">Invoice mismatches</p><strong id="compliance-gaps">—</strong></div></article>
   </section>
   <section class="panel table-panel">
     <div class="section-heading"><div><p class="eyebrow">IRP</p><h2>E-invoice queue</h2></div></div>

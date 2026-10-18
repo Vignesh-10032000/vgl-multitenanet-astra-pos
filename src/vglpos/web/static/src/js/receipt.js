@@ -3,8 +3,9 @@ import "../css/print.css";
 import { ArrowLeft, Printer } from "lucide";
 
 import { whenAppReady } from "./app.js";
-import { formatDate, formatMoney, formatQuantity, localizedName, t } from "./i18n.js";
+import { formatMoney, formatQuantity, localizedName, t } from "./i18n.js";
 import { apiJson } from "./session.js";
+import { renderReceiptIdentity, renderReceiptTender } from "./receipt-layout.js";
 import { clearChildren, createCell, registerIcons, showToast } from "./ui.js";
 
 registerIcons({ ArrowLeft, Printer });
@@ -45,13 +46,7 @@ function renderLines(sale) {
 }
 
 function renderPayments(sale) {
-  const container = document.querySelector("#receipt-payments");
-  clearChildren(container);
-  sale.payments.forEach((payment) => {
-    const row = document.createElement("p");
-    row.textContent = `${payment.payment_method}: ${formatMoney(payment.amount)}`;
-    container.append(row);
-  });
+  renderReceiptTender(document.querySelector("#receipt-payments"), sale.payments, sale.net_amount);
 }
 
 function renderReceipt(sale, profile) {
@@ -60,7 +55,7 @@ function renderReceipt(sale, profile) {
   setText("#receipt-address", profile.address);
   setText("#receipt-gstin", profile.gstin || t("receipt.unregistered"));
   setText("#receipt-number", sale.invoice_number);
-  setText("#receipt-date", formatDate(sale.created_at, { dateStyle: "medium", timeStyle: "short" }));
+  renderReceiptIdentity(sale.created_at, profile);
   setText("#receipt-cashier", `#${sale.cashier_id}`);
   setText("#receipt-customer", sale.customer_id ? `#${sale.customer_id}` : t("receipt.walk_in"));
   setText("#receipt-gross", formatMoney(sale.gross_amount));

@@ -5,6 +5,12 @@ export function localDateIso(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
+export function utcTimestamp(value) {
+  // SQLite returns UTC audit timestamps without an offset; preserve their UTC meaning.
+  const timestamp = String(value);
+  return /(?:Z|[+-]\d{2}:\d{2})$/i.test(timestamp) ? timestamp : `${timestamp}Z`;
+}
+
 export function scaledInteger(value, scale = 2) {
   const match = String(value ?? "0").trim().match(/^(-?)(\d+)(?:\.(\d+))?$/);
   if (!match) return 0n;

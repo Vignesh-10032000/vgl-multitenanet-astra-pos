@@ -13,10 +13,12 @@ from flask_jwt_extended import (
     create_refresh_token,
     decode_token,
 )
+from sqlalchemy.orm import Session
 
 from vglpos.errors import problem_response
-from vglpos.extensions import cache, jwt
+from vglpos.extensions import cache, db, jwt
 from vglpos.repositories.identity import AuthorizationContext
+from vglpos.services.session_security_service import SessionSecurityService
 
 _DENYLIST_PREFIX = "jwt-denylist:"
 _FAMILY_DENYLIST_PREFIX = "jwt-family-denylist:"
@@ -43,6 +45,7 @@ class TokenService:
         branch_id: int | None,
         terminal_id: int | None,
         authorization: AuthorizationContext,
+        session_version: int = 0,
     ) -> IssuedTokens:
         """Issue claims from verified persistence facts and activate idle tracking."""
         idle_timeout = 600 if "user.manage" in authorization.permissions else 1800
@@ -56,6 +59,7 @@ class TokenService:
         family_expires_at = int(datetime.now(UTC).timestamp()) + refresh_seconds
         claims = {
             "company_id": company_id,
+            "session_version": session_version,
             "branch_id": branch_id,
             "terminal_id": terminal_id,
             "permissions": sorted(authorization.permissions),
@@ -132,6 +136,15 @@ class TokenService:
     @staticmethod
     def is_blocked(payload: dict[str, Any]) -> bool:
         """Reject explicit revocations and access tokens whose idle state expired."""
+        try:
+            company_id = int(payload["company_id"])
+            user_id = int(payload["sub"])
+            version = int(payload.get("session_version", 0))
+        except (KeyError, TypeError, ValueError):
+            return True
+        with Session(db.engine) as session:
+            if not SessionSecurityService(session, company_id).is_current(user_id, version):
+                return True
         jti = str(payload.get("jti", ""))
         session_family = str(payload.get("sid", ""))
         if (

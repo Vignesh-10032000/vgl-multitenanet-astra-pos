@@ -52,6 +52,26 @@ class UserRepository(BaseRepository[User]):
 
     model = User
 
+    def session_is_current(self, user_id: int, version: int) -> bool:
+        """Check revocation state without loading password or authenticator secrets."""
+        return (
+            self.session.scalar(
+                select(User.id)
+                .join(Company, Company.id == User.company_id)
+                .where(
+                    User.id == user_id,
+                    User.company_id == self.company_id,
+                    User.deleted_at.is_(None),
+                    User.is_active.is_(True),
+                    User.session_version == version,
+                    Company.id == self.company_id,
+                    Company.deleted_at.is_(None),
+                    Company.is_active.is_(True),
+                )
+            )
+            is not None
+        )
+
     def find_by_username(self, username: str) -> User | None:
         """Resolve a username under the tenant uniqueness boundary."""
         return self.session.scalar(self._base_query().where(User.username == username))

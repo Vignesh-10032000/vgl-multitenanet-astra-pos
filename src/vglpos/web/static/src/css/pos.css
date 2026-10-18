@@ -153,11 +153,11 @@ kbd {
 
 .quick-key-button {
   display: grid;
-  min-width: 118px;
+  min-width: 150px;
   min-height: 52px;
-  grid-template-columns: 24px minmax(0, 1fr);
+  grid-template-columns: max-content minmax(0, 1fr);
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 6px 8px;
   border: 0;
   border-right: 1px solid var(--line);
@@ -170,6 +170,7 @@ kbd {
 }
 
 .quick-key-button span {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -692,6 +693,12 @@ kbd {
   text-transform: uppercase;
 }
 
+.change-due.is-outstanding {
+  border-color: var(--warning);
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
 .change-due strong {
   display: block;
   max-width: 100%;
@@ -875,8 +882,9 @@ kbd {
 @media (max-width: 720px) {
   body[data-page="pos"] .page-content { padding: 8px 8px 76px; }
   .pos-workspace { gap: 8px; }
-  .scanner-status span { display: none; }
-  .shift-status span { display: none; }
+  .pos-search-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .pos-search { grid-column: 1 / -1; min-width: 0; }
+  .scanner-status, .shift-status { min-width: 0; min-height: 36px; justify-content: center; padding: 6px 8px; white-space: normal; text-align: center; }
   .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .shortcut-strip {
     right: 8px;

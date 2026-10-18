@@ -3,8 +3,9 @@ import "../css/print.css";
 import { ArrowLeft, Printer } from "lucide";
 
 import { whenAppReady } from "./app.js";
-import { formatDate, formatMoney, formatQuantity, localizedName, t } from "./i18n.js";
+import { formatMoney, formatQuantity, localizedName, t } from "./i18n.js";
 import { getCachedStoreProfile, getOfflineReceipt } from "./offline.js";
+import { renderReceiptIdentity, renderReceiptTender } from "./receipt-layout.js";
 import { clearChildren, createCell, registerIcons, showToast } from "./ui.js";
 
 registerIcons({ ArrowLeft, Printer });
@@ -51,10 +52,7 @@ function renderReceipt(entry, profile) {
   setText("#receipt-address", profile?.address || "");
   setText("#receipt-gstin", profile?.gstin || t("receipt.unregistered"));
   setText("#receipt-number", entry.provisional_number);
-  setText("#receipt-date", formatDate(entry.created_at, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }));
+  renderReceiptIdentity(entry.created_at, profile);
   setText("#receipt-customer", entry.payload.customer_id
     ? `#${entry.payload.customer_id}`
     : t("receipt.walk_in"));
@@ -70,13 +68,7 @@ function renderReceipt(entry, profile) {
     "#receipt-total": "net_amount",
   })) setText(selector, formatMoney(entry.quote[field]));
   renderLines(entry);
-  const payments = document.querySelector("#receipt-payments");
-  clearChildren(payments);
-  entry.payload.payments.forEach((payment) => {
-    const row = document.createElement("p");
-    row.textContent = `${payment.method}: ${formatMoney(payment.amount)}`;
-    payments.append(row);
-  });
+  renderReceiptTender(document.querySelector("#receipt-payments"), entry.payload.payments, entry.quote.net_amount);
   document.querySelector("#offline-invoice").setAttribute("aria-busy", "false");
 }
 

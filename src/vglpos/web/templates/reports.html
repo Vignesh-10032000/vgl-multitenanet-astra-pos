@@ -2,20 +2,21 @@
 {% block title %}Reports · VGL POS{% endblock %}
 {% block page_title %}<span data-i18n="reports.title">Reports</span>{% endblock %}
 {% block content %}
+  <section class="report-intro"><div><p class="eyebrow" data-i18n="reports.overview">STORE PERFORMANCE</p><h2 data-i18n="reports.overview_title">Your sales at a glance</h2><p data-i18n="reports.overview_hint">Track completed sales, bills and the cost of stock you have on hand.</p></div><p class="report-date-range" id="report-date-range" role="status"></p></section>
   <section class="toolbar filter-toolbar" aria-label="Report filters">
-    <label><span data-i18n="reports.period">Period</span><select id="report-days"><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option><option value="365">1 year</option></select></label>
+    <label><span data-i18n="reports.period">Date range</span><select id="report-days"><option value="7" data-i18n="reports.last7">Last 7 days</option><option value="30" data-i18n="reports.last30">Last 30 days</option><option value="90" data-i18n="reports.last90">Last 90 days</option><option value="365" data-i18n="reports.last365">Last 365 days</option></select></label>
     <label><span data-i18n="reports.valuation_method">Stock valuation</span><select id="valuation-method"><option value="WEIGHTED_AVERAGE">Weighted average</option><option value="FIFO">FIFO</option></select></label>
     <button class="button button-secondary filter-apply" type="button" id="reports-refresh"><i data-lucide="refresh-cw"></i><span data-i18n="common.refresh">Refresh</span></button>
     <button class="button button-primary" type="button" id="report-print"><i data-lucide="printer"></i><span data-i18n="common.print">Print</span></button>
   </section>
   <section class="metric-grid metric-grid-three">
-    <article class="metric-card"><div class="metric-icon"><i data-lucide="indian-rupee"></i></div><div><p data-i18n="reports.period_revenue">Period revenue</p><strong id="report-revenue">—</strong></div></article>
-    <article class="metric-card"><div class="metric-icon"><i data-lucide="receipt"></i></div><div><p data-i18n="reports.period_bills">Bills</p><strong id="report-bills">—</strong></div></article>
-    <article class="metric-card"><div class="metric-icon"><i data-lucide="warehouse"></i></div><div><p data-i18n="reports.stock_value">Stock value</p><strong id="stock-value">—</strong></div></article>
+    <article class="metric-card"><div class="metric-icon"><i data-lucide="indian-rupee"></i></div><div><p data-i18n="reports.period_revenue">Total sales</p><strong id="report-revenue">—</strong><small class="report-metric-hint" data-i18n="reports.sales_hint">Completed sales in these dates</small></div></article>
+    <article class="metric-card"><div class="metric-icon"><i data-lucide="receipt"></i></div><div><p data-i18n="reports.period_bills">Bills completed</p><strong id="report-bills">—</strong><small class="report-metric-hint" data-i18n="reports.bills_hint">Number of completed bills</small></div></article>
+    <article class="metric-card"><div class="metric-icon"><i data-lucide="warehouse"></i></div><div><p data-i18n="reports.stock_value">Stock value at cost</p><strong id="stock-value">—</strong><small class="report-metric-hint" data-i18n="reports.stock_hint">Current stock, across all dates</small></div></article>
   </section>
   <section class="reports-grid">
-    <article class="panel chart-panel"><div class="section-heading"><div><p class="eyebrow" data-i18n="reports.trend">Trend</p><h2 data-i18n="reports.daily_revenue">Daily revenue</h2></div></div><div class="chart-frame bar-chart" id="report-revenue-chart" aria-label="Daily revenue chart"></div></article>
-    <article class="panel table-panel"><div class="section-heading"><div><p class="eyebrow" data-i18n="reports.inventory">Inventory</p><h2 data-i18n="reports.valuation">Valuation</h2></div></div><div class="table-scroll compact-table"><table><thead><tr><th data-i18n="products.item">Item</th><th class="numeric" data-i18n="products.stock">Stock</th><th class="numeric" data-i18n="reports.value">Value</th></tr></thead><tbody id="valuation-rows"><tr><td colspan="3"><div class="table-skeleton"></div></td></tr></tbody></table></div></article>
+    <article class="panel chart-panel"><div class="section-heading"><div><p class="eyebrow" data-i18n="reports.trend">Trend</p><h2 data-i18n="reports.daily_revenue">Sales by day</h2></div></div><div class="chart-frame bar-chart" id="report-revenue-chart" aria-label="Daily revenue chart"></div></article>
+    <article class="panel table-panel"><div class="section-heading"><div><p class="eyebrow" data-i18n="reports.inventory">Inventory</p><h2 data-i18n="reports.valuation">Stock value by product</h2></div></div><div class="table-scroll compact-table"><table><thead><tr><th data-i18n="products.item">Item</th><th class="numeric" data-i18n="products.stock">Stock</th><th class="numeric" data-i18n="reports.value">Value</th></tr></thead><tbody id="valuation-rows"><tr><td colspan="3"><div class="table-skeleton"></div></td></tr></tbody></table></div></article>
   </section>
   <section class="panel export-band" data-permission-all="report.gst,report.export">
     <div><p class="eyebrow" data-i18n="reports.gst">GST</p><h2 data-i18n="reports.gstr1_title">GSTR-1 outward supplies</h2><p data-i18n="reports.gstr1_body">Generate the statutory invoice classification for a selected period.</p></div>

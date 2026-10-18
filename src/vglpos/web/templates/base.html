@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
-    <meta name="theme-color" content="#0f766e">
+    <meta name="theme-color" content="#073f7d">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="icon" href="{{ url_for('static', filename='icons/vgl-pos.svg') }}" type="image/svg+xml">
     <title>{% block title %}VGL POS{% endblock %}</title>
@@ -43,8 +43,8 @@
       <div class="app-shell">
         <aside class="side-nav" aria-label="Primary navigation">
           <a class="brand" href="/" aria-label="VGL POS dashboard">
-            <span class="brand-mark" aria-hidden="true">V</span>
-            <span><strong>VGL POS</strong><small data-i18n="brand.subtitle">Retail operations</small></span>
+            <img class="brand-logo" src="{{ url_for('static', filename='icons/vgl-logo.png') }}" width="701" height="334" alt="" aria-hidden="true">
+            <span class="brand-copy"><strong>VGL POS</strong><small data-i18n="brand.subtitle">Retail operations</small></span>
           </a>
           <nav>
             <a href="/" data-nav="dashboard" data-permission="report.view"><i data-lucide="layout-dashboard"></i><span data-i18n="nav.dashboard">Dashboard</span></a>
@@ -54,7 +54,7 @@
             <a href="/sales" data-nav="sales" data-permission="sale.view"><i data-lucide="receipt-text"></i><span data-i18n="nav.sales">Sales</span></a>
             <a href="/sync-queue" data-nav="sync-queue" data-permission="sale.create"><i data-lucide="cloud-upload"></i><span data-i18n="nav.sync_queue">Sync queue</span><span class="nav-badge is-hidden" id="sync-queue-count">0</span></a>
             <a href="/reports" data-nav="reports" data-permission="report.view"><i data-lucide="chart-no-axes-combined"></i><span data-i18n="nav.reports">Reports</span></a>
-            <a href="/compliance" data-nav="compliance" data-permission="einvoice.view"><i data-lucide="shield-check"></i><span>Compliance</span></a>
+            <a href="/compliance" data-nav="compliance" data-permission="einvoice.view"><i data-lucide="shield-check"></i><span data-i18n="nav.compliance">Compliance</span></a>
             <a href="/settings" data-nav="settings"><i data-lucide="settings"></i><span data-i18n="nav.settings">Settings</span></a>
           </nav>
           <a class="side-nav-footer" href="/sync-queue" id="connectivity-status">

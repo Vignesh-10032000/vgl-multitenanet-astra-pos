@@ -184,7 +184,12 @@ def main() -> None:
 
         app = create_app(Phase5BrowserConfig)
         _seed(app)
-        app.run(host="127.0.0.1", port=port, debug=False, use_reloader=False)
+        app.run(
+            host=os.environ.get("PHASE5_E2E_HOST", "127.0.0.1"),
+            port=port,
+            debug=False,
+            use_reloader=False,
+        )
 
 
 if __name__ == "__main__":

@@ -51,8 +51,8 @@ class ProductRepository(BaseRepository[Product]):
         term = query.strip()
         if not term:
             return ()
-        if limit < 1 or limit > 100:
-            raise ValueError("limit must be between 1 and 100.")
+        if limit < 1 or limit > 200:
+            raise ValueError("limit must be between 1 and 200.")
         statement = self._base_query()
         dialect = self.session.get_bind().dialect.name
         if dialect == "postgresql":

@@ -2,13 +2,20 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
+import io
+import warnings
 from dataclasses import dataclass
 
+import structlog
+from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from vglpos.domain.models import Branch, Company
+from vglpos.security.audit import record_audit_event
 from vglpos.services.exceptions import ConflictError, EntityNotFoundError, ValidationError
 
 
@@ -23,6 +30,7 @@ class StoreProfile:
     city: str
     state: str
     postal_code: str
+    logo_data_uri: str | None = None
 
     @property
     def address(self) -> str:
@@ -69,6 +77,62 @@ class StoreProfileService:
     def get(self) -> StoreProfile:
         """Return only the authenticated company and selected branch identity."""
         company, branch = self._entities()
+        return self._profile(company, branch)
+
+    def update_logo(self, *, user_id: int, image_base64: str | None) -> StoreProfile:
+        """Normalize small raster uploads so uploaded code and metadata never reach receipts."""
+        company, branch = self._entities(for_update=True)
+        normalized = None
+        if image_base64 is not None:
+            try:
+                if len(image_base64) > 700_000:
+                    raise ValueError("Image exceeds the upload limit.")
+                content = base64.b64decode(image_base64, validate=True)
+                if not content or len(content) > 512_000:
+                    raise ValueError("Image exceeds the upload limit.")
+                with warnings.catch_warnings():
+                    warnings.simplefilter("error", Image.DecompressionBombWarning)
+                    with Image.open(io.BytesIO(content)) as source:
+                        if source.format not in {"PNG", "JPEG", "WEBP"}:
+                            raise ValueError("Unsupported image format.")
+                        if source.width > 2048 or source.height > 2048:
+                            raise ValueError("Image dimensions exceed 2048 pixels.")
+                        source.load()
+                        image = ImageOps.exif_transpose(source).convert("RGBA")
+                        image.thumbnail((512, 256))
+                        image.info.clear()
+                        output = io.BytesIO()
+                        image.save(output, format="PNG", optimize=True)
+                        normalized = "data:image/png;base64," + base64.b64encode(
+                            output.getvalue()
+                        ).decode("ascii")
+            except (
+                ValueError,
+                binascii.Error,
+                OSError,
+                UnidentifiedImageError,
+                Image.DecompressionBombError,
+                Image.DecompressionBombWarning,
+            ) as exc:
+                structlog.get_logger(__name__).warning(
+                    "store_logo_rejected", company_id=self.company_id, user_id=user_id
+                )
+                raise ValidationError(
+                    "Upload a valid PNG, JPEG or WebP up to 500 KB and 2048 x 2048 pixels."
+                ) from exc
+        company.logo_data_uri = normalized
+        company.updated_by = user_id
+        company.row_version += 1
+        record_audit_event(
+            self.session,
+            company_id=self.company_id,
+            user_id=user_id,
+            action="STORE_LOGO_UPDATED",
+            entity_type="Company",
+            entity_id=company.id,
+            new_values={"has_logo": normalized is not None},
+        )
+        self.session.commit()
         return self._profile(company, branch)
 
     def update(self, cmd: UpdateStoreProfileCommand) -> StoreProfile:
@@ -143,4 +207,5 @@ class StoreProfileService:
             city=branch.city,
             state=branch.state,
             postal_code=branch.postal_code,
+            logo_data_uri=company.logo_data_uri,
         )

@@ -21,7 +21,11 @@ export function renderRevenueBars(container, points) {
     const label = document.createElement("span");
     label.className = "bar-label";
     label.textContent = formatDate(`${point.business_date}T00:00:00`, { weekday: "short" });
-    track.append(value, fill);
+    const plot = document.createElement("div");
+    plot.className = "bar-plot";
+    plot.append(fill);
+    track.append(value, plot);
+    column.title = `${formatDate(`${point.business_date}T00:00:00`, { dateStyle: "medium" })} · ${formatMoney(point.net_amount)}`;
     column.append(track, label);
     container.append(column);
   });

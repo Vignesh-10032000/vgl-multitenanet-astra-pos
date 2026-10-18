@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import Field
 
 from vglpos.api.v1.schemas.common import RequestModel, ResponseModel
@@ -20,6 +22,8 @@ class StoreProfileUpdateRequest(RequestModel):
 
 
 class StoreProfileResponse(ResponseModel):
+    logo_data_uri: str | None = None
+    time_zone: str = ""
     name: str
     legal_name: str
     gstin: str | None
@@ -30,3 +34,36 @@ class StoreProfileResponse(ResponseModel):
     state: str
     postal_code: str
     address: str
+
+
+class StoreLogoRequest(RequestModel):
+    image_base64: str | None = Field(default=None, min_length=1, max_length=700_000)
+
+
+class TeamMemberRequest(RequestModel):
+    username: str = Field(min_length=1, max_length=100, pattern=r"^[A-Za-z0-9_.-]+$")
+    email: str = Field(min_length=3, max_length=255, pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+    full_name: str = Field(min_length=1, max_length=255)
+    role: Literal[
+        "SUPER_ADMIN", "ADMIN", "MANAGER", "CASHIER", "STOCK_CLERK", "ACCOUNTANT", "AUDITOR"
+    ]
+    is_active: bool = True
+    password: str | None = Field(default=None, min_length=12, max_length=1024)
+    pin: str | None = Field(default=None, pattern=r"^[0-9]{4,6}$")
+    actor_password: str = Field(min_length=1, max_length=1024)
+    actor_mfa_code: str | None = Field(default=None, pattern=r"^[0-9]{6}$")
+
+
+class TeamMemberResponse(ResponseModel):
+    id: int
+    username: str
+    email: str
+    full_name: str
+    roles: list[str]
+    is_active: bool
+    mfa_enabled: bool
+
+
+class TeamDirectoryResponse(ResponseModel):
+    members: list[TeamMemberResponse]
+    assignable_roles: list[str]

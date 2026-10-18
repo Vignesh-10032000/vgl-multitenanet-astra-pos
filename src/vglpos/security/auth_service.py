@@ -7,6 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import Literal
 
 import structlog
 from sqlalchemy.exc import SQLAlchemyError
@@ -29,7 +30,7 @@ from vglpos.security.password import (
     verify_pin,
 )
 from vglpos.security.tokens import IssuedTokens, TokenService
-from vglpos.services.exceptions import AuthenticationError, ValidationError
+from vglpos.services.exceptions import AuthenticationError, AuthorizationError, ValidationError
 
 logger: structlog.stdlib.BoundLogger = structlog.get_logger(__name__)
 
@@ -87,6 +88,7 @@ class AuthService:
         branch_id: int | None = None,
         terminal_id: int | None = None,
         mfa_code: str | None = None,
+        login_role: Literal["staff", "admin", "super_admin"] | None = None,
     ) -> AuthenticationResult:
         """Issue tokens without revealing which tenant or credential failed."""
         company = CompanyLoginRepository(self.session).find_by_login_code(company_code)
@@ -120,6 +122,7 @@ class AuthService:
             branch_id=branch_id,
             terminal_id=terminal_id,
             method="PASSWORD",
+            login_role=login_role,
         )
 
     def authenticate_pin(
@@ -149,6 +152,8 @@ class AuthService:
         if self._is_locked(user):
             self._record_locked_failure(user, method="PIN")
             raise AuthenticationError(_GENERIC_FAILURE)
+        if user.mfa_enabled:
+            raise AuthenticationError("Use your password and authenticator code to sign in.")
         if pin_needs_rehash(user.pin_hash):
             user.pin_hash = hash_pin(pin)
         return self._complete_success(
@@ -181,6 +186,7 @@ class AuthService:
             branch_id=branch_id,
             terminal_id=terminal_id,
             authorization=authorization,
+            session_version=user.session_version,
         )
         return AuthenticationResult(
             user_id=user.id,
@@ -232,11 +238,30 @@ class AuthService:
             mfa_enabled=user.mfa_enabled,
         )
 
+    def confirm_password(
+        self, *, company_id: int, user_id: int, password: str, mfa_code: str | None = None
+    ) -> User:
+        """Require a fresh credential proof before changing security-sensitive settings."""
+        user = UserRepository(self.session, company_id).get(user_id, for_update=True)
+        if user is None or not user.is_active or self._is_locked(user):
+            raise AuthorizationError("Credential confirmation failed.")
+        if not verify_password(user.password_hash, password) or (
+            user.mfa_enabled and not verify_totp(user.mfa_secret or "", mfa_code or "")
+        ):
+            self._record_failure(user, method="SECURITY_CONFIRMATION")
+            raise AuthorizationError("Credential confirmation failed.")
+        return user
+
     def setup_mfa(self, *, company_id: int, user_id: int, issuer_name: str) -> str:
         """Persist a pending secret and return its authenticator provisioning URI."""
         user = UserRepository(self.session, company_id).get(user_id)
         if user is None or not user.is_active:
             raise AuthenticationError("The account is unavailable.")
+        if user.mfa_enabled:
+            raise ValidationError(
+                "Authenticator protection is already enabled. "
+                "Disable it with a valid code before replacing it."
+            )
         authorization = UserRepository(self.session, company_id).authorization_context(
             user.id, branch_id=None
         )
@@ -259,7 +284,7 @@ class AuthService:
             or not user.is_active
             or not verify_totp(user.mfa_secret, code)
         ):
-            raise AuthenticationError("MFA verification failed.")
+            raise AuthorizationError("MFA verification failed.")
         user.mfa_enabled = True
         user.updated_by = user.id
         user.row_version += 1
@@ -274,7 +299,7 @@ class AuthService:
             or not user.mfa_enabled
             or not verify_totp(user.mfa_secret, code)
         ):
-            raise AuthenticationError("MFA verification failed.")
+            raise AuthorizationError("MFA verification failed.")
         user.mfa_enabled = False
         user.mfa_secret = None
         user.updated_by = user.id
@@ -307,12 +332,28 @@ class AuthService:
         branch_id: int | None,
         terminal_id: int | None,
         method: str,
+        login_role: Literal["staff", "admin", "super_admin"] | None = None,
     ) -> AuthenticationResult:
         repository = UserRepository(self.session, user.company_id)
         branch_id, terminal_id = self._validate_context(
             repository, branch_id=branch_id, terminal_id=terminal_id
         )
         authorization = repository.authorization_context(user.id, branch_id=branch_id)
+        required_roles = {
+            "super_admin": {"OWNER", "SUPER_ADMIN"},
+            "admin": {"OWNER", "SUPER_ADMIN", "ADMIN"},
+        }.get(login_role or "", set())
+        if required_roles and required_roles.isdisjoint(authorization.role_names):
+            logger.warning(
+                "login_role_denied",
+                user_id=user.id,
+                company_id=user.company_id,
+                login_role=login_role,
+            )
+            raise AuthorizationError(
+                "Your account does not have access to this sign-in option. "
+                "Choose your assigned role or contact your administrator."
+            )
         now = self._now()
         set_audit_context(self.session, user_id=user.id)
         user.failed_login_attempts = 0
@@ -341,6 +382,7 @@ class AuthService:
             branch_id=branch_id,
             terminal_id=terminal_id,
             authorization=authorization,
+            session_version=user.session_version,
         )
         return AuthenticationResult(
             user_id=user.id,

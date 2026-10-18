@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from celery.schedules import crontab
 from pydantic import Field, field_validator, model_validator
@@ -73,6 +74,7 @@ class BaseConfig(BaseSettings):
     WHATSAPP_API_TOKEN: str = ""
     PUBLIC_RECEIPT_BASE_URL: str = ""
     OFFICIAL_WEBSITE_URL: str = ""
+    STORE_TIMEZONE: str = "Asia/Kolkata"
     SMS_WEBHOOK_URL: str = ""
     SMS_API_TOKEN: str = ""
     EMAIL_WEBHOOK_URL: str = ""
@@ -115,6 +117,15 @@ class BaseConfig(BaseSettings):
     # move off the cache Redis without a code change.
     CELERY_BROKER_URL: str = ""
     CELERY_RESULT_BACKEND: str = ""
+
+    @field_validator("STORE_TIMEZONE")
+    @classmethod
+    def _validate_store_timezone(cls, value: str) -> str:
+        try:
+            ZoneInfo(value)
+        except (ValueError, ZoneInfoNotFoundError) as exc:
+            raise ValueError("STORE_TIMEZONE must be a valid IANA timezone.") from exc
+        return value
 
     @field_validator("DATABASE_URL")
     @classmethod
@@ -159,6 +170,7 @@ class BaseConfig(BaseSettings):
             "WHATSAPP_API_TOKEN": self.WHATSAPP_API_TOKEN,
             "PUBLIC_RECEIPT_BASE_URL": self.PUBLIC_RECEIPT_BASE_URL,
             "OFFICIAL_WEBSITE_URL": self.OFFICIAL_WEBSITE_URL,
+            "STORE_TIMEZONE": self.STORE_TIMEZONE,
             "SMS_WEBHOOK_URL": self.SMS_WEBHOOK_URL,
             "SMS_API_TOKEN": self.SMS_API_TOKEN,
             "EMAIL_WEBHOOK_URL": self.EMAIL_WEBHOOK_URL,
@@ -292,7 +304,12 @@ class TestingConfig(BaseConfig):
         """In-memory SQLite needs one shared connection (StaticPool); the
         PostgreSQL pool sizing keywords would be rejected by its pool class."""
         if self.DATABASE_URL.startswith("sqlite"):
-            return {"poolclass": StaticPool, "connect_args": {"check_same_thread": False}}
+            if self.DATABASE_URL.endswith(":memory:") or self.DATABASE_URL in {
+                "sqlite://",
+                "sqlite+pysqlite://",
+            }:
+                return {"poolclass": StaticPool, "connect_args": {"check_same_thread": False}}
+            return {"connect_args": {"check_same_thread": False}}
         return super()._engine_options()
 
 
