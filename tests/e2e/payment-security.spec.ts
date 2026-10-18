@@ -6,12 +6,12 @@ const password = "Browser-test-password-42!";
 
 async function signIn(page, username = "cashier", credential = password, counter = true) {
   await page.goto("/login");
-  await page.locator('[name="company_code"]').fill("E2E");
-  await page.locator('[name="username"]').fill(username);
-  await page.locator('[name="password"]').fill(credential);
-  await page.locator('[name="branch_id"]').fill("1");
-  await page.locator('[name="terminal_id"]').fill("1");
-  await page.locator('#login-form [type="submit"]').click();
+  await page.locator("#company").fill("E2E");
+  await page.locator("#user").fill(username);
+  await page.locator("#pass").fill(credential);
+  await page.locator("#branch").fill("1");
+  await page.locator("#terminal").fill("1");
+  await page.locator('#form [type="submit"]').click();
   await page.waitForURL("**/pos");
   await expect(page.locator("#pos-product-grid")).toHaveAttribute("aria-busy", "false");
   if (!counter) return;

@@ -1,192 +1,222 @@
-{% extends "base.html" %}
-{% block title %}Sign in · VGL POS{% endblock %}
-{% block auth_content %}
-  <section class="login-panel" aria-labelledby="login-title">
-    <div class="login-brand">
-      <img src="{{ url_for('static', filename='icons/vgl-logo.png') }}" alt="Vignesh Growth Lab" class="login-logo" width="701" height="334" fetchpriority="high">
-      <div class="login-brand-copy"><strong>VGL POS</strong><span data-i18n="brand.subtitle">Retail operations</span></div>
-    </div>
-    <div class="login-heading">
-      <p class="eyebrow" data-i18n="login.counter_access">Retail growth, beautifully managed</p>
-      <h1 id="login-title" data-i18n="login.title">Welcome to smarter retail</h1>
-      <p data-i18n="login.subtitle">Run billing, stock, customers, GST and reports from one focused workspace.</p>
-    </div>
-    <section class="demo-access" aria-labelledby="demo-title">
-      <div class="demo-access-copy">
-        <span class="demo-badge" data-i18n="login.demo_badge">Interactive demo</span>
-        <h2 id="demo-title" data-i18n="login.demo_title">See VGL POS in action</h2>
-        <p data-i18n="login.demo_body">Try a real checkout, then explore stock alerts, sales reports and customer history with sample data.</p>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="stylesheet" href="{{ url_for('static', filename='login-reference.css') }}"></head><body>
+<title>VGL POS</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Tamil:wght@400;500;700&display=swap">
+
+
+<header class="hero">
+  <div class="wrap">
+    <nav class="nav" aria-label="Main">
+      <a class="brand" href="#top" aria-label="Vignesh Growth Lab, VGL POS"><span class="logo-plate"><img src="{{ url_for('static', filename='icons/vgl-login-logo.png') }}" alt="Vignesh Growth Lab" width="88" height="42"></span><span class="brand-divider"></span><span class="brand-pos"><b>VGL POS</b><small>Retail operations</small></span></a>
+      <div class="nav-links">
+        <a class="link" href="#features" data-i18n="nav_features">Features</a>
+        <a class="link" href="#demo" data-i18n="nav_demo">Live demo</a>
+        <a class="link" href="#contact" data-i18n="nav_contact">Contact</a>
       </div>
-      <button class="button button-large button-demo" type="button" id="demo-login" disabled>
-        <i data-lucide="sparkles"></i><span data-i18n="login.demo_submit">Explore the demo</span>
-      </button>
-      <small data-i18n="login.demo_notice">Safe sample workspace · No account required</small>
-      <p class="form-error" id="demo-error" role="alert" aria-live="polite"></p>
-    </section>
-    <p class="form-error" id="login-error" role="alert"></p>
-    <div class="login-divider"><span data-i18n="login.member_signin">Store team sign in</span></div>
-    <form id="login-form" class="form-stack" novalidate>
-      <fieldset class="login-roles" aria-describedby="login-role-notice">
-        <legend data-i18n="login.role_choose">Sign in as</legend>
-        <div class="login-role-options">
-          <label class="login-role-card">
-            <input type="radio" name="login_role" value="staff" checked>
-            <span><strong data-i18n="login.role_staff">Staff / Cashier</strong><small data-i18n="login.role_staff_detail">Checkout & daily tasks</small></span>
-          </label>
-          <label class="login-role-card">
-            <input type="radio" name="login_role" value="admin">
-            <span><strong data-i18n="login.role_admin">Admin</strong><small data-i18n="login.role_admin_detail">Store & team management</small></span>
-          </label>
-          <label class="login-role-card">
-            <input type="radio" name="login_role" value="super_admin">
-            <span><strong data-i18n="login.role_super_admin">Super Admin</strong><small data-i18n="login.role_super_admin_detail">Company & admin access</small></span>
-          </label>
-        </div>
-        <p id="login-role-notice" data-i18n="login.role_notice">Use the account your administrator created. Access follows your assigned permissions.</p>
-      </fieldset>
-      <div class="field-grid login-identity-grid">
-        <label>
-          <span data-i18n="login.company_code">Company code</span>
-          <input name="company_code" autocomplete="organization" maxlength="50" required autofocus>
-        </label>
-        <label>
-          <span data-i18n="login.username">Username</span>
-          <input name="username" autocomplete="username" maxlength="100" required>
-        </label>
+      <div class="nav-end">
+        <button class="lang" id="lang" type="button" aria-label="Switch language">தமிழ்</button>
+        <a class="btn btn-primary" href="#signin" data-i18n="nav_signin">Sign in</a>
       </div>
-      <label>
-        <span data-i18n="login.password">Password</span>
-        <span class="input-action">
-          <input name="password" type="password" autocomplete="current-password" maxlength="1024" required>
-          <button type="button" id="password-toggle" class="icon-button" title="Show password" aria-label="Show password"><i data-lucide="eye"></i></button>
-        </span>
-      </label>
-      <div class="field-grid">
-        <label>
-          <span data-i18n="login.branch_optional">Branch ID (optional)</span>
-          <input name="branch_id" type="number" min="1" step="1" inputmode="numeric">
-        </label>
-        <label>
-          <span data-i18n="login.terminal_optional">Terminal ID (optional)</span>
-          <input name="terminal_id" type="number" min="1" step="1" inputmode="numeric">
-        </label>
-      </div>
-      <label class="is-hidden" id="mfa-field">
-        <span data-i18n="login.mfa">6-digit authentication code</span>
-        <input name="mfa_code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code">
-      </label>
-      <button class="button button-primary button-large" type="submit">
-        <span id="login-submit-label" data-i18n="login.submit_staff">Sign in to billing</span><i data-lucide="arrow-right"></i>
-      </button>
-    </form>
-    <div class="login-footer">
-      <button class="text-button" type="button" id="login-locale"><i data-lucide="languages"></i><span>தமிழ்</span></button>
-      <span data-i18n="login.secure_notice">Role-based access for your team</span>
-    </div>
-    <section class="login-contact" aria-labelledby="login-contact-title">
+    </nav>
+
+    <div class="hero-grid" id="top">
       <div>
-        <p class="login-contact-kicker" data-i18n="login.tailored_kicker">Made for your kind of business</p>
-        <h2 id="login-contact-title" data-i18n="login.tailored_title">Need a POS tailored to your store?</h2>
-        <p data-i18n="login.tailored_body">We design POS workflows for restaurants, nut shops and specialty retailers around the way their teams work.</p>
+        <span class="pill"><span class="dot"></span><span data-i18n="pill">Built for Indian retail</span></span>
+        <h1 data-i18n-html="h1">Run the whole store from <em>one fast counter.</em></h1>
+        <p class="lede" data-i18n="lede">VGL POS brings billing, stock, customers and GST reports into a single workspace, built for Indian retail and ready in English and Tamil.</p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="#demo" data-i18n="cta_demo">Try the live demo</a>
+          <a class="btn btn-ghost" href="#signin" data-i18n="cta_signin">Sign in to your store</a>
+        </div>
+        <ul class="chips" aria-label="Counter features">
+          <li>Barcode scan &amp; quick keys</li><li>Hold &amp; recall bills</li><li>Split payments</li><li>Offline bill queue</li>
+        </ul>
+        <div class="facts"><span>GST invoices</span><span>Cash · Card · UPI</span><span>Tenant-isolated data</span></div>
       </div>
-      <div class="login-contact-links">
-        {% if official_website_url %}<a class="login-website" href="{{ official_website_url }}" target="_blank" rel="noopener noreferrer"><i data-lucide="external-link"></i><span data-i18n="login.website">Visit our official website</span><i data-lucide="arrow-up-right" aria-hidden="true"></i></a>{% endif %}
-        <a href="mailto:vigneshgrowthlab@gmail.com"><i data-lucide="mail"></i><span data-i18n="login.email">vigneshgrowthlab@gmail.com</span></a>
-        <a href="https://wa.me/918220034139" target="_blank" rel="noopener noreferrer"><i data-lucide="message-circle"></i><span data-i18n="login.whatsapp">WhatsApp</span></a>
-        <a href="tel:+918220034139"><i data-lucide="phone"></i><span data-i18n="login.call">Call +91 82200 34139</span></a>
+
+      <div class="stage">
+      <div class="term" id="demo" aria-label="Interactive POS demo">
+        <div class="term-top">
+          <div class="store">
+            <span class="glyph ref-style-1">V</span>
+            <div><b>VGL Demo Mart</b><small>Tap items to try a checkout</small></div>
+          </div>
+          <span class="tag">Sample data</span>
+        </div>
+        <div class="kpis">
+          <div class="kpi"><small>Today's sales</small><strong class="num" id="k-sales">₹8,420</strong></div>
+          <div class="kpi"><small>Bills completed</small><strong class="num" id="k-bills">24</strong></div>
+          <div class="kpi"><small>Stock alerts</small><strong class="num amber">3</strong></div>
+        </div>
+        <div class="term-body">
+          <div class="shelf">
+            <h3>Tap to add</h3>
+            <div class="prod-list" id="prods"></div>
+          </div>
+          <div class="bill" aria-live="polite">
+            <h3><span>Current bill</span><span id="billno">#DEMO-824</span></h3>
+            <div class="lines" id="lines"></div>
+            <div class="sums" id="sums"></div>
+            <div class="total"><span>Total</span><b class="num" id="total">₹0.00</b></div>
+            <button class="pay" id="pay" type="button">Collect via UPI</button>
+            <p class="bill-note" id="note">A clear bill. A confident checkout.</p>
+          </div>
+        </div>
+        </div>
+      <div class="floats">
+        <div class="fc"><small><span class="dot"></span>UPI received</small><b class="num" id="f-amt">₹1,284.50</b><span class="sub" id="f-bill">Bill #DEMO-823</span></div>
+        <div class="fc"><small>Last 7 days · sample</small><b class="num">₹58,240 <span class="up">▲ 18%</span></b>
+          <svg viewBox="0 0 120 28" width="100%" height="28" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,22 20,18 40,20 60,12 80,14 100,6 118,3" fill="none" stroke="#3FD6C0" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></div>
+        <div class="fc"><small>Low stock</small><b>Toor Dal 1 kg</b><span class="sub amber">6 left · reorder at 15</span></div>
       </div>
-    </section>
-  </section>
-  <aside class="login-visual" aria-label="Point of sale preview">
-    <div class="login-orb login-orb-one" aria-hidden="true"></div>
-    <div class="login-orb login-orb-two" aria-hidden="true"></div>
-    <div class="visual-intro">
-      <span class="visual-pill" data-i18n="login.visual_pill">Built by Vignesh Growth Lab</span>
-      <h2 data-i18n="login.preview_title">Every sale. Every shelf. One clear view.</h2>
-      <p data-i18n="login.preview_body">From barcode billing to stock alerts, customer balances and daily reports. Give your team one connected place to run the store.</p>
+      </div>
     </div>
-    <ul class="checkout-capabilities" aria-label="Fast billing features">
-      <li><i data-lucide="scan-line"></i><span data-i18n="login.capability_scan">Barcode scan & quick keys</span></li>
-      <li><i data-lucide="pause-circle"></i><span data-i18n="login.capability_hold">Hold & recall bills</span></li>
-      <li><i data-lucide="wallet-cards"></i><span data-i18n="login.capability_split">Split payments</span></li>
-      <li><i data-lucide="cloud-off"></i><span data-i18n="login.capability_offline">Offline bill queue</span></li>
-      <li><i data-lucide="keyboard"></i><span data-i18n="login.capability_keyboard">Keyboard shortcuts</span></li>
-      <li><i data-lucide="scale"></i><span data-i18n="login.capability_weight">Weighed goods</span></li>
-    </ul>
-    <section class="login-feature-section" aria-labelledby="login-features-title">
-      <header class="login-feature-heading">
-        <p class="login-section-kicker" data-i18n="login.features_kicker">More of your store, working together</p>
-        <h2 id="login-features-title" data-i18n="login.features_title">Go beyond the bill.</h2>
-      </header>
-      <div class="login-feature-grid">
-        <article class="login-feature-card">
-          <span class="login-feature-icon"><i data-lucide="package-search"></i></span>
-          <div><h3 data-i18n="login.benefit_stock">Protect every shelf</h3><p data-i18n="login.feature_stock_body">See stock on hand, low-stock alerts and stock value at cost. Know what needs your attention.</p></div>
+  </div>
+</header>
+
+<main>
+  <section id="features">
+    <div class="wrap">
+      <div class="head">
+        <span class="eyebrow">Features</span>
+        <h2 data-i18n="feat_h">Everything the counter needs, nothing it doesn't.</h2>
+        <p>Scan, bill and collect in seconds. Watch every shelf. Know your customers. Close the day with GST-ready numbers.</p>
+      </div>
+      <div class="vgrid">
+        <article class="vcard">
+          <div class="vis">
+            <div class="scanbox"><svg viewBox="0 0 110 56" width="168" height="72" fill="#F2F6FF" aria-hidden="true"><rect x="0" y="0" width="4" height="56"/><rect x="8" y="0" width="6" height="56"/><rect x="18" y="0" width="4" height="56"/><rect x="28" y="0" width="2" height="56"/><rect x="38" y="0" width="4" height="56"/><rect x="46" y="0" width="2" height="56"/><rect x="56" y="0" width="4" height="56"/><rect x="64" y="0" width="4" height="56"/><rect x="76" y="0" width="2" height="56"/><rect x="82" y="0" width="4" height="56"/><rect x="92" y="0" width="6" height="56"/><rect x="102" y="0" width="4" height="56"/></svg><i class="beam"></i></div>
+            <span class="vchip ref-style-2">Ponni Rice 5 kg</span>
+            <span class="vchip ref-style-3">₹310.00</span>
+          </div>
+          <div class="vname"><span class="vtag">Scan &amp; bill</span><h3>Fast billing</h3><p>Barcode, quick keys, hold and recall. Cash, card, UPI or a split of all three.</p></div>
         </article>
-        <article class="login-feature-card">
-          <span class="login-feature-icon"><i data-lucide="users"></i></span>
-          <div><h3 data-i18n="login.benefit_customers">Build repeat business</h3><p data-i18n="login.feature_customers_body">Keep customer details, order counts, total spend and outstanding balances together.</p></div>
+        <article class="vcard">
+          <div class="vis">
+            <div class="vbars">
+              <div class="vb"><span>Ponni Rice</span><div class="vt"><i class="ref-style-4"></i><u class="ref-style-5"></u></div><b>46</b></div>
+              <div class="vb"><span>Filter Coffee</span><div class="vt"><i class="lo ref-style-6"></i><u class="ref-style-5"></u></div><b>9</b></div>
+              <div class="vb"><span>Toor Dal</span><div class="vt"><i class="lo ref-style-7"></i><u class="ref-style-5"></u></div><b>6</b></div>
+            </div>
+            <span class="vchip ref-style-8">2 to reorder</span>
+          </div>
+          <div class="vname"><span class="vtag">Stock watch</span><h3>Protect every shelf</h3><p>Set a reorder mark per product and restock before the next rush.</p></div>
         </article>
-        <article class="login-feature-card">
-          <span class="login-feature-icon"><i data-lucide="chart-no-axes-combined"></i></span>
-          <div><h3 data-i18n="login.feature_reports_title">See what drives your sales</h3><p data-i18n="login.feature_reports_body">Follow daily trends, top products, payment breakdowns and sales for your chosen date range.</p></div>
+        <article class="vcard">
+          <div class="vis">
+            <div class="vpaper">
+              <div class="vp-h"><span>TAX INVOICE</span><span>#DEMO-824</span></div>
+              <div class="vp-r"><span>Ponni Rice ×1</span><span>310.00</span></div>
+              <div class="vp-r"><span>Groundnut Oil ×1</span><span>185.00</span></div>
+              <div class="vp-r muted"><span>GST 5%</span><span>24.75</span></div>
+              <div class="vp-slabs"><em>0%</em><em class="on">5%</em><em>18%</em></div>
+            </div>
+          </div>
+          <div class="vname"><span class="vtag">GST ready</span><h3>Tax done at the counter</h3><p>Each item carries its rate, so invoices and day totals split by slab on their own.</p></div>
         </article>
-        <article class="login-feature-card">
-          <span class="login-feature-icon"><i data-lucide="receipt-text"></i></span>
-          <div><h3 data-i18n="login.feature_gst_title">Keep GST records organised</h3><p data-i18n="login.feature_gst_body">Item-level GST, customer GSTIN invoices and GSTR-1 JSON exports support your reporting workflow.</p></div>
+        <article class="vcard">
+          <div class="vis">
+            <div class="vloy">
+              <svg viewBox="0 0 120 120" width="124" height="124" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4DA3FF"/><stop offset="1" stop-color="#3FD6C0"/></linearGradient></defs><circle cx="60" cy="60" r="48" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="10"/><circle cx="60" cy="60" r="48" fill="none" stroke="url(#lg)" stroke-width="10" stroke-linecap="round" stroke-dasharray="217 302" transform="rotate(-90 60 60)"/></svg>
+              <div class="vloy-t"><b>720</b><small>points</small></div>
+            </div>
+            <span class="vchip ref-style-2">Regular · 14 visits</span>
+          </div>
+          <div class="vname"><span class="vtag">Loyalty</span><h3>Know your regulars</h3><p>Purchase history and points at hand, so returning customers feel recognised.</p></div>
         </article>
-        <article class="login-feature-card">
-          <span class="login-feature-icon"><i data-lucide="wallet-cards"></i></span>
-          <div><h3 data-i18n="login.feature_shift_title">Close the day with clarity</h3><p data-i18n="login.feature_shift_body">Open and close shifts, count cash by denomination and review cash differences in a printable closing report.</p></div>
+        <article class="vcard">
+          <div class="vis">
+            <div class="vq">
+              <div class="vq-i"><span class="d w"></span>#DEMO-825<em>queued</em></div>
+              <div class="vq-i"><span class="d w"></span>#DEMO-826<em>queued</em></div>
+              <div class="vq-i"><span class="d g"></span>#DEMO-824<em>synced</em></div>
+            </div>
+            <span class="vchip ref-style-9">Offline</span>
+          </div>
+          <div class="vname"><span class="vtag">Offline queue</span><h3>Bills never wait</h3><p>If the network drops, bills queue on the terminal and sync when it returns.</p></div>
         </article>
-        <article class="login-feature-card">
-          <span class="login-feature-icon"><i data-lucide="sparkles"></i></span>
-          <div><h3 data-i18n="login.feature_brand_title">Put your brand on every bill</h3><p data-i18n="login.feature_brand_body">Add your store logo and business details. Choose 58 mm, 80 mm or A5 receipts to suit your counter.</p></div>
+        <article class="vcard">
+          <div class="vis">
+            <svg viewBox="0 0 300 180" width="280" height="168" aria-hidden="true" class="ref-style-10">
+              <g stroke="rgba(255,255,255,.32)" stroke-width="1.5" fill="none"><path d="M150 90L50 40"/><path d="M150 90L250 40"/><path d="M150 90L150 152"/></g>
+              <circle cx="150" cy="90" r="27" fill="#1B66E8"/><circle cx="150" cy="90" r="27" fill="url(#lg)" opacity=".55"/>
+              <text x="150" y="94" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">Cloud</text>
+              <g fill="rgba(255,255,255,.1)" stroke="rgba(255,255,255,.3)"><rect x="14" y="22" width="72" height="36" rx="9"/><rect x="214" y="22" width="72" height="36" rx="9"/><rect x="114" y="134" width="72" height="36" rx="9"/></g>
+              <g fill="#F2F6FF" font-size="11" font-weight="600" text-anchor="middle"><text x="50" y="44">Branch 1</text><text x="250" y="44">Branch 2</text><text x="150" y="156">Branch 3</text></g>
+            </svg>
+          </div>
+          <div class="vname"><span class="vtag">Multi-branch</span><h3>One company, many tills</h3><p>Give each branch and terminal its own ID while your data stays isolated to your company.</p></div>
         </article>
       </div>
-      <div class="login-access-proof">
-        <i data-lucide="shield-check"></i>
-        <div><strong data-i18n="login.feature_access_title">The right access for every role</strong><p data-i18n="login.feature_access_body">Staff, Admin and Super Admin permissions, authenticator MFA, counter lock and sign-out across devices.</p></div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="wrap">
+      <div class="head">
+        <span class="eyebrow">Made for your kind of business</span>
+        <h2>Tailored to how your shop actually trades.</h2>
+        <p>We configure VGL POS around your products, units and billing habits.</p>
       </div>
-    </section>
-    <section class="store-preview" aria-labelledby="store-preview-title">
-      <header class="store-preview-header">
-        <div class="store-preview-brand"><span class="store-preview-mark" aria-hidden="true">V</span><div><strong id="store-preview-title">VGL Demo Mart</strong><small data-i18n="login.preview_store">Your store, at a glance</small></div></div>
-        <span class="sample-label" data-i18n="login.sample_data">Illustrative sample data</span>
-      </header>
-      <dl class="store-preview-metrics">
-        <div><dt data-i18n="login.sample_sales">Today's sales</dt><dd>₹8,420<span data-i18n="login.sample_payments">Cash · Card · UPI</span></dd></div>
-        <div><dt data-i18n="login.sample_bills">Bills completed</dt><dd>24<span data-i18n="login.sample_counter">One connected counter</span></dd></div>
-        <div><dt data-i18n="login.sample_stock">Stock alerts</dt><dd>3<span data-i18n="login.sample_reorder">Ready to reorder</span></dd></div>
-      </dl>
-      <div class="store-preview-detail">
-        <section class="sample-inventory" aria-labelledby="inventory-preview-title">
-          <div class="sample-section-heading"><h3 id="inventory-preview-title" data-i18n="login.sample_products">Popular on your shelves</h3><i data-lucide="package-search"></i></div>
-          <div class="sample-product"><span class="sample-product-symbol" aria-hidden="true">R</span><div><strong data-i18n="login.sample_rice">Ponni Rice · 5 kg</strong><small data-i18n="login.sample_essentials">Daily essentials</small></div><b>₹310</b></div>
-          <div class="sample-product"><span class="sample-product-symbol" aria-hidden="true">O</span><div><strong data-i18n="login.sample_oil">Groundnut Oil · 1 L</strong><small data-i18n="login.sample_essentials">Daily essentials</small></div><b>₹185</b></div>
-          <div class="sample-product"><span class="sample-product-symbol" aria-hidden="true">C</span><div><strong data-i18n="login.sample_coffee">Filter Coffee · 200 g</strong><small data-i18n="login.sample_beverages">Beverages</small></div><b>₹125</b></div>
-          <div class="sample-stock-note"><i data-lucide="package-search"></i><span data-i18n="login.sample_stock_note">Spot low stock before the next rush.</span></div>
-        </section>
-        <section class="sample-checkout" aria-labelledby="checkout-preview-title">
-          <div class="sample-section-heading"><h3 id="checkout-preview-title" data-i18n="login.sample_checkout">Current bill</h3><span>#DEMO-024</span></div>
-          <div class="sample-bill-line"><span data-i18n="login.sample_rice_short">Ponni Rice × 1</span><b>₹310.00</b></div>
-          <div class="sample-bill-line"><span data-i18n="login.sample_oil_short">Groundnut Oil × 1</span><b>₹185.00</b></div>
-          <div class="sample-bill-line"><span data-i18n="login.sample_tax">GST (5%)</span><b>₹24.75</b></div>
-          <div class="sample-bill-total"><span data-i18n="login.sample_total">Total</span><strong>₹519.75</strong></div>
-          <p class="sample-paid"><i data-lucide="check"></i><span data-i18n="login.sample_paid">Payment received · UPI</span></p>
-          <small class="sample-receipt" data-i18n="login.sample_receipt">A clear bill. A confident checkout.</small>
-        </section>
+      <div class="bzgrid"><svg width="0" height="0" aria-hidden="true"><defs><linearGradient id="gBlue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4DA3FF"/><stop offset="1" stop-color="#1B66E8"/></linearGradient><linearGradient id="gTeal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3FD6C0"/><stop offset="1" stop-color="#0EA897"/></linearGradient><linearGradient id="gAmber" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFD27A"/><stop offset="1" stop-color="#F59E0B"/></linearGradient><linearGradient id="gSteel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F2F6FF"/><stop offset="1" stop-color="#9FB3D9"/></linearGradient></defs></svg><article class="bz big"><div class="scene"><svg viewBox="0 0 400 220" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><circle cx="330" cy="40" r="90" fill="url(#gTeal)" opacity=".22"/><rect x="20" y="118" width="360" height="8" rx="3" fill="#1B2E57"/><rect x="20" y="196" width="360" height="8" rx="3" fill="#1B2E57"/><path d="M44 118V70q0-8 8-8h56q8 0 8 8v48z" fill="#BFE8D2"/><rect x="44" y="82" width="72" height="22" fill="#0E9F8C"/><text x="80" y="98" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">PONNI</text><text x="80" y="114" text-anchor="middle" font-size="10" font-weight="600" fill="#0B3B35">5 kg</text><rect x="132" y="76" width="34" height="42" rx="6" fill="url(#gAmber)"/><rect x="143" y="62" width="12" height="14" rx="3" fill="#F59E0B"/><rect x="142" y="56" width="14" height="7" rx="2" fill="#7A4B06"/><rect x="137" y="90" width="24" height="16" rx="2" fill="#fff" opacity=".85"/><text x="149" y="102" text-anchor="middle" font-size="8" font-weight="700" fill="#7A4B06">OIL</text><rect x="182" y="70" width="44" height="48" rx="5" fill="#F3D1A0"/><rect x="182" y="86" width="44" height="16" fill="#C98A3C"/><text x="204" y="98" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">DAL</text><rect x="232" y="80" width="40" height="38" rx="5" fill="#E8B87A"/><rect x="232" y="92" width="40" height="12" fill="#B9762A"/><rect x="290" y="66" width="46" height="52" rx="6" fill="#6B4A3A"/><rect x="290" y="82" width="46" height="18" fill="#E6CDB8"/><text x="313" y="95" text-anchor="middle" font-size="8" font-weight="700" fill="#3A2A20">COFFEE</text><rect x="348" y="72" width="22" height="46" rx="5" fill="url(#gBlue)"/><rect x="354" y="66" width="10" height="7" rx="2" fill="#F2F6FF"/><rect x="44" y="128" width="44" height="14" rx="3" fill="#F2F6FF"/><text x="66" y="138" text-anchor="middle" font-size="9" font-weight="700" fill="#0C1A36">₹310</text><rect x="132" y="128" width="40" height="14" rx="3" fill="#F2F6FF"/><text x="152" y="138" text-anchor="middle" font-size="9" font-weight="700" fill="#0C1A36">₹185</text><rect x="40" y="156" width="96" height="40" rx="6" fill="#1E6EF3" opacity=".85"/><g stroke="rgba(255,255,255,.35)"><path d="M64 156v40M88 156v40M112 156v40"/></g><circle cx="62" cy="154" r="11" fill="#F87171"/><circle cx="86" cy="151" r="12" fill="#FBBF24"/><circle cx="110" cy="154" r="11" fill="#4ADE80"/><rect x="170" y="164" width="36" height="32" rx="3" fill="#7FB0FF"/><rect x="210" y="172" width="36" height="24" rx="3" fill="#3FD6C0"/><rect x="190" y="144" width="40" height="20" rx="3" fill="#F2F6FF" opacity=".92"/><rect x="290" y="146" width="76" height="40" rx="9" fill="#F8FAFD"/><text x="328" y="170" text-anchor="middle" font-size="18" font-weight="800" fill="#0C1A36">₹310</text><text x="328" y="181" text-anchor="middle" font-size="8" fill="#5A6985">per 5 kg</text></svg><span class="vchip ref-style-11">Weighed &amp; packed</span></div><div class="bz-body"><span class="vtag">Daily retail</span><h3>Kirana &amp; supermarkets</h3><p>Rice by the bag, oil by the litre, dal by the kilo. Fast repeat bills for the customers who shop every week.</p><ul class="bz-tags"><li>Weighing scale</li><li>Barcode</li><li>Loyalty points</li></ul></div></article><article class="bz big"><div class="scene"><svg viewBox="0 0 400 220" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><circle cx="90" cy="190" r="110" fill="url(#gBlue)" opacity=".22"/><g transform="rotate(-12 100 120)"><rect x="64" y="48" width="70" height="140" rx="14" fill="#0B1B3A" stroke="#3FD6C0" stroke-width="2"/><rect x="70" y="56" width="58" height="124" rx="9" fill="url(#gTeal)"/><circle cx="82" cy="66" r="3" fill="#0B1B3A"/><rect x="78" y="140" width="42" height="6" rx="3" fill="#fff" opacity=".6"/><rect x="78" y="152" width="30" height="6" rx="3" fill="#fff" opacity=".4"/></g><g transform="rotate(12 300 120)"><rect x="266" y="48" width="70" height="140" rx="14" fill="#0B1B3A" stroke="#7FB0FF" stroke-width="2"/><rect x="272" y="56" width="58" height="124" rx="9" fill="#1B2E57"/><g fill="#7FB0FF" opacity=".8"><rect x="280" y="68" width="18" height="18" rx="5"/><rect x="304" y="68" width="18" height="18" rx="5"/><rect x="280" y="92" width="18" height="18" rx="5"/><rect x="304" y="92" width="18" height="18" rx="5"/></g></g><rect x="158" y="20" width="84" height="174" rx="17" fill="#0B1B3A" stroke="#7FB0FF" stroke-width="2"/><rect x="165" y="29" width="70" height="156" rx="11" fill="url(#gBlue)"/><rect x="190" y="33" width="20" height="5" rx="2.5" fill="#0B1B3A"/><circle cx="200" cy="74" r="16" fill="#fff" opacity=".25"/><rect x="178" y="102" width="44" height="6" rx="3" fill="#fff" opacity=".7"/><rect x="178" y="116" width="32" height="6" rx="3" fill="#fff" opacity=".45"/><rect x="176" y="140" width="48" height="24" rx="7" fill="#fff"/><text x="200" y="156" text-anchor="middle" font-size="11" font-weight="800" fill="#0C1A36">₹24,999</text></svg><span class="vchip ref-style-11">IMEI tracked</span></div><div class="bz-body"><span class="vtag">Electronics</span><h3>Mobile &amp; electronics</h3><p>Serial and IMEI numbers on every sale, with warranty details printed on the invoice.</p><ul class="bz-tags"><li>IMEI / serial</li><li>Warranty</li><li>EMI invoices</li></ul></div></article><article class="bz "><div class="scene"><svg viewBox="0 0 400 220" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><circle cx="320" cy="60" r="100" fill="url(#gAmber)" opacity=".16"/><rect x="0" y="170" width="400" height="50" fill="#0E1F42"/><ellipse cx="200" cy="172" rx="112" ry="18" fill="#C9D6EE"/><ellipse cx="200" cy="167" rx="98" ry="13" fill="#F8FAFD"/><path d="M110 166C110 90 290 90 290 166z" fill="url(#gSteel)"/><circle cx="200" cy="96" r="8" fill="#C9D6EE"/><path d="M130 150C132 118 160 102 190 100" fill="none" stroke="#fff" stroke-width="3" opacity=".7" stroke-linecap="round"/><g fill="none" stroke="rgba(255,255,255,.4)" stroke-width="3" stroke-linecap="round"><path d="M160 74c-8-10 8-16 0-26"/><path d="M200 66c-8-10 8-16 0-26"/><path d="M240 74c-8-10 8-16 0-26"/></g><g fill="#C9D6EE"><rect x="52" y="112" width="3" height="26" rx="1.5"/><rect x="58" y="112" width="3" height="26" rx="1.5"/><rect x="64" y="112" width="3" height="26" rx="1.5"/><rect x="52" y="134" width="15" height="6" rx="3"/><rect x="56" y="138" width="6" height="46" rx="3"/><path d="M342 110q18 8 12 42l-4 32h-7z"/></g><rect x="24" y="24" width="86" height="56" rx="9" fill="#F8FAFD"/><text x="34" y="40" font-size="8.5" font-weight="700" fill="#5A6985" letter-spacing="1">TABLE 4</text><text x="34" y="55" font-size="10" font-weight="600" fill="#0C1A36">Masala Dosa ×2</text><text x="34" y="71" font-size="12" font-weight="800" fill="#0E9F8C">₹180</text></svg><span class="vchip ref-style-11">Dine-in · Takeaway</span></div><div class="bz-body"><span class="vtag">Food service</span><h3>Restaurants &amp; cafés</h3><p>Table and takeaway billing with item keys your kitchen can read at a glance.</p><ul class="bz-tags"><li>Table billing</li><li>Quick keys</li></ul></div></article><article class="bz "><div class="scene"><svg viewBox="0 0 400 220" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><circle cx="80" cy="30" r="100" fill="url(#gAmber)" opacity=".2"/><rect x="20" y="190" width="360" height="8" rx="3" fill="#1B2E57"/><rect x="40" y="96" width="78" height="94" rx="12" fill="rgba(255,255,255,.1)" stroke="rgba(255,255,255,.35)"/><ellipse cx="56" cy="180" rx="9" ry="7" fill="#D9A066" stroke="#B07A3F"/><ellipse cx="74" cy="180" rx="9" ry="7" fill="#D9A066" stroke="#B07A3F"/><ellipse cx="92" cy="180" rx="9" ry="7" fill="#D9A066" stroke="#B07A3F"/><ellipse cx="108" cy="180" rx="9" ry="7" fill="#D9A066" stroke="#B07A3F"/><ellipse cx="65" cy="164" rx="9" ry="7" fill="#D9A066" stroke="#B07A3F"/><ellipse cx="83" cy="164" rx="9" ry="7" fill="#D9A066" stroke="#B07A3F"/><ellipse cx="100" cy="164" rx="9" ry="7" fill="#D9A066" stroke="#B07A3F"/><ellipse cx="74" cy="148" rx="9" ry="7" fill="#D9A066" stroke="#B07A3F"/><ellipse cx="92" cy="148" rx="9" ry="7" fill="#D9A066" stroke="#B07A3F"/><rect x="48" y="84" width="62" height="14" rx="4" fill="#F59E0B"/><rect x="134" y="96" width="78" height="94" rx="12" fill="rgba(255,255,255,.1)" stroke="rgba(255,255,255,.35)"/><ellipse cx="150" cy="180" rx="9" ry="7" fill="#F3D9A4" stroke="rgba(0,0,0,.25)"/><ellipse cx="168" cy="180" rx="9" ry="7" fill="#8BC34A" stroke="rgba(0,0,0,.25)"/><ellipse cx="186" cy="180" rx="9" ry="7" fill="#F3D9A4" stroke="rgba(0,0,0,.25)"/><ellipse cx="202" cy="180" rx="9" ry="7" fill="#F3D9A4" stroke="rgba(0,0,0,.25)"/><ellipse cx="159" cy="164" rx="9" ry="7" fill="#8BC34A" stroke="rgba(0,0,0,.25)"/><ellipse cx="177" cy="164" rx="9" ry="7" fill="#F3D9A4" stroke="rgba(0,0,0,.25)"/><ellipse cx="194" cy="164" rx="9" ry="7" fill="#F3D9A4" stroke="rgba(0,0,0,.25)"/><ellipse cx="168" cy="148" rx="9" ry="7" fill="#8BC34A" stroke="rgba(0,0,0,.25)"/><ellipse cx="186" cy="148" rx="9" ry="7" fill="#F3D9A4" stroke="rgba(0,0,0,.25)"/><rect x="142" y="84" width="62" height="14" rx="4" fill="#3FD6C0"/><rect x="232" y="152" width="130" height="38" rx="8" fill="#1B2E57"/><polygon points="256,128 272,144 256,160 240,144" fill="#F6DFA8"/><polygon points="290,128 306,144 290,160 274,144" fill="#F2B8A2"/><polygon points="324,128 340,144 324,160 308,144" fill="#BFE8D2"/><rect x="250" y="58" width="90" height="50" rx="10" fill="#F8FAFD"/><rect x="262" y="68" width="66" height="22" rx="4" fill="#0B1B3A"/><text x="295" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#3FD6C0">250 g</text><rect x="244" y="108" width="102" height="8" rx="4" fill="#C9D6EE"/></svg><span class="vchip ref-style-11">Per gram · per kilo</span></div><div class="bz-body"><span class="vtag">Specialty</span><h3>Nut, sweet &amp; snack shops</h3><p>Sell by weight with gift-pack and box pricing, straight off the scale.</p><ul class="bz-tags"><li>Weight billing</li><li>Gift packs</li></ul></div></article><article class="bz "><div class="scene"><svg viewBox="0 0 400 220" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><circle cx="320" cy="170" r="110" fill="url(#gTeal)" opacity=".2"/><rect x="110" y="82" width="180" height="108" fill="#14233F" stroke="rgba(255,255,255,.25)"/><rect x="100" y="56" width="25" height="26" fill="#1E6EF3"/><circle cx="112.5" cy="82" r="12.5" fill="#1E6EF3"/><rect x="125" y="56" width="25" height="26" fill="#F2F6FF"/><circle cx="137.5" cy="82" r="12.5" fill="#F2F6FF"/><rect x="150" y="56" width="25" height="26" fill="#1E6EF3"/><circle cx="162.5" cy="82" r="12.5" fill="#1E6EF3"/><rect x="175" y="56" width="25" height="26" fill="#F2F6FF"/><circle cx="187.5" cy="82" r="12.5" fill="#F2F6FF"/><rect x="200" y="56" width="25" height="26" fill="#1E6EF3"/><circle cx="212.5" cy="82" r="12.5" fill="#1E6EF3"/><rect x="225" y="56" width="25" height="26" fill="#F2F6FF"/><circle cx="237.5" cy="82" r="12.5" fill="#F2F6FF"/><rect x="250" y="56" width="25" height="26" fill="#1E6EF3"/><circle cx="262.5" cy="82" r="12.5" fill="#1E6EF3"/><rect x="275" y="56" width="25" height="26" fill="#F2F6FF"/><circle cx="287.5" cy="82" r="12.5" fill="#F2F6FF"/><rect x="124" y="104" width="48" height="50" rx="3" fill="url(#gTeal)" opacity=".55"/><rect x="228" y="104" width="48" height="50" rx="3" fill="url(#gBlue)" opacity=".6"/><rect x="185" y="122" width="30" height="68" rx="3" fill="#0B1B3A"/><circle cx="208" cy="158" r="2" fill="#FBBF24"/><rect x="150" y="22" width="100" height="26" rx="7" fill="#F8FAFD"/><text x="200" y="39" text-anchor="middle" font-size="11" font-weight="800" fill="#0C1A36" letter-spacing="1">YOUR SHOP</text><circle cx="342" cy="104" r="22" fill="url(#gTeal)"/><path d="M342 94v20M332 104h20" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/></svg><span class="vchip ref-style-11">Built around you</span></div><div class="bz-body"><span class="vtag">Anything else</span><h3>Your kind of store</h3><p>Tell us how your counter works and we shape the billing screen to match.</p><ul class="bz-tags"><li>Custom workflow</li><li>Branches</li></ul></div></article></div>
+    </div>
+  </section>
+
+  <section id="signin">
+    <div class="wrap access">
+      <div class="access-copy" id="contact">
+        <span class="eyebrow">Get started</span>
+        <h2>Need a POS tailored to your store?</h2>
+        <p>We build POS workflows for restaurants, nut shops and other businesses across Tamil Nadu. Share how your counter works and we will set it up.</p>
+        <div class="contact">
+          <h3>Vignesh Growth Lab</h3>
+          <p>Coimbatore, Tamil Nadu</p>
+          <div class="crow"><span class="k">Email</span><span class="v" id="c-mail">vigneshgrowthlab@gmail.com</span><button class="copy" type="button" data-copy="c-mail">Copy</button></div>
+          <div class="crow"><span class="k">Call</span><span class="v" id="c-tel">+91 82200 34139</span><button class="copy" type="button" data-copy="c-tel">Copy</button></div>
+          <div class="crow"><span class="k">Web</span><a class="v" id="c-web" href="https://vigneshgrowthlab.dev" target="_blank" rel="noopener">vigneshgrowthlab.dev</a><button class="copy" type="button" data-copy="c-web">Copy</button></div>
+          <a class="btn btn-line wa" href="https://wa.me/918220034139" target="_blank" rel="noopener">Message on WhatsApp</a>
+        </div>
       </div>
-    </section>
-    <section class="login-tailored" aria-labelledby="login-tailored-title">
-      <div><p class="login-section-kicker" data-i18n="login.tailored_offer_kicker">Built around your business</p><h2 id="login-tailored-title" data-i18n="login.tailored_offer_title">Your store. Your way of working.</h2><p data-i18n="login.tailored_offer_body">Restaurants, nut shops and specialty retailers: talk to us about a POS tailored to your workflow.</p></div>
-      <a class="login-tailored-link" href="#login-contact-title"><span data-i18n="login.tailored_offer_cta">Let’s talk about your store</span><i data-lucide="arrow-up-right"></i></a>
-    </section>
-    <p class="login-value-note"><i data-lucide="check"></i><span data-i18n="login.value_note">Built for Indian retail · English & Tamil · GST reporting</span></p>
-  </aside>
-{% endblock %}
-{% block scripts %}
-  {% set bundle = vite_entry('js/login.js') %}
-  {% for stylesheet in bundle.styles %}<link rel="stylesheet" href="{{ stylesheet }}">{% endfor %}
-  <script type="module" src="{{ bundle.script }}" defer></script>
-{% endblock %}
+
+      <div class="card">
+        <span class="logo-plate sm"><img src="{{ url_for('static', filename='icons/vgl-login-logo.png') }}" alt="Vignesh Growth Lab" width="71" height="34"></span>
+        <div class="demo-card">
+          <span class="eyebrow">Interactive demo</span>
+          <h3>See VGL POS in action</h3>
+          <p>Try a real checkout with sample data. No account needed.</p>
+          <a class="btn btn-primary" href="#demo">Explore the demo</a>
+        </div>
+        <div class="divider" data-i18n="signin_h">Store team sign in</div>
+        <form id="form" novalidate>
+          <div class="row2">
+            <label for="company"><span data-i18n="f_company">Company code</span><input id="company" autocomplete="organization" required></label>
+            <label for="user"><span data-i18n="f_user">Username</span><input id="user" autocomplete="username" required></label>
+          </div>
+          <label for="pass"><span data-i18n="f_pass">Password</span>
+            <span class="pw"><input id="pass" type="password" autocomplete="current-password" required><button type="button" id="toggle" aria-label="Show password">Show</button></span>
+          </label>
+          <div class="row2">
+            <label for="branch"><span><span data-i18n="f_branch">Branch ID</span> <small>(optional)</small></span><input id="branch"></label>
+            <label for="terminal"><span><span data-i18n="f_term">Terminal ID</span> <small>(optional)</small></span><input id="terminal"></label>
+          </div>
+          <button class="btn btn-primary submit" type="submit"><span data-i18n="btn_signin">Sign in</span> →</button>
+          <p class="status" id="status" role="status"></p>
+        </form>
+        <div class="secure"><span>Encrypted, tenant-isolated session</span><span>English · தமிழ்</span></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span class="logo-plate sm"><img src="{{ url_for('static', filename='icons/vgl-login-logo.png') }}" alt="Vignesh Growth Lab" width="71" height="34"></span>
+    <span>© Vignesh Growth Lab · MSME registered · Coimbatore, Tamil Nadu</span>
+    <span><a href="https://vigneshgrowthlab.dev" target="_blank" rel="noopener">vigneshgrowthlab.dev</a> · Built for Indian retail · English &amp; Tamil · GST reporting</span>
+  </div>
+</footer>
+
+<script src="{{ url_for('static', filename='login-reference.js') }}" defer></script>
+
+<script type="module" src="{{ vite_entry('js/login.js').script }}"></script>
+</body></html>

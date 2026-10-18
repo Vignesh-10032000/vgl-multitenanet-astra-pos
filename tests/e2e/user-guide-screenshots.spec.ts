@@ -7,14 +7,14 @@ const imageDir = resolve("docs/images");
 
 async function signIn(page) {
   await page.goto("/login");
-  await page.locator('[name="company_code"]').fill("E2E");
-  await page.locator('[name="username"]').fill("cashier");
-  await page.locator('[name="password"]').fill("Browser-test-password-42!");
-  await page.locator('[name="branch_id"]').fill("1");
-  await page.locator('[name="terminal_id"]').fill("1");
+  await page.locator("#company").fill("E2E");
+  await page.locator("#user").fill("cashier");
+  await page.locator("#pass").fill("Browser-test-password-42!");
+  await page.locator("#branch").fill("1");
+  await page.locator("#terminal").fill("1");
   await Promise.all([
     page.waitForURL("**/pos"),
-    page.locator("#login-form").getByRole("button", { name: /sign in/i }).click(),
+    page.locator("#form").getByRole("button", { name: /sign in/i }).click(),
   ]);
   await expect(page.locator("#pos-product-grid")).toHaveAttribute("aria-busy", "false");
   await page.waitForFunction(() => (

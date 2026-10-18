@@ -152,9 +152,9 @@ def _register_security_headers(app: Flask) -> None:
     csp = (
         "default-src 'self'; "
         "script-src 'self'; "
-        "style-src 'self'; "
+        "style-src 'self' https://fonts.googleapis.com; "
         "img-src 'self' data:; "
-        "font-src 'self'; "
+        "font-src 'self' https://fonts.gstatic.com; "
         "connect-src 'self'; "
         "object-src 'none'; "
         "base-uri 'self'; "

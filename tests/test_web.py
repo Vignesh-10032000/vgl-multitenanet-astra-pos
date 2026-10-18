@@ -68,34 +68,15 @@ def test_login_page_uses_vgl_branding_and_demo_entry(web_app: Flask) -> None:
     response = web_app.test_client().get("/login")
     source = response.get_data(as_text=True)
 
-    assert 'src="/static/icons/vgl-logo.png"' in source
-    assert 'id="demo-login"' in source
+    assert 'src="/static/icons/vgl-login-logo.png"' in source
+    assert 'href="#demo"' in source
+    assert 'id="form"' in source
+    assert 'href="/static/login-reference.css"' in source
+    assert 'src="/static/login-reference.js"' in source
     assert "Vignesh Growth Lab" in source
-    assert 'href="mailto:vigneshgrowthlab@gmail.com"' in source
+    assert "vigneshgrowthlab@gmail.com" in source
     assert 'href="https://wa.me/918220034139"' in source
-    assert 'href="tel:+918220034139"' in source
-
-
-@pytest.mark.parametrize(
-    ("url", "visible"),
-    [
-        ("https://example.com/", True),
-        ("", False),
-        ("javascript:alert(1)", False),
-        ("https://[invalid", False),
-    ],
-)
-def test_login_official_website_requires_a_valid_https_url(
-    web_app: Flask, url: str, visible: bool
-) -> None:
-    """Only a configured HTTPS site can appear as the public website link."""
-    original = web_app.config["OFFICIAL_WEBSITE_URL"]
-    try:
-        web_app.config["OFFICIAL_WEBSITE_URL"] = url
-        source = web_app.test_client().get("/login").get_data(as_text=True)
-        assert ('href="https://example.com/"' in source) is visible
-    finally:
-        web_app.config["OFFICIAL_WEBSITE_URL"] = original
+    assert "+91 82200 34139" in source
 
 
 def test_locale_catalogues_have_matching_keys() -> None:
