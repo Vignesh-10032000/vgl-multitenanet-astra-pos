@@ -3,6 +3,7 @@ import { getSession, saveSession } from "./session.js";
 const form = document.querySelector("#form");
 const status = document.querySelector("#status");
 const submit = form.querySelector('[type="submit"]');
+const demoButton = document.querySelector("#demo-login");
 
 function redirectAfterLogin(user = {}) {
   const next = new URLSearchParams(location.search).get("next");
@@ -18,6 +19,49 @@ function showError(message) {
   status.classList.add("err");
   status.textContent = message;
 }
+
+demoButton.addEventListener("click", async (event) => {
+  event.preventDefault();
+  if (demoButton.getAttribute("aria-busy") === "true" || form.getAttribute("aria-busy") === "true") return;
+  status.classList.remove("err");
+  status.textContent = "";
+  demoButton.setAttribute("aria-busy", "true");
+  demoButton.setAttribute("aria-disabled", "true");
+  submit.disabled = true;
+  try {
+    const response = await fetch("/api/v1/auth/demo-login", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "Idempotency-Key": crypto.randomUUID(),
+      },
+      body: "{}",
+      signal: AbortSignal.timeout(20000),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.access_token || !result.refresh_token || !result.user) {
+      const error = new Error("Unable to open the demo. Please try again.");
+      error.status = response.status;
+      error.requestId = result.request_id || response.headers.get("X-Request-Id");
+      throw error;
+    }
+    saveSession(result);
+    location.replace("/pos");
+  } catch (error) {
+    showError(error.status === 404 ? "The demo is not enabled on this server."
+      : error.status === 429 ? "Too many demo requests. Please wait and try again."
+        : error.status >= 500 ? "The demo is temporarily unavailable. Please try again."
+          : error.name === "TimeoutError" || error.name === "TypeError"
+            ? "Unable to connect. Check your connection and try again."
+            : error.message);
+    if (error.requestId) status.append(` Support reference: ${error.requestId}`);
+  } finally {
+    demoButton.setAttribute("aria-busy", "false");
+    demoButton.removeAttribute("aria-disabled");
+    submit.disabled = false;
+  }
+});
 
 function optionalId(id) {
   const input = document.getElementById(id);
@@ -61,7 +105,7 @@ function showMfaField() {
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (form.getAttribute("aria-busy") === "true") return;
+  if (form.getAttribute("aria-busy") === "true" || demoButton.getAttribute("aria-busy") === "true") return;
   status.classList.remove("err");
   status.textContent = "";
 

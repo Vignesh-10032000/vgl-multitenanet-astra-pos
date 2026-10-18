@@ -61,3 +61,49 @@ test("real sign-in stores the session and follows a safe destination", async ({ 
   await expect(page.getByRole("heading", { name: "Reports", exact: true })).toBeVisible();
   expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem("vglpos.session")!).user.full_name)).toBe("Browser Cashier");
 });
+
+test("Explore the demo signs into a populated POS workspace", async ({ page }) => {
+  await page.goto("/login?next=%2F#signin");
+  await Promise.all([
+    page.waitForURL("**/pos"),
+    page.locator("#demo-login").click(),
+  ]);
+  await expect(page.locator("#pos-product-grid")).toHaveAttribute("aria-busy", "false");
+  await expect(page.locator("#pos-product-grid button")).toHaveCount(8);
+  expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem("vglpos.session")!).user.full_name)).toBe("VGL Demo Explorer");
+});
+
+test("demo failure stays at sign-in, blocks duplicate requests and allows retry", async ({ page }) => {
+  let requests = 0;
+  let releaseFailure!: () => void;
+  const failureGate = new Promise<void>((resolve) => { releaseFailure = resolve; });
+  await page.route("**/api/v1/auth/demo-login", async (route) => {
+    requests += 1;
+    await failureGate;
+    await route.fulfill({
+      status: 503,
+      contentType: "application/problem+json",
+      body: JSON.stringify({ detail: "Dependency unavailable", request_id: "demo-retry-123" }),
+    });
+  });
+  await page.goto("/login#signin");
+  try {
+    await page.locator("#demo-login").click();
+    await expect(page.locator("#demo-login")).toHaveAttribute("aria-busy", "true");
+    await page.locator("#demo-login").dispatchEvent("click");
+    await expect.poll(() => requests).toBe(1);
+  } finally {
+    releaseFailure();
+  }
+  await expect(page.locator("#status")).toContainText("The demo is temporarily unavailable");
+  await expect(page.locator("#status")).toContainText("demo-retry-123");
+  await expect(page.locator("#demo-login")).toHaveAttribute("aria-busy", "false");
+  expect(new URL(page.url()).hash).toBe("#signin");
+  expect(await page.evaluate(() => sessionStorage.getItem("vglpos.session"))).toBeNull();
+
+  await page.unroute("**/api/v1/auth/demo-login");
+  await Promise.all([
+    page.waitForURL("**/pos"),
+    page.locator("#demo-login").click(),
+  ]);
+});

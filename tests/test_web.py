@@ -70,6 +70,7 @@ def test_login_page_uses_vgl_branding_and_demo_entry(web_app: Flask) -> None:
 
     assert 'src="/static/icons/vgl-login-logo.png"' in source
     assert 'href="#demo"' in source
+    assert 'id="demo-login"' in source
     assert 'id="form"' in source
     assert 'href="/static/login-reference.css"' in source
     assert 'src="/static/login-reference.js"' in source

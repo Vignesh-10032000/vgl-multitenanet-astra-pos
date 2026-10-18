@@ -20,8 +20,10 @@ for waiting submissions, issues requiring attention and invoice mismatches.
 
 The public login page uses the supplied VGL POS design, including its logo,
 interactive sample checkout, feature illustrations, business sections and contact
-details. The demo runs on sample data in the page. The credential form connects to
-the existing authentication API and stores the normal browser session.
+details. The hero counter runs on sample data in the page. **Explore the demo**
+signs into the isolated, populated POS workspace through the demo authentication
+API and opens billing. The credential form uses the existing authentication API
+and stores the normal browser session.
 
 The supplied English/Tamil toggle, password control and responsive layout are
 preserved. Styles and scripts are served as local assets so the page works with
