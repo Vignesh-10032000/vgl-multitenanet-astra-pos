@@ -16,19 +16,17 @@ are shown; stock value represents current stock rather than the sales date range
 Chart labels have reserved space above the bars. Compliance summaries use plain labels
 for waiting submissions, issues requiring attention and invoice mismatches.
 
-## Login feature copy
+## Supplied login design
 
-The login overview groups implemented capabilities into stock visibility, customer
-records and balances, sales insights, GST records, shift closing, branded receipts,
-and account access. Checkout chips show scan/quick keys, hold/recall, split tender,
-the offline bill queue, keyboard shortcuts and weighed goods. The same overview
-is available below sign-in on mobile, in English and Tamil.
+The public login page uses the supplied VGL POS design, including its logo,
+interactive sample checkout, feature illustrations, business sections and contact
+details. The demo runs on sample data in the page. The credential form connects to
+the existing authentication API and stores the normal browser session.
 
-Claims were checked against the dashboard read model, customer list, reports/GSTR-1
-export, POS shift dialogs, receipt settings and security settings. Purchase and
-inventory-depth APIs are not advertised as completed browser screens. Industry
-customization is offered as a conversation, without implying restaurant-specific
-workflows are already included. Sample revenue remains explicitly illustrative.
+The supplied English/Tamil toggle, password control and responsive layout are
+preserved. Styles and scripts are served as local assets so the page works with
+the application's policy against executable inline scripts. Google Fonts supplies
+the fonts requested by the original design.
 
 ## Store logo upload
 
@@ -40,12 +38,13 @@ company and appear on receipts, including cached offline receipts after referenc
 
 ## Team and security
 
-The login page offers **Staff / Cashier**, **Admin**, and **Super Admin** options.
-Staff opens billing; administrator options open the dashboard, unless a safe local
-destination was requested. Administrators can also use the staff entry for checkout.
-The server verifies administrator selections against current company and branch roles
-before issuing tokens. Selecting a role never adds permissions. Existing Owners can
-use both administrator options. Existing API clients may omit the selection.
+The supplied sign-in form uses company code, username and password, with optional
+branch and terminal IDs. Access follows the account's assigned server permissions.
+Admin and Super Admin accounts open the dashboard; cashier accounts open billing,
+unless a safe local destination was requested. MFA entry appears when required.
+API clients may still specify a login role, which the server checks against current
+company and branch assignments before issuing tokens. A requested role never adds
+permissions. Existing Owners retain their company administration access.
 
 Use **Settings → Team & access** from an authorized account to manage these roles.
 

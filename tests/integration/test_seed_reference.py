@@ -101,7 +101,7 @@ def test_seed_reference_is_complete_and_idempotent(
     first = runner.invoke(args=["seed-reference", "--company-id", str(company_id)])
     assert first.exit_code == 0, first.output
     assert "37 state codes available" in first.output
-    assert "42 permissions, 6 roles, and 9 GST rates inserted" in first.output
+    assert "42 permissions, 8 roles, and 9 GST rates inserted" in first.output
 
     second = runner.invoke(args=["seed-reference", "--company-id", str(company_id)])
     assert second.exit_code == 0, second.output
@@ -117,7 +117,7 @@ def test_seed_reference_is_complete_and_idempotent(
             "97",
         }
         assert session.scalar(select(func.count()).select_from(Permission)) == 42
-        assert session.scalar(select(func.count()).select_from(Role)) == 6
+        assert session.scalar(select(func.count()).select_from(Role)) == 8
         assert session.scalar(select(func.count()).select_from(TaxRate)) == 9
         assert set(session.scalars(select(Permission.code))) == EXPECTED_PERMISSION_CODES
         role_permissions = {
@@ -131,6 +131,8 @@ def test_seed_reference_is_complete_and_idempotent(
             for role in session.scalars(select(Role))
         }
         assert role_permissions["OWNER"] == EXPECTED_PERMISSION_CODES
+        assert role_permissions["ADMIN"] == EXPECTED_PERMISSION_CODES
+        assert role_permissions["SUPER_ADMIN"] == EXPECTED_PERMISSION_CODES
         assert role_permissions["MANAGER"] == EXPECTED_PERMISSION_CODES - {
             "user.manage",
             "settings.manage",

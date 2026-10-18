@@ -1,15 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
-test("public login shows the configured business site and the expanded billing story", async ({ page }) => {
-  test.skip(!process.env.VGLPOS_TEST_OFFICIAL_WEBSITE_URL, "The business website is configured per deployment");
+test("public login preserves the supplied business site and billing story", async ({ page }) => {
   await page.goto("/login");
-  await expect(page.getByRole("link", { name: "Visit our official website" })).toHaveAttribute(
-    "href", process.env.VGLPOS_TEST_OFFICIAL_WEBSITE_URL!,
-  );
-  await expect(page.getByRole("link", { name: "Visit our official website" })).toHaveAttribute("target", "_blank");
-  await expect(page.getByText("Keyboard shortcuts")).toBeVisible();
-  await expect(page.getByText("Weighed goods")).toBeVisible();
+  await expect(page.locator("#c-web")).toHaveAttribute("href", "https://vigneshgrowthlab.dev");
+  await expect(page.locator("#c-web")).toHaveAttribute("target", "_blank");
+  await expect(page.getByRole("heading", { name: "Fast billing", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "One company, many tills", exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.screenshot({ path: "test-results/brand-login-desktop.png", fullPage: true });

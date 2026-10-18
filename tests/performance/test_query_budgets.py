@@ -51,13 +51,16 @@ def test_weighted_inventory_valuation_is_one_set_query(
     auth_headers: dict[str, str],
     assert_max_queries: QueryBudget,
 ) -> None:
-    with assert_max_queries(1) as statements:
+    # One current-session check and one set query for the inventory data.
+    with assert_max_queries(2) as statements:
         response = api_client.get(
             "/api/v1/reports/inventory-valuation?method=WEIGHTED_AVERAGE",
             headers=auth_headers,
         )
     assert response.status_code == 200
-    assert len(statements) == 1
+    assert len(statements) == 2
+    assert sum("users.session_version" in statement for statement in statements) == 1
+    assert sum("FROM products" in statement for statement in statements) == 1
 
 
 def test_barcode_lookup_is_exactly_one_query(
@@ -73,13 +76,16 @@ def test_barcode_lookup_is_exactly_one_query(
         assert product is not None
         product.barcode = barcode
         session.commit()
-    with assert_max_queries(1) as statements:
+    # One current-session check and one indexed product lookup.
+    with assert_max_queries(2) as statements:
         response = api_client.get(
             f"/api/v1/products/lookup?barcode={barcode}",
             headers=auth_headers,
         )
     assert response.status_code == 200
-    assert len(statements) == 1
+    assert len(statements) == 2
+    assert sum("users.session_version" in statement for statement in statements) == 1
+    assert sum("FROM products" in statement for statement in statements) == 1
 
 
 def test_collection_dto_serialization_never_lazy_loads(
