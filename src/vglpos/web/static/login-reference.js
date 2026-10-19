@@ -1,4 +1,3 @@
-
 (function () {
   var fmt = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   var inr = function (n) { return '₹' + fmt.format(n); };
@@ -103,7 +102,7 @@
   /* English / Tamil */
   var T = {
     en: {
-      nav_features: 'Features', nav_demo: 'Live demo', nav_contact: 'Contact', nav_signin: 'Sign in',
+      nav_features: 'Features', nav_dash: 'Dashboard', nav_access: 'Team access', nav_contact: 'Contact', nav_signin: 'Sign in',
       pill: 'Built for Indian retail',
       h1: 'Run the whole store from <em>one fast counter.</em>',
       lede: 'VGL POS brings billing, stock, customers and GST reports into a single workspace, built for Indian retail and ready in English and Tamil.',
@@ -113,7 +112,7 @@
       f_branch: 'Branch ID', f_term: 'Terminal ID', btn_signin: 'Sign in', lang: 'தமிழ்'
     },
     ta: {
-      nav_features: 'அம்சங்கள்', nav_demo: 'நேரடி டெமோ', nav_contact: 'தொடர்புக்கு', nav_signin: 'உள்நுழை',
+      nav_features: 'அம்சங்கள்', nav_dash: 'டாஷ்போர்டு', nav_access: 'குழு அணுகல்', nav_contact: 'தொடர்புக்கு', nav_signin: 'உள்நுழை',
       pill: 'இந்திய சில்லறை வணிகத்திற்காக',
       h1: 'ஒரே கவுண்டரில் <em>முழு கடையையும் நிர்வகியுங்கள்.</em>',
       lede: 'பில்லிங், ஸ்டாக், வாடிக்கையாளர்கள், GST அறிக்கைகள் அனைத்தும் ஒரே இடத்தில். இந்திய சில்லறை வணிகத்திற்காக தமிழிலும் ஆங்கிலத்திலும்.',

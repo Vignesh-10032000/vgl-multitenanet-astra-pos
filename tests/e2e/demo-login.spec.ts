@@ -9,6 +9,10 @@ test("supplied login design renders and the counter demo works", async ({ page }
   await expect(page.locator(".hero h1")).toContainText("Run the whole store from one fast counter.");
   await expect(page.locator('img[src="/static/icons/vgl-login-logo.png"]')).toHaveCount(3);
   await expect(page.locator("#prods .prod")).toHaveCount(6);
+  await expect(page.locator("#access .rlist .rr")).toHaveCount(7);
+  await expect(page.locator("#dashboard .app")).toHaveAttribute("aria-label", "VGL POS dashboard preview with sample data");
+  await expect(page.locator("#dashboard .mods .mod")).toHaveCount(9);
+  await expect(page.locator('footer nav[aria-label="Product"] a[href="#access"]')).toBeVisible();
   await expect(page.locator("#total")).toContainText("₹519.75");
   await page.locator('[data-add="rice"]').click();
   await expect(page.locator("#total")).toContainText("₹845.25");
