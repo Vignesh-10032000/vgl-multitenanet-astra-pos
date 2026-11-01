@@ -11,7 +11,7 @@ COPY src/vglpos/web/static/src ./src/vglpos/web/static/src
 RUN npm run build
 
 # ---------- build stage ----------
-FROM python:3.12-slim AS builder
+FROM python:3.15-slim AS builder
 COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /uvx /bin/
 
 ENV UV_COMPILE_BYTECODE=1 \
@@ -32,7 +32,7 @@ COPY migrations ./migrations
 RUN uv sync --frozen --no-dev
 
 # ---------- runtime stage ----------
-FROM python:3.12-slim AS runtime
+FROM python:3.15-slim AS runtime
 
 RUN groupadd --system vglpos && useradd --system --gid vglpos --create-home vglpos \
     && mkdir -p /tmp/prometheus-multiproc \
