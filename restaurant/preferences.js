@@ -5,6 +5,14 @@ import { uiLabels } from "./labels.js";
 import { refreshIcons } from "../src/vglpos/web/static/src/js/ui.js";
 
 const words = {
+  billBreakdown: ["Bill breakdown", "பில் விவரம்"],
+  clearCartTitle: ["Clear this cart?", "இந்தக் கூடையை காலி செய்யவா?"],
+  clearCartHelp: ["Remove all items from the current bill?", "தற்போதைய பில்லிலுள்ள எல்லாப் பொருட்களையும் நீக்கவா?"],
+  keepCart: ["Keep items", "பொருட்களை வைத்திரு"],
+  clearItems: ["Clear items", "பொருட்களை நீக்கு"],
+  receiptTax: ["Receipt: Tax invoice", "ரசீது: வரி ரசீது"],
+  receiptSupply: ["Receipt: Bill of Supply", "ரசீது: வழங்கல் ரசீது"],
+  receiptTraining: ["Receipt: Training — review setup", "ரசீது: பயிற்சி — அமைப்பைச் சரிபார்"],
   showPassword: ["Show password", "கடவுச்சொல்லைக் காட்டு"],
   hidePassword: ["Hide password", "கடவுச்சொல்லை மறை"],
   signingIn: ["Signing in…", "உள்நுழைகிறது…"],

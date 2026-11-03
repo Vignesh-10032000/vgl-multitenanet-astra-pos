@@ -150,12 +150,16 @@ async function loadReference() {
       .join("");
   $("#pos-customer").value = selected;
   await renderRestaurantIdentity();
-  $("#mode-label").textContent =
+  const receiptKey =
     settings.receipt_mode === "training"
-      ? "Training — review setup"
+      ? "receiptTraining"
       : settings.receipt_mode === "bill_of_supply"
-        ? "Bill of Supply"
-        : "Tax invoice";
+        ? "receiptSupply"
+        : "receiptTax";
+  $("#mode-label").dataset.i18n = `restaurant.${receiptKey}`;
+  $("#mode-label").textContent = workspaceText(receiptKey);
+  $("#mode-label").setAttribute("role", "status");
+  $(".side-nav .brand").title = settings.name;
   if (billingReady) await refreshBilling();
   if (backups && !accessUI?.locked()) await backupNow();
 }

@@ -10,7 +10,7 @@ test("GSTIN and included CGST 2.5 / SGST 2.5 appear in billing, saved receipt an
   page,
 }) => {
   await ready(page);
-  await expect(page.locator("#mode-label")).toHaveText("Tax invoice");
+  await expect(page.locator("#mode-label")).toHaveText("Receipt: Tax invoice");
   await page.locator('[data-nav="settings"]').click();
   await expect(page.locator('#settings-form [name="gstin"]')).toHaveValue(
     "33BPFPD3960P2ZN",

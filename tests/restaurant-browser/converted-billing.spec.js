@@ -42,7 +42,7 @@ test("BILL-UNDO-02 undo merges with a reselected portion instead of creating dup
   await page.locator('[data-product-id="menu-001"]').click();
   await page.locator(".toast").getByRole("button", { name: "Undo" }).click();
   await expect(page.locator("#cart-count")).toHaveText("1");
-  await expect(page.locator('[data-quantity-input="menu-001"]')).toHaveValue("2.000");
+  await expect(page.locator('[data-quantity-input="menu-001"]')).toHaveValue("2");
   await expect(page.locator("#total-net")).toHaveText("₹340.00");
   await page.locator("#pay-button").click();
   await page.locator("#complete-sale").click();

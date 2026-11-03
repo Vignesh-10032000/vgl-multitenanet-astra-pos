@@ -6,6 +6,7 @@ import { initializePreferences, workspaceText, translateWorkspace } from "./pref
 import { registerIcons } from "../src/vglpos/web/static/src/js/ui.js";
 import { workspaceIcons } from "./workspace-icons.js";
 import { posIcons } from "../src/vglpos/web/static/src/js/pos-icons.js";
+import { initializePasswordToggle } from "./access-ui.js";
 
 const form = document.querySelector("#access-form");
 let ready = false, queued = false;
@@ -27,6 +28,7 @@ async function boot() {
   await initializePreferences(async () => {
     document.dispatchEvent(new Event("restaurant:language-changed"));
   });
+  initializePasswordToggle();
   translateWorkspace();
   await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   window.restaurantStartupMark?.("login-first-paint");

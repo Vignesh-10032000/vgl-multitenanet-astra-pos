@@ -112,6 +112,10 @@ stylesheet in bundle.styles %}<link
           aria-label="Bill discount"
       /></span>
     </div>
+    <p id="cart-error" class="form-error" role="alert"></p>
+    <div class="cart-checkout">
+    <details id="bill-breakdown" class="bill-breakdown">
+      <summary data-i18n="restaurant.billBreakdown">Bill breakdown</summary>
     <dl class="cart-totals" aria-live="polite">
       <div>
         <dt data-i18n="pos.gross">Gross</dt>
@@ -139,12 +143,14 @@ stylesheet in bundle.styles %}<link
         <dt data-i18n="pos.round_off">Round off</dt>
         <dd id="total-round">₹0.00</dd>
       </div>
+    </dl>
+    </details>
+    <dl class="cart-totals cart-total-visible" aria-live="polite">
       <div class="cart-grand-total">
         <dt data-i18n="pos.total">Total</dt>
         <dd id="total-net">₹0.00</dd>
       </div>
     </dl>
-    <p id="cart-error" class="form-error" role="alert"></p>
     <button
       class="button button-primary pay-now"
       type="button"
@@ -154,8 +160,18 @@ stylesheet in bundle.styles %}<link
       <i data-lucide="credit-card"></i><span data-i18n="pos.pay">Pay</span>
     </button>
     <span id="draft-status" class="draft-status" role="status"></span>
+    </div>
   </aside>
 </div>
+
+<dialog id="clear-cart-dialog" class="dialog" aria-labelledby="clear-cart-title">
+  <div class="dialog-header"><h2 id="clear-cart-title" data-i18n="restaurant.clearCartTitle">Clear this cart?</h2></div>
+  <p class="panel-note" data-i18n="restaurant.clearCartHelp">Remove all items from the current bill?</p>
+  <div class="dialog-actions">
+    <button type="button" class="button button-secondary" data-dialog-close data-i18n="restaurant.keepCart">Keep items</button>
+    <button type="button" id="confirm-clear-cart" class="button button-primary" data-i18n="restaurant.clearItems">Clear items</button>
+  </div>
+</dialog>
 
 <dialog
   id="payment-dialog"

@@ -59,7 +59,7 @@ test("COUNTER-PERF-01 taps render once, rapid quantities persist through checkou
   await page.evaluate(() => {
     for (let index = 0; index < 19; index++) document.querySelector('.product-tile[data-product-id="menu-001"]').click();
   });
-  await expect(page.locator('[data-quantity-input="menu-001"]')).toHaveValue("20.000");
+  await expect(page.locator('[data-quantity-input="menu-001"]')).toHaveValue("20");
   await expect(page.locator("#total-net")).toHaveText("₹3,570.00");
   await page.locator("#pay-button").click(); await page.locator("#complete-sale").click();
   await expect(page.locator("#receipt-preview .net")).toHaveText("TOTAL₹3570.00");

@@ -21,7 +21,7 @@ test("VGL-BRAND-UI-01 identical local logo and slogan stay subtle, fit screens a
   try {
     await expect(page.locator("#access-brand-name")).toHaveText("Arafah Briyani Restaurant");
     await expect(page.locator("#access-brand-logo img")).toBeVisible();
-    await expect(page.locator("#access-submit")).toBeDisabled();
+    await expect(page.locator("#access-submit")).toBeEnabled();
     await page.locator("#access-brand-logo img").evaluate(image => image.decode());
     await page.screenshot({ path: resolve(output, "startup-restaurant-identity.png") });
   } finally { releasePhotos(); }

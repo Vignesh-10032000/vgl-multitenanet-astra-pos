@@ -1,22 +1,11 @@
 import { OwnerAccess } from "./access.js";
 import { workspaceText } from "./preferences.js";
 
-export async function createAccessUI({
-  ledger,
-  unlocked,
-  recover,
-  backedUp,
-  beforeRecovery,
-  reload,
-}) {
-  const access = new OwnerAccess(ledger);
-  const screen = document.querySelector("#access-screen"),
-    form = document.querySelector("#access-form");
-  let recovery = null,
-    busy = false;
-  let firstShow = true;
-  let submitKey = "signIn";
-  const password = form.elements.password;
+let refreshPasswordToggle;
+/** This presentation control must work even while SQLite is opening. */
+export function initializePasswordToggle() {
+  if (refreshPasswordToggle) return refreshPasswordToggle;
+  const password = document.querySelector("#access-password");
   const toggle = document.querySelector("#access-password-toggle");
   function updateToggle() {
     const visible = password.type === "text";
@@ -35,6 +24,27 @@ export async function createAccessUI({
   });
   document.addEventListener("restaurant:language-changed", updateToggle);
   updateToggle();
+  refreshPasswordToggle = updateToggle;
+  return updateToggle;
+}
+
+export async function createAccessUI({
+  ledger,
+  unlocked,
+  recover,
+  backedUp,
+  beforeRecovery,
+  reload,
+}) {
+  const access = new OwnerAccess(ledger);
+  const screen = document.querySelector("#access-screen"),
+    form = document.querySelector("#access-form");
+  let recovery = null,
+    busy = false;
+  let firstShow = true;
+  let submitKey = "signIn";
+  const password = form.elements.password;
+  const updateToggle = initializePasswordToggle();
   function text(selector, key) {
     const element = document.querySelector(selector);
     element.dataset.i18n = `restaurant.${key}`;
@@ -61,9 +71,9 @@ export async function createAccessUI({
       form.elements.username.value = "";
       form.elements.password.value = "";
       form.elements.confirm.value = "";
+      password.type = "password";
     }
     firstShow = false;
-    password.type = "password";
     updateToggle();
     submitKey = account ? recovery ? "signInRecover" : "signIn" : "createAccount";
     text("#access-submit", submitKey);

@@ -5,6 +5,8 @@ export async function unlockFixture(page) {
       document.body.dataset.locked === "false" ||
       !document.querySelector("#access-form").hidden,
   );
+  // The shell now paints before DB readiness; wait until setup vs login is known.
+  await page.waitForFunction(() => document.body.dataset.locked === "false" || !document.querySelector("#access-submit").disabled);
   if (await page.locator("#access-screen").isVisible()) {
     await page.locator("#access-username").fill("test-owner");
     await page.locator("#access-password").fill("Fixture-only-owner-482!");

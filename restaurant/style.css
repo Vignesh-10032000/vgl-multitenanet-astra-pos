@@ -1010,7 +1010,7 @@ body[data-page="dashboard"] .table-panel th {
 @media (min-width: 900px) and (max-height: 850px) {
   .cart-totals {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     column-gap: 12px;
   }
   .cart-totals > div {
@@ -1040,6 +1040,43 @@ body[data-page="dashboard"] .table-panel th {
   .product-visual img {
     height: 76px;
   }
+}
+
+/* Keep the original cart, with a compact, always available checkout footer. */
+.cart-panel { grid-template-rows: auto auto minmax(0, 1fr) auto auto auto; }
+.cart-checkout { min-width: 0; background: var(--surface); border-top: 1px solid var(--line); }
+.cart-checkout .cart-totals { grid-template-columns: minmax(0, 1fr); }
+.bill-breakdown { max-height: min(35vh, 260px); max-height: min(35dvh, 260px); overflow-y: auto; }
+.bill-breakdown summary { min-height: 44px; padding: 12px; cursor: pointer; font-size: 13px; color: var(--primary); font-weight: 600; }
+.bill-breakdown summary:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+.cart-total-visible { border-top: 0; }
+.cart-total-visible .cart-grand-total { margin: 0; padding-top: 0; border-top: 0; }
+.cart-checkout .pay-now { width: calc(100% - 20px); margin: 6px 10px; }
+#clear-cart-dialog .dialog-actions { display: flex; gap: 12px; padding: 20px; }
+#clear-cart-dialog .dialog-actions button { min-height: 48px; flex: 1; white-space: normal; }
+.mode-label { background: var(--surface-subtle); color: var(--ink); border: 1px solid var(--line); }
+@media (min-width: 900px) {
+  .side-nav .brand { flex-direction: column; gap: 8px; }
+  .side-nav .brand-copy { width: 100%; padding-left: 0; border-left: 0; text-align: center; }
+  .side-nav .brand-copy strong { font-size: 14px; line-height: 1.35; }
+}
+@media (max-width: 880px) {
+  body[data-page="pos"] .page-content { padding-bottom: 230px; }
+  .cart-checkout { position: fixed; z-index: 15; left: calc(var(--nav-width) + 8px); right: 8px; bottom: 8px; border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: var(--shadow); }
+  .cart-panel { padding-bottom: 190px; }
+  .cart-checkout .cart-grand-total dd { font-size: 22px; }
+}
+@media (max-width: 720px) {
+  .cart-checkout { left: 8px; bottom: 70px; }
+}
+@media (max-width: 880px) and (max-height: 450px) {
+  .cart-checkout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; }
+  .cart-checkout .bill-breakdown { grid-column: 1 / -1; }
+  .cart-checkout .cart-total-visible { padding: 8px 12px; }
+  .cart-checkout .cart-grand-total dt { font-size: 12px; }
+  .cart-checkout .cart-grand-total dd { font-size: 20px; }
+  .cart-checkout .pay-now { min-height: 44px; }
+  .cart-checkout .draft-status { display: none; }
 }
 @media (max-width: 1050px) {
   .totals-strip {

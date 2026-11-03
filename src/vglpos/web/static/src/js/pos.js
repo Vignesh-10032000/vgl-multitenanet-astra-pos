@@ -182,7 +182,7 @@ function productTile(product) {
   const name = document.createElement("strong");
   name.textContent = localizedName(product);
   const portion = document.createElement("small");
-  portion.textContent = product.portion;
+  portion.textContent = visiblePortion(product);
   copy.append(name, portion);
   const meta = document.createElement("span");
   meta.className = "product-meta";
@@ -222,7 +222,8 @@ function createQuantityControl(item) {
   decrement.textContent = "−";
   const input = document.createElement("input");
   input.inputMode = "decimal";
-  input.value = item.quantity;
+  // Display whole portion counts without touching the persisted three-place value.
+  input.value = String(item.quantity).replace(/\.0{1,3}$/, "");
   input.dataset.quantityInput = String(item.product_id);
   input.setAttribute("aria-label", t("pos.quantity"));
   const increment = document.createElement("button");
@@ -249,7 +250,8 @@ function cartLine(item, index) {
   const name = document.createElement("strong");
   name.textContent = localizedName(product);
   const unit = document.createElement("small");
-  unit.textContent = `${formatMoney(product.selling_price)} · ${product.uom}`;
+  const portion = visiblePortion(product);
+  unit.textContent = `${formatMoney(product.selling_price)}${portion ? ` · ${portion}` : ""}`;
   const total = document.createElement("span");
   total.className = "cart-line-total";
   total.textContent = state.quote?.lines?.[index]
@@ -413,6 +415,12 @@ function removeItem(productId) {
       mutationComplete(removed.product_id);
     },
   });
+}
+
+function visiblePortion(product) {
+  if (product.portion !== "Standard") return product.portion || "";
+  const portions = state.catalogue.filter(candidate => candidate.name === product.name && candidate.category === product.category);
+  return portions.length > 1 ? product.portion : "";
 }
 
 function clearCart({ offerUndo = true } = {}) {
@@ -857,7 +865,14 @@ function initializeEvents() {
     .addEventListener("input", () => mutationComplete());
   document
     .querySelector("#clear-cart")
-    .addEventListener("click", () => clearCart());
+    .addEventListener("click", () => {
+      if (!state.saving && state.cart.length) openDialog("#clear-cart-dialog");
+    });
+  document.querySelector("#confirm-clear-cart").addEventListener("click", () => {
+    if (state.saving) return;
+    closeDialog("#clear-cart-dialog");
+    clearCart();
+  });
   document.querySelector("#pay-button").addEventListener("click", openPayment);
   document.querySelector("#hold-bill").addEventListener("click", holdBill);
   document

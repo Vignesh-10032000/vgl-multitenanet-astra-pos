@@ -10,11 +10,14 @@ test("STARTUP-UI-01 form paints before DB, early submission waits and optional p
   await expect(page.locator("#access-submit")).toBeDisabled();
   await page.locator("#access-username").fill("test-owner");
   await page.locator("#access-password").fill("Fixture-only-owner-482!");
+  await page.locator("#access-password-toggle").click();
+  await expect(page.locator("#access-password")).toHaveAttribute("type", "text");
   await page.locator("#access-form").evaluate(form => form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
   release();
   await expect(page.locator("#access-confirm-row")).toBeVisible();
   await expect(page.locator("#access-submit")).toBeEnabled();
   await expect(page.locator("#access-password")).toHaveValue("Fixture-only-owner-482!");
+  await expect(page.locator("#access-password")).toHaveAttribute("type", "text");
   await page.waitForFunction(() => performance.getEntriesByName("restaurant:ready").length);
   const marks = await page.evaluate(() => Object.fromEntries(performance.getEntriesByType("mark").map(mark => [mark.name, mark.startTime])));
   expect(marks["restaurant:login-first-paint"]).toBeLessThan(marks["restaurant:1-core:start"]);
@@ -56,4 +59,55 @@ test("STARTUP-UI-03 first-run image work is nonblocking and cached owner brandin
   await expect(page.locator("#access-brand-name")).toHaveText("Fixture counter");
   await expect(page.locator("#access-brand-logo img")).toHaveCount(0);
   expect(await page.title()).toBe("Fixture counter");
+});
+
+test("STARTUP-UI-04 a slow complete first-run folder backup never holds sign-in", async ({ page }) => {
+  let releaseDatabase;
+  const databaseGate = new Promise(resolve => { releaseDatabase = resolve; });
+  await page.route(/sql-wasm.*\.wasm$/, async route => { await databaseGate; await route.continue(); });
+  await page.goto("/");
+  await page.evaluate(async () => {
+    // Disposable origin-private directory emulates the selected folder provider.
+    // It does not exercise Android SAF permissions or uninstall survival.
+    const folder = await (await navigator.storage.getDirectory()).getDirectoryHandle("backup-fixture", { create: true });
+    await new Promise((resolve,reject) => {
+      const request = indexedDB.open("keyval-store",1);
+      request.onupgradeneeded = () => request.result.createObjectStore("keyval");
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const db=request.result, tx=db.transaction("keyval","readwrite");
+        tx.objectStore("keyval").put(folder,"restaurant-shared-backup-folder");
+        tx.oncomplete=() => { db.close(); resolve(); }; tx.onerror=() => reject(tx.error);
+      };
+    });
+    const writable = FileSystemFileHandle.prototype.createWritable;
+    const gate = new Promise(resolve => { window.releaseBackupWrite = resolve; });
+    FileSystemFileHandle.prototype.createWritable = async function (...args) { await gate; return writable.apply(this,args); };
+  });
+  releaseDatabase();
+  await unlockFixture(page);
+  await expect(page.locator("#access-screen")).toBeHidden();
+  await expect(page.locator("#persistent-backup-status")).toContainText("Saving a complete backup");
+  await page.evaluate(() => window.releaseBackupWrite());
+  await expect(page.locator("#persistent-backup-status")).toContainText("Backup saved");
+  let payload;
+  await expect.poll(async () => {
+    payload = await page.evaluate(async () => {
+    const folder = await (await navigator.storage.getDirectory()).getDirectoryHandle("backup-fixture");
+    for await (const handle of folder.values()) {
+      const source = await (await handle.getFile()).text();
+      try {
+        const data = JSON.parse(JSON.parse(source).payload);
+        // A pre-setup photo snapshot is retained; account creation appends another.
+        if (data.tables.drafts.some(row => row.id === "local:owner-access")) return data;
+      } catch { /* another queued document may still be writing */ }
+    }
+    return null;
+    });
+    return Boolean(payload);
+  }).toBe(true);
+  expect(Object.keys(payload.files)).toHaveLength(23);
+  expect(payload.tables.products.filter(product => product.image)).toHaveLength(36);
+  expect(payload.tables.drafts.some(row => row.id === "local:bundled-menu-photos-v1")).toBe(true);
+  expect(payload.tables.drafts.some(row => row.id === "local:owner-access")).toBe(true);
 });
