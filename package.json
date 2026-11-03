@@ -1,28 +1,62 @@
 {
-  "name": "vgl-pos-web",
+  "name": "vgl-restaurant-pos",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build",
-    "dev": "vite",
-    "test": "node --test tests/frontend/*.test.js",
-    "test:tax-parity": "node --test tests/frontend/tax-parity.test.js",
-    "test:e2e": "playwright test",
-    "test:e2e:install": "playwright install chromium"
+    "build": "node --import ./scripts/project-environment.mjs ./node_modules/vite/bin/vite.js build --config restaurant/vite.config.js",
+    "dev": "node --import ./scripts/project-environment.mjs ./node_modules/vite/bin/vite.js --config restaurant/vite.config.js",
+    "test": "npm run build:legacy && node --import ./scripts/project-environment.mjs --test tests/frontend/*.test.js tests/restaurant/*.test.js",
+    "test:tax-parity": "node --import ./scripts/project-environment.mjs --test tests/frontend/tax-parity.test.js",
+    "test:e2e": "node --import ./scripts/project-environment.mjs ./node_modules/@playwright/test/cli.js test --config restaurant/playwright.config.js",
+    "test:e2e:install": "node --import ./scripts/project-environment.mjs ./node_modules/@playwright/test/cli.js install chromium",
+    "build:restaurant": "node --import ./scripts/project-environment.mjs ./node_modules/vite/bin/vite.js build --config restaurant/vite.config.js",
+    "dev:restaurant": "node --import ./scripts/project-environment.mjs ./node_modules/vite/bin/vite.js --config restaurant/vite.config.js",
+    "test:restaurant": "node --import ./scripts/project-environment.mjs --test tests/restaurant/*.test.js",
+    "test:restaurant:properties": "node --import ./scripts/project-environment.mjs --test tests/restaurant/financial-properties.test.js",
+    "test:restaurant:coverage": "node --import ./scripts/project-environment.mjs --test --experimental-test-coverage --test-coverage-include=restaurant/*.js --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=test-results/reliability-audit/coverage.lcov tests/restaurant/*.test.js",
+    "test:restaurant:stress": "node --import ./scripts/project-environment.mjs scripts/stress-restaurant.mjs",
+    "test:restaurant:mutations": "node --import ./scripts/project-environment.mjs scripts/mutate-restaurant.mjs",
+    "android:sync": "npm run build:restaurant && cap sync android",
+    "android:build": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-restaurant-android.ps1",
+    "test:restaurant:browser": "node --import ./scripts/project-environment.mjs ./node_modules/@playwright/test/cli.js test --config restaurant/playwright.config.js",
+    "build:legacy": "node --import ./scripts/project-environment.mjs ./node_modules/vite/bin/vite.js build",
+    "dev:legacy": "node --import ./scripts/project-environment.mjs ./node_modules/vite/bin/vite.js",
+    "test:e2e:legacy": "node --import ./scripts/project-environment.mjs ./node_modules/@playwright/test/cli.js test",
+    "lint:js": "eslint restaurant src/vglpos/web/static/src/js/pos.js src/vglpos/web/static/src/js/dashboard.js src/vglpos/web/static/src/js/payment-view.js src/vglpos/web/static/src/js/payment-display.js src/vglpos/web/static/src/js/pos-icons.js src/vglpos/web/static/src/js/i18n.js src/vglpos/web/static/src/js/ui.js src/vglpos/web/static/src/js/data.js tests/restaurant tests/restaurant-browser eslint.config.js scripts/*.mjs --max-warnings 0",
+    "profile:restaurant": "node --import ./scripts/project-environment.mjs scripts/profile-restaurant.mjs",
+    "profile:restaurant:counter": "node --import ./scripts/project-environment.mjs scripts/profile-restaurant-counter.mjs",
+    "scan:restaurant": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-restaurant-security.ps1"
   },
   "dependencies": {
+    "@capacitor-community/sqlite": "8.1.1",
+    "@capacitor/android": "8.5.3",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/filesystem": "8.1.5",
     "@fontsource/inter": "^5.2.8",
     "@fontsource/noto-sans-tamil": "^5.2.8",
+    "exceljs": "4.4.0",
     "idb-keyval": "^6.2.2",
-    "lucide": "^0.544.0"
+    "jszip": "3.10.2",
+    "lucide": "^0.544.0",
+    "qrcode": "1.5.4",
+    "sql.js": "1.15.2"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.2",
+    "@capacitor/cli": "8.5.3",
+    "@eslint/js": "10.0.1",
     "@playwright/test": "1.61.0",
-    "vite": "^7.1.7"
+    "eslint": "10.13.0",
+    "fast-check": "4.10.2",
+    "globals": "17.13.0",
+    "prettier": "3.6.2",
+    "vite": "7.3.7"
   },
   "engines": {
     "node": ">=22.12"
+  },
+  "overrides": {
+    "uuid": "11.1.1"
   }
 }
