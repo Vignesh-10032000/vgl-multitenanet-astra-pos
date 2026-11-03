@@ -87,7 +87,8 @@ body[data-locked="true"] > .skip-link {
 .access-brand-panel {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: clamp(24px, 6vh, 64px);
   padding: 56px;
   color: white;
   background:
@@ -115,7 +116,7 @@ body[data-locked="true"] > .skip-link {
   height: 72px;
 }
 .access-brand-panel > div:nth-last-of-type(1) {
-  margin: 64px 0;
+  margin: 0;
 }
 .access-overline {
   font-size: 10px;
@@ -137,6 +138,7 @@ body[data-locked="true"] > .skip-link {
   color: #cedef0;
 }
 .access-brand-panel footer {
+  margin-top: auto;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -221,14 +223,18 @@ body[data-locked="true"] > .skip-link {
   margin-top: 26px;
   border-top: 1px solid var(--line);
   padding-top: 22px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--ink-muted);
 }
 .access-recovery .text-button {
+  color: var(--primary);
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-size: 12px;
+  font-size: 14px;
+  justify-content: flex-start;
+  justify-self: start;
+  text-align: left;
   min-height: 44px;
   padding: 0;
 }
@@ -237,7 +243,7 @@ body[data-locked="true"] > .skip-link {
   height: 16px;
 }
 .access-footnote {
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1.8;
   color: var(--ink-muted);
   margin-top: 20px;
@@ -1368,7 +1374,18 @@ body:is([data-page="sales"], [data-page="reports"]) .section-toolbar h2 {
   #access-form label { gap: 6px; }
   #access-form input, #access-submit { min-height: 48px; }
   .access-recovery { margin-top: 16px; padding-top: 12px; gap: 2px; }
-  .access-footnote { margin: 10px 0; font-size: 10px; line-height: 1.5; }
+  .access-footnote { margin: 10px 0; font-size: 14px; line-height: 1.5; }
   .vgl-brand-access { margin-top: 10px; }
   .vgl-brand-access img { width: 88px; height: 44px; }
 }
+
+.vgl-brand-access .vgl-brand-credit { font-size: 14px; }
+#access-brand-logo { flex-shrink: 0; padding: 8px; border-radius: 24px; background: #fff; box-shadow: 0 6px 22px #031c3520; }
+#access-brand-logo:empty { display: none; }
+.access-password-field { position: relative; display: block; }
+#access-form .access-password-field input { padding-right: 52px; }
+#access-password-toggle { position: absolute; inset: 3px 3px 3px auto; width: 44px; min-height: 44px; padding: 0; display: grid; place-items: center; color: var(--ink-muted); background: transparent; border: 0; border-radius: 7px; }
+#access-password-toggle:hover { background: var(--surface-subtle); }
+#access-screen :is(input, button):focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+#access-submit[disabled] { opacity: 0.75; cursor: wait; }
+#access-error:not(:empty) { padding: 12px; border: 1px solid var(--danger); border-radius: 8px; background: var(--danger-soft); color: var(--danger); font-size: 14px; }

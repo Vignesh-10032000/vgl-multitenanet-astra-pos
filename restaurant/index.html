@@ -59,14 +59,14 @@
                 required
                 placeholder="Your username" /></label
             ><label for="access-password"
-              >Password<input
+              >Password<span class="access-password-field"><input
                 id="access-password"
                 name="password"
                 type="password"
                 autocomplete="current-password"
                 maxlength="128"
                 required
-                placeholder="Your password" /></label
+                placeholder="Your password" /><button id="access-password-toggle" type="button" aria-label="Show password" aria-pressed="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></span></label
             ><label id="access-confirm-row" for="access-confirm" hidden
               >Confirm password<input
                 id="access-confirm"
@@ -97,8 +97,7 @@
             <p id="access-recovery-status" role="status"></p>
           </div>
           <p class="access-footnote">
-            Offline access for this device. Shared-folder backups remain
-            separate from the app.
+            Works offline. Your data is saved on this device.
           </p>
           <div class="vgl-brand vgl-brand-access" aria-label="Software by Vignesh Growth Lab">
             <span class="vgl-brand-credit" data-label="vglCredit">Software by</span>

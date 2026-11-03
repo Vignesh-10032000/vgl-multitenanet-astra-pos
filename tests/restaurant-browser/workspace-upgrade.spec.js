@@ -126,6 +126,8 @@ test("LOGIN-UI-01 first owner setup, wrong password, lock, session reload and ph
   await expect(page.locator('[data-view="sales"]')).toBeVisible();
   await page.locator("#lock-workspace").click();
   await expect(page.locator("#access-confirm-row")).not.toBeVisible();
+  await expect(page.locator("#access-username")).toHaveValue("");
+  await page.locator("#access-username").fill("owner");
   await page.locator("#access-password").fill("Wrong-password!");
   await page.locator("#access-submit").click();
   await expect(page.locator("#access-error")).toContainText("incorrect");

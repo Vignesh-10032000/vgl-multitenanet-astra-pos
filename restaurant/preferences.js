@@ -5,6 +5,27 @@ import { uiLabels } from "./labels.js";
 import { refreshIcons } from "../src/vglpos/web/static/src/js/ui.js";
 
 const words = {
+  showPassword: ["Show password", "கடவுச்சொல்லைக் காட்டு"],
+  hidePassword: ["Hide password", "கடவுச்சொல்லை மறை"],
+  signingIn: ["Signing in…", "உள்நுழைகிறது…"],
+  incorrectLogin: ["Username or password is incorrect", "பயனர்பெயர் அல்லது கடவுச்சொல் தவறானது"],
+  incorrectBackupLogin: ["Backup username or password is incorrect", "காப்பின் பயனர்பெயர் அல்லது கடவுச்சொல் தவறானது"],
+  passwordMismatch: ["Passwords do not match", "கடவுச்சொற்கள் பொருந்தவில்லை"],
+  loginWait: ["Too many attempts. Wait 30 seconds and try again.", "அதிக முயற்சிகள். 30 விநாடிகள் காத்திருந்து மீண்டும் முயலவும்."],
+  username: ["Username", "பயனர்பெயர்"],
+  password: ["Password", "கடவுச்சொல்"],
+  confirmPassword: ["Confirm password", "கடவுச்சொல்லை உறுதிசெய்"],
+  usernameHint: ["Your username", "உங்கள் பயனர்பெயர்"],
+  passwordHint: ["Your password", "உங்கள் கடவுச்சொல்"],
+  confirmHint: ["Enter your password again", "கடவுச்சொல்லை மீண்டும் உள்ளிடவும்"],
+  reinstalled: ["Reinstalled the app?", "செயலியை மீண்டும் நிறுவினீர்களா?"],
+  existingBackup: ["Find an existing backup", "ஏற்கனவே உள்ள காப்பைத் தேடு"],
+  offlineNote: ["Works offline. Your data is saved on this device.", "இணையமின்றி இயங்கும். உங்கள் தரவு இந்தச் சாதனத்தில் சேமிக்கப்படுகிறது."],
+  accessOverline: ["YOUR RESTAURANT. YOUR WORKSPACE.", "உங்கள் உணவகம். உங்கள் பணியிடம்."],
+  accessHeadline: ["A smoother day, from the first bill.", "முதல் பில்லிலிருந்து, சீரான நாள்."],
+  accessSubtext: ["Billing, menu and business insights — together at your counter.", "பில்லிங், உணவுப் பட்டியல் மற்றும் வணிக விவரங்கள் — உங்கள் கவுன்டரில் ஒன்றாக."],
+  accessOffline: ["Works offline · Your data stays with you", "இணையமின்றி இயங்கும் · தரவு உங்களிடமே இருக்கும்"],
+  accessWorkspace: ["RESTAURANT WORKSPACE", "உணவகப் பணியிடம்"],
   gettingReady: ["Getting ready…", "தயாராகிறது…"],
   welcome: ["Welcome back", "மீண்டும் வருக"],
   setupTitle: ["Set up your owner account", "உரிமையாளர் கணக்கை அமைக்கவும்"],
@@ -154,6 +175,10 @@ function updateControls() {
 /** Both dictionaries and fonts ship in the APK; toggles require no network or ledger writes. */
 export async function initializePreferences(onLanguageChanged) {
   for (const [selector, key] of [
+    ['label[for="access-username"]', "username"], ['label[for="access-password"]', "password"], ['#access-confirm-row', "confirmPassword"],
+    ['.access-recovery > span', "reinstalled"], ['#access-recover', "existingBackup"], ['.access-form-wrap > .access-footnote', "offlineNote"],
+    ['.access-overline', "accessOverline"], ['.access-brand-panel h1', "accessHeadline"], ['.access-brand-panel > div:nth-last-of-type(1) > p:last-child', "accessSubtext"],
+    ['.access-brand-panel footer span', "accessOffline"], ['.access-form-wrap > .eyebrow', "accessWorkspace"],
     [".topbar .eyebrow", "workspace"], [".brand-copy small", "counter"],
     ["#lock-workspace span", "lock"], ["#last-receipt", "reprint"],
     ['[data-view="products"] h2', "menuProducts"], ["#add-product", "addProduct"],
@@ -166,6 +191,10 @@ export async function initializePreferences(onLanguageChanged) {
     ['#settings-form [name="tax_inclusive"] option[value="false"]', "addGst"],
     ['#settings-form [name="tax_inclusive"] option[value="true"]', "includeGst"],
   ]) mark(selector, key);
+  // The headline contains an existing line break; translate it as a single phrase.
+  document.querySelector('.access-brand-panel h1').dataset.i18n = 'restaurant.accessHeadline';
+  for (const [selector, key] of [["#access-username", "usernameHint"], ["#access-password", "passwordHint"], ["#access-confirm", "confirmHint"]])
+    document.querySelector(selector).dataset.i18nPlaceholder = `restaurant.${key}`;
   const nav = { billing: "nav.pos", dashboard: "nav.dashboard", products: "nav.products", customers: "nav.customers", sales: "nav.sales", reports: "nav.reports", settings: "nav.settings" };
   for (const [page, key] of Object.entries(nav))
     document.querySelector(`[data-nav="${page}"] span`).dataset.i18n = key;
