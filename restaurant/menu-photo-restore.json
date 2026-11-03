@@ -1,0 +1,232 @@
+{
+  "version": "v3-original-illustrations",
+  "illustrative": true,
+  "assets": [
+    {
+      "slug": "chicken-biryani",
+      "src": "./menu-photos/v1/chicken-biryani.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 43630,
+      "sha256": "34bd0054305c192636fed0ca06d6cdc1860a53d7eb83163e868dbc62df4c4e84",
+      "products": [
+        {
+          "id": "menu-001",
+          "name": "CHICKEN BIRIYANI",
+          "portion": "Standard",
+          "previous_image": "images/43a4bde83d6ff654e07e20b3af5673e34be2513a9add6ef5961ed050c7e356da.jpg"
+        },
+        {
+          "id": "menu-029",
+          "name": "CHICKEN BIRIYANI 1 KG",
+          "portion": "1 kg",
+          "previous_image": "images/43a4bde83d6ff654e07e20b3af5673e34be2513a9add6ef5961ed050c7e356da.jpg"
+        },
+        {
+          "id": "menu-030",
+          "name": "CHICKEN BIRIYANI 1/2 KG",
+          "portion": "1/2 kg",
+          "previous_image": "images/43a4bde83d6ff654e07e20b3af5673e34be2513a9add6ef5961ed050c7e356da.jpg"
+        }
+      ]
+    },
+    {
+      "slug": "mutton-biryani",
+      "src": "./menu-photos/v1/mutton-biryani.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 45788,
+      "sha256": "2024f9b441ebb0967775c6c004372bf7c128fc77a9cf13bd33bbced8273e5a3f",
+      "products": [
+        {
+          "id": "menu-002",
+          "name": "MUTTON BIRIYANI",
+          "portion": "Standard",
+          "previous_image": "images/45ecc5461e4d48c383571e68a4d51c0fa311da2bed262a4235ddc39b876517d0.jpg"
+        },
+        {
+          "id": "menu-031",
+          "name": "MUTTON BIRIYANI 1 KG",
+          "portion": "1 kg",
+          "previous_image": "images/45ecc5461e4d48c383571e68a4d51c0fa311da2bed262a4235ddc39b876517d0.jpg"
+        },
+        {
+          "id": "menu-032",
+          "name": "MUTTON BIRIYANI 1/2 KG",
+          "portion": "1/2 kg",
+          "previous_image": "images/45ecc5461e4d48c383571e68a4d51c0fa311da2bed262a4235ddc39b876517d0.jpg"
+        }
+      ]
+    },
+    {
+      "slug": "egg-biryani",
+      "src": "./menu-photos/v1/egg-biryani.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 42802,
+      "sha256": "5c797a4d0bd59900e07da6ec97a4b391dfb6e477f5f216f833a054bbe07bf2d4",
+      "products": [
+        {
+          "id": "menu-003",
+          "name": "EGG BIRIYANI",
+          "portion": "Standard",
+          "previous_image": "images/df277a529c16da9f7887926d919272c3837d37438385a35f1447c0f643906db8.jpg"
+        },
+        {
+          "id": "menu-033",
+          "name": "EGG BIRIYANI 1 KG",
+          "portion": "1 kg",
+          "previous_image": "images/df277a529c16da9f7887926d919272c3837d37438385a35f1447c0f643906db8.jpg"
+        },
+        {
+          "id": "menu-034",
+          "name": "EGG BIRIYANI 1/2 KG",
+          "portion": "1/2 kg",
+          "previous_image": "images/df277a529c16da9f7887926d919272c3837d37438385a35f1447c0f643906db8.jpg"
+        }
+      ]
+    },
+    {
+      "slug": "chicken-chukka",
+      "src": "./menu-photos/v1/chicken-chukka.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 39019,
+      "sha256": "c7d6ee4b216e8ce8f296a5294877be36eb77ded71bfe57a0698b989aa6e5f01f",
+      "products": [
+        {
+          "id": "menu-009",
+          "name": "CHICKEN CHUKKA",
+          "portion": "Standard",
+          "previous_image": "images/5716e32af64dfbb59cd8b8cba357cde4fbe9a515972f0d8d901dfc2abdc24c4d.jpg"
+        }
+      ]
+    },
+    {
+      "slug": "chicken-fry",
+      "src": "./menu-photos/v1/chicken-fry.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 43993,
+      "sha256": "c68d0f6ddc10c0e221e7b411e059693ed74694bc5c1e4098f163773df4edc662",
+      "products": [
+        {
+          "id": "menu-008",
+          "name": "CHICKEN FRY",
+          "portion": "Standard",
+          "previous_image": "images/fa9ec7e43ac8f6173551470f475cd0965235ea1d37ec3dd051992b7d26eabbeb.jpg"
+        }
+      ]
+    },
+    {
+      "slug": "chilli-chicken",
+      "src": "./menu-photos/v1/chilli-chicken.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 43230,
+      "sha256": "71fb9230389f0a77a6666127637753482fb4ccdca6fdc11a48c2d034476e1749",
+      "products": [
+        {
+          "id": "menu-006",
+          "name": "CHILLY CHICKEN",
+          "portion": "Standard",
+          "previous_image": "images/f63757da39cf6445d19a18adaafd0ebe0cad56a71239bfa917bf15c9ca3b0a84.jpg"
+        },
+        {
+          "id": "menu-007",
+          "name": "CHILLY CHICKEN (BONELESS)",
+          "portion": "Boneless",
+          "previous_image": "images/f63757da39cf6445d19a18adaafd0ebe0cad56a71239bfa917bf15c9ca3b0a84.jpg"
+        }
+      ]
+    },
+    {
+      "slug": "chicken-lollipop",
+      "src": "./menu-photos/v1/chicken-lollipop.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 43357,
+      "sha256": "9c3783d1d9bc3643c87a2dade444add8d5e5a73612fa1e524a6c2b1624bc9375",
+      "products": [
+        {
+          "id": "menu-011",
+          "name": "LOLLIPOP 1 SET",
+          "portion": "1 set",
+          "previous_image": "images/8b866ac74e364bd374d0791cdd4bc0072f7c8d3c2ae3b2d31bd2675fcb68f45a.jpg"
+        }
+      ]
+    },
+    {
+      "slug": "chicken-manchurian",
+      "src": "./menu-photos/v1/chicken-manchurian.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 43569,
+      "sha256": "c3d2fcbf3fa8c1c821bd679c161ab95c879546cd0b104181cb4167757ee309bc",
+      "products": [
+        {
+          "id": "menu-012",
+          "name": "CHICKEN MANCHURIAN",
+          "portion": "Standard",
+          "previous_image": "images/a36ce87c1e831a7490a2d209903f39223a7e85f783b924acff33bacc57e3acd6.jpg"
+        }
+      ]
+    },
+    {
+      "slug": "grill-chicken",
+      "src": "./menu-photos/v1/grill-chicken.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 48147,
+      "sha256": "e25c96b66f019bce17ecc7a7eaf2ab69efc4ac3faff3841c0d74cae8f23096cd",
+      "products": [
+        {
+          "id": "menu-021",
+          "name": "GRILL FULL",
+          "portion": "Full",
+          "previous_image": "images/7952be1b3d3ba7cfa47a4272b7af410673ad1671433ebc20c982fd0aebad0e25.jpg"
+        },
+        {
+          "id": "menu-022",
+          "name": "GRILL HALF",
+          "portion": "Half",
+          "previous_image": "images/7952be1b3d3ba7cfa47a4272b7af410673ad1671433ebc20c982fd0aebad0e25.jpg"
+        },
+        {
+          "id": "menu-023",
+          "name": "GRILL QTR",
+          "portion": "Quarter",
+          "previous_image": "images/7952be1b3d3ba7cfa47a4272b7af410673ad1671433ebc20c982fd0aebad0e25.jpg"
+        }
+      ]
+    },
+    {
+      "slug": "pepper-grill-chicken",
+      "src": "./menu-photos/v1/pepper-grill-chicken.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 46755,
+      "sha256": "6b5d1ce4aad4bb145fd727ae9227f2c0a31371b81fd91551923223c25e34437f",
+      "products": [
+        {
+          "id": "menu-024",
+          "name": "PEPPER GRILL FULL",
+          "portion": "Full",
+          "previous_image": "images/02a062324797052f0ba3ad910243b394b9d34e3eb58f33297dd0a876be403831.jpg"
+        },
+        {
+          "id": "menu-025",
+          "name": "PEPPER GRILL HALF",
+          "portion": "Half",
+          "previous_image": "images/02a062324797052f0ba3ad910243b394b9d34e3eb58f33297dd0a876be403831.jpg"
+        },
+        {
+          "id": "menu-026",
+          "name": "PEPPER GRILL QTR",
+          "portion": "Quarter",
+          "previous_image": "images/02a062324797052f0ba3ad910243b394b9d34e3eb58f33297dd0a876be403831.jpg"
+        }
+      ]
+    }
+  ]
+}

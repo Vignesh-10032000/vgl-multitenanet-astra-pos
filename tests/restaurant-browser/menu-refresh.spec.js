@@ -1,0 +1,70 @@
+import { test, expect } from "@playwright/test";
+import { mkdirSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { unlockInclusiveFixture as unlockFixture } from "./access-helper.js";
+const output = resolve("test-results/menu-photo-restore-2026-11-02");
+mkdirSync(output, { recursive: true });
+const manifest = JSON.parse(readFileSync(resolve("restaurant/menu-photos.json")));
+
+test("PHOTO-RESTORE-UI-01 original grill illustration fits fully, no web photos load, and receipt item rules remain", async ({ page }) => {
+  const photos = [], external = [], errors = [];
+  page.on("pageerror", error => errors.push(error.message));
+  page.on("request", request => {
+    const url = request.url();
+    if (url.includes("/menu-photos/v2/")) photos.push(url);
+    if (!url.startsWith("http://127.0.0.1:5175") && !url.startsWith("data:") && !url.startsWith("blob:")) external.push(url);
+  });
+  await page.goto("/");
+  await unlockFixture(page);
+  expect(photos).toHaveLength(0);
+  const grill = page.locator('[data-product-id="menu-021"] img');
+  const expected = manifest.assets.find(asset => asset.slug === "grill-chicken");
+  await expect(grill).toHaveAttribute("src", `data:image/jpeg;base64,${readFileSync(resolve("restaurant/public", expected.src)).toString("base64")}`);
+  const dims = await page.locator(".product-tile img").evaluateAll(async images => {
+    await Promise.all(images.map(image => { image.loading = "eager"; return image.decode(); }));
+    return images.map(image => ({ fit: getComputedStyle(image).objectFit, width: image.naturalWidth, height: image.naturalHeight }));
+  });
+  expect(dims).toHaveLength(36);
+  expect(dims.every(image => image.fit === "contain" && image.width > 0 && image.height > 0 && Math.max(image.width, image.height) <= 384)).toBe(true);
+  await page.screenshot({ path: resolve(output, "menu-1920.png") });
+  await page.setViewportSize({ width: 1486, height: 960 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1486);
+  await page.screenshot({ path: resolve(output, "menu-1486.png") });
+  await page.locator(".category-strip").getByRole("button", { name: "Grill", exact: true }).click();
+  await expect(page.locator(".product-tile")).toHaveCount(6);
+  await page.screenshot({ path: resolve(output, "grill-menu.png") });
+  await page.locator(".category-strip").getByRole("button", { name: "All", exact: true }).click();
+  await expect(page.locator(".product-tile")).toHaveCount(36);
+  for (const id of ["menu-001", "menu-003", "menu-021"])
+    await page.locator(`[data-product-id="${id}"]`).click();
+  await page.locator("#pay-button").click();
+  await page.locator("#complete-sale").click();
+  const receipt = page.locator("#receipt-preview .receipt-paper");
+  await expect(receipt.locator("tbody tr")).toHaveCount(3);
+  expect(await receipt.locator("tbody tr").evaluateAll(rows => rows.every(row => {
+    const style = getComputedStyle(row);
+    return style.borderBottomStyle === "dotted" && style.borderBottomWidth === "1px" && style.borderBottomColor === "rgb(0, 0, 0)";
+  }))).toBe(true);
+  await receipt.screenshot({ path: resolve(output, "receipt-item-rules.png") });
+  await page.evaluate(() => { window.print = () => {}; });
+  await page.locator("#print-receipt").click();
+  await expect(page.locator("#print-status")).toContainText("Print submitted");
+  await page.emulateMedia({ media: "print" });
+  const printed = page.locator("#print-document .receipt-paper");
+  await printed.screenshot({ path: resolve(output, "receipt-print-rules.png") });
+  const bounds = await printed.boundingBox();
+  await page.pdf({ path: resolve(output, "receipt-item-rules-80mm.pdf"), width: "80mm", height: `${(bounds.height + 2) / 96 * 25.4}mm`, printBackground: true, margin: { top: 0, bottom: 0, left: 0, right: 0 } });
+  await page.emulateMedia({ media: "screen" });
+  await page.locator("#receipt-dialog [data-close]").click();
+  await page.locator('[data-nav="settings"]').click();
+  await page.locator(".menu-photo-credits summary").click();
+  await expect(page.locator("#menu-photo-credits li")).toHaveCount(10);
+  await expect(page.locator("#menu-photo-credits")).toContainText("Anandha abirami Govindan");
+  photos.length = 0;
+  await page.reload();
+  await page.locator('[data-nav="billing"]').click();
+  await expect(grill).toBeVisible();
+  expect(photos).toHaveLength(0);
+  expect(external).toEqual([]);
+  expect(errors).toEqual([]);
+});

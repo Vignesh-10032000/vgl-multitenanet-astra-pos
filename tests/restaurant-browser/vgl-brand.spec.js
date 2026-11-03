@@ -1,0 +1,93 @@
+import { test, expect } from "@playwright/test";
+import { mkdirSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { createHash } from "node:crypto";
+import { unlockInclusiveFixture as unlockFixture } from "./access-helper.js";
+
+const output = resolve("test-results/vgl-brand-2026-11-02");
+mkdirSync(output, { recursive: true });
+
+test("VGL-BRAND-UI-01 identical local logo and slogan stay subtle, fit screens and leave receipts restaurant-owned", async ({ page }) => {
+  const errors = [], external = [];
+  page.on("pageerror", error => errors.push(error.message));
+  page.on("request", request => {
+    const url = request.url();
+    if (!url.startsWith("http://127.0.0.1:5175") && !url.startsWith("data:") && !url.startsWith("blob:")) external.push(url);
+  });
+  let releasePhotos;
+  const photosReady = new Promise(resolve => { releasePhotos = resolve; });
+  await page.route("**/menu-photos/v1/**", async route => { await photosReady; await route.continue(); });
+  await page.goto("/");
+  try {
+    await expect(page.locator("#access-brand-name")).toHaveText("Arafah Briyani Restaurant");
+    await expect(page.locator("#access-brand-logo img")).toBeVisible();
+    await expect(page.locator("#access-submit")).toBeDisabled();
+    await page.locator("#access-brand-logo img").evaluate(image => image.decode());
+    await page.screenshot({ path: resolve(output, "startup-restaurant-identity.png") });
+  } finally { releasePhotos(); }
+  await expect(page.locator("#access-form")).toBeVisible();
+  await expect(page.locator("#access-submit")).toBeEnabled();
+  const access = page.locator(".vgl-brand-access");
+  await expect(access).toBeVisible();
+  await expect(access.locator(".vgl-brand-slogan")).toHaveText("Build · Automate · Grow");
+  await access.locator("img").evaluate(image => image.decode());
+  const source = readFileSync(resolve("resources/branding/2026-11-02/vgl-logo-original.png"));
+  const response = await page.request.get("/branding/vgl/vgl-logo.png");
+  expect(response.ok()).toBe(true);
+  const digest = bytes => createHash("sha256").update(bytes).digest("hex");
+  expect(digest(await response.body())).toBe(digest(source));
+  const logoBox = await access.locator("img").boundingBox();
+  const sloganBox = await access.locator(".vgl-brand-slogan").boundingBox();
+  expect(sloganBox.y).toBeGreaterThanOrEqual(logoBox.y + logoBox.height);
+  expect(logoBox.width).toBeLessThanOrEqual(140);
+  await page.screenshot({ path: resolve(output, "sign-in-desktop.png"), fullPage: true });
+  await page.setViewportSize({ width: 412, height: 915 });
+  await expect(page.locator("#access-brand-logo img")).toBeVisible();
+  await expect(page.locator("#access-brand-name")).toHaveText("Arafah Briyani Restaurant");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(412);
+  await access.scrollIntoViewIfNeeded();
+  await expect(access).toBeVisible();
+  await page.screenshot({ path: resolve(output, "sign-in-phone.png"), fullPage: true });
+  await page.setViewportSize({ width: 1070, height: 716 });
+  await expect(page.locator("#access-brand-logo img")).toBeInViewport();
+  await expect(page.locator(".vgl-brand-access .vgl-brand-slogan")).toBeInViewport();
+  await expect(page.locator("#access-submit")).toBeInViewport();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1070);
+  await page.screenshot({ path: resolve(output, "sign-in-tablet.png"), fullPage: true });
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await unlockFixture(page);
+  await expect(page.locator("#nav-logo")).toBeVisible();
+  await expect(page.locator("#store-name")).toHaveText("Arafah Briyani Restaurant");
+  const sidebar = page.locator(".vgl-brand-sidebar");
+  await expect(sidebar).toBeVisible();
+  await expect(sidebar.locator("img")).toHaveAttribute("alt", "Vignesh Growth Lab");
+  await expect(sidebar.locator(".vgl-brand-slogan")).toHaveText("Build · Automate · Grow");
+  const rect = await sidebar.boundingBox();
+  const nav = await page.locator(".side-nav").boundingBox();
+  expect(rect.x).toBeGreaterThanOrEqual(nav.x);
+  expect(rect.x + rect.width).toBeLessThanOrEqual(nav.x + nav.width);
+  await page.screenshot({ path: resolve(output, "billing-desktop.png") });
+  await page.setViewportSize({ width: 732, height: 336 });
+  await expect(sidebar).toBeHidden();
+  for (const link of await page.locator(".side-nav [data-nav]").all()) {
+    await link.scrollIntoViewIfNeeded();
+    await expect(link).toBeInViewport();
+  }
+  await page.locator('[data-nav="settings"]').click();
+  await page.locator(".vgl-brand-settings").scrollIntoViewIfNeeded();
+  await expect(page.locator(".vgl-brand-settings .vgl-brand-slogan")).toHaveText("Build · Automate · Grow");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(732);
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.locator('[data-nav="billing"]').click();
+  await page.locator('[data-product-id="menu-001"]').click();
+  await page.locator("#pay-button").click();
+  await page.locator("#complete-sale").click();
+  const receipt = page.locator("#receipt-preview");
+  await expect(receipt).toContainText("Arafah Briyani Restaurant");
+  await expect(receipt).not.toContainText(/Vignesh|Automate|Software by/);
+  await expect(receipt.locator(".net")).toHaveText("TOTAL₹170.00");
+  const favicon = await page.request.get("/favicon.svg");
+  expect(await favicon.text()).toContain('id="blue"');
+  expect(external).toEqual([]);
+  expect(errors).toEqual([]);
+});

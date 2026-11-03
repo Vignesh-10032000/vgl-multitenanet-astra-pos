@@ -1,0 +1,342 @@
+{
+  "version": "v2",
+  "illustrative": true,
+  "assets": [
+    {
+      "slug": "chicken-biryani",
+      "src": "./menu-photos/v2/chicken-biryani.jpg",
+      "width": 384,
+      "height": 230,
+      "bytes": 20557,
+      "sha256": "40c2592a00dd57a5f132ac87756ee26bc65431d28ca11b69412726a88a7c379f",
+      "source": {
+        "title": "File:Chicken biryani 02-06-2015 (India).jpg",
+        "author": "Shivani shipra",
+        "license": "CC BY-SA 4.0",
+        "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "page_url": "https://commons.wikimedia.org/wiki/File:Chicken_biryani_02-06-2015_(India).jpg",
+        "download_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b5/Chicken_biryani_02-06-2015_%28India%29.jpg/960px-Chicken_biryani_02-06-2015_%28India%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "source_copy": "resources/menu-photos/web-v2/chicken-biryani-source.jpg",
+        "source_sha256": "ccddc613e75f61c94806432df41855bd3bbb404eba4e11918fa6e7c9801da609",
+        "changes": "Resized and JPEG encoded; full composition retained, no subject crop."
+      },
+      "products": [
+        {
+          "id": "menu-001",
+          "name": "CHICKEN BIRIYANI",
+          "portion": "Standard",
+          "previous_image": "images/2c7efaa21d90a9fe321ab33857ec1e9fd2d59686b6aec08c094719f3530e5808.jpg"
+        },
+        {
+          "id": "menu-029",
+          "name": "CHICKEN BIRIYANI 1 KG",
+          "portion": "1 kg",
+          "previous_image": "images/2c7efaa21d90a9fe321ab33857ec1e9fd2d59686b6aec08c094719f3530e5808.jpg"
+        },
+        {
+          "id": "menu-030",
+          "name": "CHICKEN BIRIYANI 1/2 KG",
+          "portion": "1/2 kg",
+          "previous_image": "images/2c7efaa21d90a9fe321ab33857ec1e9fd2d59686b6aec08c094719f3530e5808.jpg"
+        }
+      ]
+    },
+    {
+      "slug": "mutton-biryani",
+      "src": "./menu-photos/v2/mutton-biryani.jpg",
+      "width": 384,
+      "height": 288,
+      "bytes": 32296,
+      "sha256": "be9b1acba5e64819cf5d7dab545ce5d41d50b897b39122bac0d888c4b8394b34",
+      "source": {
+        "title": "File:Mutton Biryani.jpg",
+        "author": "Number55",
+        "license": "CC BY-SA 3.0",
+        "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+        "page_url": "https://commons.wikimedia.org/wiki/File:Mutton_Biryani.jpg",
+        "download_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7d/Mutton_Biryani.jpg/960px-Mutton_Biryani.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "source_copy": "resources/menu-photos/web-v2/mutton-biryani-source.jpg",
+        "source_sha256": "4be4fa965ccaf03f5ea3482ebdea251086559dd02a090e8c69dbb99b602b636f",
+        "changes": "Resized and JPEG encoded; full composition retained, no subject crop."
+      },
+      "products": [
+        {
+          "id": "menu-002",
+          "name": "MUTTON BIRIYANI",
+          "portion": "Standard",
+          "previous_image": "images/092820b612396df3b36e085021d7b14066108fd1dadcab46c8dc64e3ba394121.jpg"
+        },
+        {
+          "id": "menu-031",
+          "name": "MUTTON BIRIYANI 1 KG",
+          "portion": "1 kg",
+          "previous_image": "images/092820b612396df3b36e085021d7b14066108fd1dadcab46c8dc64e3ba394121.jpg"
+        },
+        {
+          "id": "menu-032",
+          "name": "MUTTON BIRIYANI 1/2 KG",
+          "portion": "1/2 kg",
+          "previous_image": "images/092820b612396df3b36e085021d7b14066108fd1dadcab46c8dc64e3ba394121.jpg"
+        }
+      ]
+    },
+    {
+      "slug": "egg-biryani",
+      "src": "./menu-photos/v2/egg-biryani.jpg",
+      "width": 384,
+      "height": 288,
+      "bytes": 22497,
+      "sha256": "088210f74f97d58542e9c4044038a13e3201fca0db77bf0a7fa26fb2951c947b",
+      "source": {
+        "title": "File:Hyderabadi egg biryani.jpg",
+        "author": "Ravi Dwivedi",
+        "license": "CC BY-SA 4.0",
+        "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "page_url": "https://commons.wikimedia.org/wiki/File:Hyderabadi_egg_biryani.jpg",
+        "download_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c8/Hyderabadi_egg_biryani.jpg/960px-Hyderabadi_egg_biryani.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "source_copy": "resources/menu-photos/web-v2/egg-biryani-source.jpg",
+        "source_sha256": "0faab5426dc74bed4980a0af5e49c962800021aefe2c3ad1af1c77ecffcca232",
+        "changes": "Resized and JPEG encoded; full composition retained, no subject crop."
+      },
+      "products": [
+        {
+          "id": "menu-003",
+          "name": "EGG BIRIYANI",
+          "portion": "Standard",
+          "previous_image": "images/b5bacf77702ca86eab9f9d47564f42563e8f82fa3896c070e6eecc829920a774.jpg"
+        },
+        {
+          "id": "menu-033",
+          "name": "EGG BIRIYANI 1 KG",
+          "portion": "1 kg",
+          "previous_image": "images/b5bacf77702ca86eab9f9d47564f42563e8f82fa3896c070e6eecc829920a774.jpg"
+        },
+        {
+          "id": "menu-034",
+          "name": "EGG BIRIYANI 1/2 KG",
+          "portion": "1/2 kg",
+          "previous_image": "images/b5bacf77702ca86eab9f9d47564f42563e8f82fa3896c070e6eecc829920a774.jpg"
+        }
+      ]
+    },
+    {
+      "slug": "chicken-chukka",
+      "src": "./menu-photos/v2/chicken-chukka.jpg",
+      "width": 384,
+      "height": 342,
+      "bytes": 29939,
+      "sha256": "edec81ba89f5d8f7ee9495e3105d1b7c023ff60c9031444dbd3058313e03675b",
+      "source": {
+        "title": "File:Chicken Sukka.jpg",
+        "author": "DreamyFlutura11",
+        "license": "CC BY-SA 4.0",
+        "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "page_url": "https://commons.wikimedia.org/wiki/File:Chicken_Sukka.jpg",
+        "download_url": "https://upload.wikimedia.org/wikipedia/commons/6/68/Chicken_Sukka.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+        "source_copy": "resources/menu-photos/web-v2/chicken-chukka-source.jpg",
+        "source_sha256": "73b5eb011a4f3b1326f8ca6ebc0ad8241f6faaad4772819f0c2972487883355a",
+        "changes": "Resized and JPEG encoded; full composition retained, no subject crop."
+      },
+      "products": [
+        {
+          "id": "menu-009",
+          "name": "CHICKEN CHUKKA",
+          "portion": "Standard",
+          "previous_image": "images/c936bce2cc834d7ed5b9c4c0b4365164d5c1ca2a6f68d19035d565b34e3682de.jpg"
+        }
+      ]
+    },
+    {
+      "slug": "chicken-fry",
+      "src": "./menu-photos/v2/chicken-fry.jpg",
+      "width": 384,
+      "height": 287,
+      "bytes": 31628,
+      "sha256": "c6651d2a39311432b49644b243d1f15aed2df2b134c724d9be44c110b24d9a5d",
+      "source": {
+        "title": "File:Chicken 65, Kerala.jpg",
+        "author": "Vis M",
+        "license": "CC BY-SA 4.0",
+        "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "page_url": "https://commons.wikimedia.org/wiki/File:Chicken_65,_Kerala.jpg",
+        "download_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3c/Chicken_65%2C_Kerala.jpg/960px-Chicken_65%2C_Kerala.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "source_copy": "resources/menu-photos/web-v2/chicken-fry-source.jpg",
+        "source_sha256": "de529ea5e7f0e76ad9c1058e689ea0acad8f534072d6b3aeab8f2e541ec47cd8",
+        "changes": "Resized and JPEG encoded; full composition retained, no subject crop."
+      },
+      "products": [
+        {
+          "id": "menu-008",
+          "name": "CHICKEN FRY",
+          "portion": "Standard",
+          "previous_image": "images/6a745e400077e61a0243491dcb16ce5993033b755ab5d332dd6559af17ddbb49.jpg"
+        }
+      ]
+    },
+    {
+      "slug": "chilli-chicken",
+      "src": "./menu-photos/v2/chilli-chicken.jpg",
+      "width": 288,
+      "height": 384,
+      "bytes": 24660,
+      "sha256": "02ddd8b71f29d0bd07b0dd2e0e14cb6139ba31f7d8b4d30d1b66d39435af827b",
+      "source": {
+        "title": "File:Chicken Chilli 1.jpg",
+        "author": "Gaurav Dhwaj Khadka",
+        "license": "CC BY-SA 4.0",
+        "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "page_url": "https://commons.wikimedia.org/wiki/File:Chicken_Chilli_1.jpg",
+        "download_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/07/Chicken_Chilli_1.jpg/960px-Chicken_Chilli_1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "source_copy": "resources/menu-photos/web-v2/chilli-chicken-source.jpg",
+        "source_sha256": "789ad6ade9b923c88a71831fd14b411ebc095ecc08bb29864db904d046c52fae",
+        "changes": "Resized and JPEG encoded; full composition retained, no subject crop."
+      },
+      "products": [
+        {
+          "id": "menu-006",
+          "name": "CHILLY CHICKEN",
+          "portion": "Standard",
+          "previous_image": "images/06fef569264fa403b256adcc81b40bf51658ed18f0e1423a7461b6c950b31e44.jpg"
+        },
+        {
+          "id": "menu-007",
+          "name": "CHILLY CHICKEN (BONELESS)",
+          "portion": "Boneless",
+          "previous_image": "images/06fef569264fa403b256adcc81b40bf51658ed18f0e1423a7461b6c950b31e44.jpg"
+        }
+      ]
+    },
+    {
+      "slug": "chicken-lollipop",
+      "src": "./menu-photos/v2/chicken-lollipop.jpg",
+      "width": 384,
+      "height": 288,
+      "bytes": 34246,
+      "sha256": "6036970c0bb3000f3c4f4bfc0fdb3f85826d23389a4d0c5d4a1b8c4fedcb3b4a",
+      "source": {
+        "title": "File:Spicy Chicken Lollipop.jpg",
+        "author": "Jaipuriamanasi",
+        "license": "CC BY-SA 4.0",
+        "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "page_url": "https://commons.wikimedia.org/wiki/File:Spicy_Chicken_Lollipop.jpg",
+        "download_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5b/Spicy_Chicken_Lollipop.jpg/960px-Spicy_Chicken_Lollipop.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "source_copy": "resources/menu-photos/web-v2/chicken-lollipop-source.jpg",
+        "source_sha256": "0963f8d8c9cf6b776c45a6fb67f396f8ccbf66b0dcf7ee42797af84e73435e5d",
+        "changes": "Resized and JPEG encoded; full composition retained, no subject crop."
+      },
+      "products": [
+        {
+          "id": "menu-011",
+          "name": "LOLLIPOP 1 SET",
+          "portion": "1 set",
+          "previous_image": "images/19ffb65f10daeb634f5d63e423caf94eeef1dc1e019508b1f0435481e3da826a.jpg"
+        }
+      ]
+    },
+    {
+      "slug": "chicken-manchurian",
+      "src": "./menu-photos/v2/chicken-manchurian.jpg",
+      "width": 384,
+      "height": 248,
+      "bytes": 19372,
+      "sha256": "1fd316db81c36d70fd8d1f7ed048b9073cb2682b8020433b82efe752f247cfd4",
+      "source": {
+        "title": "File:Chicken Manchurian (Hyderabad Style) (11960049916).jpg",
+        "author": "Abhinaba Basu from Redmond, United States",
+        "license": "CC BY 2.0",
+        "license_url": "https://creativecommons.org/licenses/by/2.0",
+        "page_url": "https://commons.wikimedia.org/wiki/File:Chicken_Manchurian_(Hyderabad_Style)_(11960049916).jpg",
+        "download_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bb/Chicken_Manchurian_%28Hyderabad_Style%29_%2811960049916%29.jpg/960px-Chicken_Manchurian_%28Hyderabad_Style%29_%2811960049916%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "source_copy": "resources/menu-photos/web-v2/chicken-manchurian-source.jpg",
+        "source_sha256": "4b4882e651745356144148d27d0a3c9f5e9633c21b176b900e63f83ae4254035",
+        "changes": "Resized and JPEG encoded; full composition retained, no subject crop."
+      },
+      "products": [
+        {
+          "id": "menu-012",
+          "name": "CHICKEN MANCHURIAN",
+          "portion": "Standard",
+          "previous_image": "images/54a6883826131488d5535599c923952a37421ea961fb16aca37add91ceac8e76.jpg"
+        }
+      ]
+    },
+    {
+      "slug": "grill-chicken",
+      "src": "./menu-photos/v2/grill-chicken.jpg",
+      "width": 384,
+      "height": 288,
+      "bytes": 25054,
+      "sha256": "a185e56dc88262c1685b54348c499f01d7835d3f9fe9392d9eb24c49c72449d2",
+      "source": {
+        "title": "File:Grill chicken.jpg",
+        "author": "Anandha abirami Govindan",
+        "license": "CC BY 3.0",
+        "license_url": "https://creativecommons.org/licenses/by/3.0",
+        "page_url": "https://commons.wikimedia.org/wiki/File:Grill_chicken.jpg",
+        "download_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ec/Grill_chicken.jpg/960px-Grill_chicken.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "source_copy": "resources/menu-photos/web-v2/grill-chicken-source.jpg",
+        "source_sha256": "8c213016400470e05b563c326fc18e6d20eff8ded8c583ec7aa8fd82144fa73e",
+        "changes": "Resized and JPEG encoded; full composition retained, no subject crop."
+      },
+      "products": [
+        {
+          "id": "menu-021",
+          "name": "GRILL FULL",
+          "portion": "Full",
+          "previous_image": "images/b15a26b142497d9e62e0f596a4b24a0a96e66f961cc96d60d81af3b05d97c0f6.jpg"
+        },
+        {
+          "id": "menu-022",
+          "name": "GRILL HALF",
+          "portion": "Half",
+          "previous_image": "images/b15a26b142497d9e62e0f596a4b24a0a96e66f961cc96d60d81af3b05d97c0f6.jpg"
+        },
+        {
+          "id": "menu-023",
+          "name": "GRILL QTR",
+          "portion": "Quarter",
+          "previous_image": "images/b15a26b142497d9e62e0f596a4b24a0a96e66f961cc96d60d81af3b05d97c0f6.jpg"
+        }
+      ]
+    },
+    {
+      "slug": "pepper-grill-chicken",
+      "src": "./menu-photos/v2/pepper-grill-chicken.jpg",
+      "width": 384,
+      "height": 256,
+      "bytes": 30232,
+      "sha256": "cdb8a05e5017e639aafa3de8ce97f91523151349008de7f3c0fef74539c631d4",
+      "source": {
+        "title": "File:Griilled chicken with indian spices.JPG",
+        "author": "Afsalmuttikkal",
+        "license": "CC BY-SA 4.0",
+        "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "page_url": "https://commons.wikimedia.org/wiki/File:Griilled_chicken_with_indian_spices.JPG",
+        "download_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/03/Griilled_chicken_with_indian_spices.JPG/960px-Griilled_chicken_with_indian_spices.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "source_copy": "resources/menu-photos/web-v2/pepper-grill-chicken-source.jpg",
+        "source_sha256": "eea7e3a3144223fcb78c3053de08249a27a7a011a80289e74788a0e3d6962442",
+        "changes": "Resized and JPEG encoded; full composition retained, no subject crop."
+      },
+      "products": [
+        {
+          "id": "menu-024",
+          "name": "PEPPER GRILL FULL",
+          "portion": "Full",
+          "previous_image": "images/e6b491e9b92f0d268f90cdb373ae8528acf91a24652937c572d63da76da877db.jpg"
+        },
+        {
+          "id": "menu-025",
+          "name": "PEPPER GRILL HALF",
+          "portion": "Half",
+          "previous_image": "images/e6b491e9b92f0d268f90cdb373ae8528acf91a24652937c572d63da76da877db.jpg"
+        },
+        {
+          "id": "menu-026",
+          "name": "PEPPER GRILL QTR",
+          "portion": "Quarter",
+          "previous_image": "images/e6b491e9b92f0d268f90cdb373ae8528acf91a24652937c572d63da76da877db.jpg"
+        }
+      ]
+    }
+  ]
+}

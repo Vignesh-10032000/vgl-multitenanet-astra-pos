@@ -1,0 +1,406 @@
+{
+  "version": "v1",
+  "illustrative": true,
+  "assets": [
+    {
+      "slug": "boiled-egg",
+      "src": "./menu-photos/v1/boiled-egg.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 28500,
+      "sha256": "7be1968ba07e6fa1cd0dc4ee9c36d6316838ee186063148e5b5852fd328dcea9",
+      "products": [
+        {
+          "id": "menu-028",
+          "name": "BOILED EGG",
+          "portion": "Standard"
+        }
+      ]
+    },
+    {
+      "slug": "chicken-biryani",
+      "src": "./menu-photos/v1/chicken-biryani.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 43630,
+      "sha256": "34bd0054305c192636fed0ca06d6cdc1860a53d7eb83163e868dbc62df4c4e84",
+      "products": [
+        {
+          "id": "menu-001",
+          "name": "CHICKEN BIRIYANI",
+          "portion": "Standard"
+        },
+        {
+          "id": "menu-029",
+          "name": "CHICKEN BIRIYANI 1 KG",
+          "portion": "1 kg"
+        },
+        {
+          "id": "menu-030",
+          "name": "CHICKEN BIRIYANI 1/2 KG",
+          "portion": "1/2 kg"
+        }
+      ]
+    },
+    {
+      "slug": "chicken-chukka",
+      "src": "./menu-photos/v1/chicken-chukka.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 39019,
+      "sha256": "c7d6ee4b216e8ce8f296a5294877be36eb77ded71bfe57a0698b989aa6e5f01f",
+      "products": [
+        {
+          "id": "menu-009",
+          "name": "CHICKEN CHUKKA",
+          "portion": "Standard"
+        }
+      ]
+    },
+    {
+      "slug": "chicken-fry",
+      "src": "./menu-photos/v1/chicken-fry.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 43993,
+      "sha256": "c68d0f6ddc10c0e221e7b411e059693ed74694bc5c1e4098f163773df4edc662",
+      "products": [
+        {
+          "id": "menu-008",
+          "name": "CHICKEN FRY",
+          "portion": "Standard"
+        }
+      ]
+    },
+    {
+      "slug": "chicken-gravy",
+      "src": "./menu-photos/v1/chicken-gravy.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 39272,
+      "sha256": "1ada81e77087942875fd22295c567df537ef74377e49ce188caba4ba65bd99e0",
+      "products": [
+        {
+          "id": "menu-015",
+          "name": "CHICKEN GRAVY",
+          "portion": "Standard"
+        }
+      ]
+    },
+    {
+      "slug": "chicken-lollipop",
+      "src": "./menu-photos/v1/chicken-lollipop.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 43357,
+      "sha256": "9c3783d1d9bc3643c87a2dade444add8d5e5a73612fa1e524a6c2b1624bc9375",
+      "products": [
+        {
+          "id": "menu-011",
+          "name": "LOLLIPOP 1 SET",
+          "portion": "1 set"
+        }
+      ]
+    },
+    {
+      "slug": "chicken-manchurian",
+      "src": "./menu-photos/v1/chicken-manchurian.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 43569,
+      "sha256": "c3d2fcbf3fa8c1c821bd679c161ab95c879546cd0b104181cb4167757ee309bc",
+      "products": [
+        {
+          "id": "menu-012",
+          "name": "CHICKEN MANCHURIAN",
+          "portion": "Standard"
+        }
+      ]
+    },
+    {
+      "slug": "chicken-mongolian",
+      "src": "./menu-photos/v1/chicken-mongolian.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 42827,
+      "sha256": "032364fbdefcf2bf75706a4aba51b2b48057bc00499bfa9079439f985b343c3b",
+      "products": [
+        {
+          "id": "menu-013",
+          "name": "CHICKEN MANGOLIAN",
+          "portion": "Standard"
+        }
+      ]
+    },
+    {
+      "slug": "chilli-chicken",
+      "src": "./menu-photos/v1/chilli-chicken.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 43230,
+      "sha256": "71fb9230389f0a77a6666127637753482fb4ccdca6fdc11a48c2d034476e1749",
+      "products": [
+        {
+          "id": "menu-006",
+          "name": "CHILLY CHICKEN",
+          "portion": "Standard"
+        },
+        {
+          "id": "menu-007",
+          "name": "CHILLY CHICKEN (BONELESS)",
+          "portion": "Boneless"
+        }
+      ]
+    },
+    {
+      "slug": "egg-biryani",
+      "src": "./menu-photos/v1/egg-biryani.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 42802,
+      "sha256": "5c797a4d0bd59900e07da6ec97a4b391dfb6e477f5f216f833a054bbe07bf2d4",
+      "products": [
+        {
+          "id": "menu-003",
+          "name": "EGG BIRIYANI",
+          "portion": "Standard"
+        },
+        {
+          "id": "menu-033",
+          "name": "EGG BIRIYANI 1 KG",
+          "portion": "1 kg"
+        },
+        {
+          "id": "menu-034",
+          "name": "EGG BIRIYANI 1/2 KG",
+          "portion": "1/2 kg"
+        }
+      ]
+    },
+    {
+      "slug": "egg-poriyal",
+      "src": "./menu-photos/v1/egg-poriyal.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 42546,
+      "sha256": "7355c19fab146c5f1dc9d0804adc5db77587ab4b64dcd7daf3afe91dbf12d466",
+      "products": [
+        {
+          "id": "menu-027",
+          "name": "EGG PORIAL",
+          "portion": "Standard"
+        }
+      ]
+    },
+    {
+      "slug": "grill-chicken",
+      "src": "./menu-photos/v1/grill-chicken.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 48147,
+      "sha256": "e25c96b66f019bce17ecc7a7eaf2ab69efc4ac3faff3841c0d74cae8f23096cd",
+      "products": [
+        {
+          "id": "menu-021",
+          "name": "GRILL FULL",
+          "portion": "Full"
+        },
+        {
+          "id": "menu-022",
+          "name": "GRILL HALF",
+          "portion": "Half"
+        },
+        {
+          "id": "menu-023",
+          "name": "GRILL QTR",
+          "portion": "Quarter"
+        }
+      ]
+    },
+    {
+      "slug": "kudal-fry",
+      "src": "./menu-photos/v1/kudal-fry.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 44386,
+      "sha256": "02f7d052df2591e544edc2f68f193ea566175a74d1df8599f9d8d6f17c549de6",
+      "products": [
+        {
+          "id": "menu-020",
+          "name": "KUDAL FRY",
+          "portion": "Standard"
+        }
+      ]
+    },
+    {
+      "slug": "kudal-gravy",
+      "src": "./menu-photos/v1/kudal-gravy.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 43756,
+      "sha256": "7295c15987f22ccd847e4f3ea8b87a76fb71fc1d98755f1fd8005b2760853719",
+      "products": [
+        {
+          "id": "menu-017",
+          "name": "KUDAL GRAVY",
+          "portion": "Standard"
+        }
+      ]
+    },
+    {
+      "slug": "mutton-biryani",
+      "src": "./menu-photos/v1/mutton-biryani.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 45788,
+      "sha256": "2024f9b441ebb0967775c6c004372bf7c128fc77a9cf13bd33bbced8273e5a3f",
+      "products": [
+        {
+          "id": "menu-002",
+          "name": "MUTTON BIRIYANI",
+          "portion": "Standard"
+        },
+        {
+          "id": "menu-031",
+          "name": "MUTTON BIRIYANI 1 KG",
+          "portion": "1 kg"
+        },
+        {
+          "id": "menu-032",
+          "name": "MUTTON BIRIYANI 1/2 KG",
+          "portion": "1/2 kg"
+        }
+      ]
+    },
+    {
+      "slug": "mutton-chukka",
+      "src": "./menu-photos/v1/mutton-chukka.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 47830,
+      "sha256": "fc258490f5f6c09113c93985665e8e8153c1df1b84d52acf970d7ffe2320594f",
+      "products": [
+        {
+          "id": "menu-019",
+          "name": "MUTTON CHUKKA",
+          "portion": "Standard"
+        }
+      ]
+    },
+    {
+      "slug": "mutton-fry",
+      "src": "./menu-photos/v1/mutton-fry.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 44284,
+      "sha256": "e2c82253e9cbe554dda17ce8b11d27965e7b45f9789a965f939091e8fc82479d",
+      "products": [
+        {
+          "id": "menu-018",
+          "name": "MUTTON FRY",
+          "portion": "Standard"
+        }
+      ]
+    },
+    {
+      "slug": "mutton-gravy",
+      "src": "./menu-photos/v1/mutton-gravy.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 41655,
+      "sha256": "0b00edb86231afeab7a500dbfd44f9871cce08e527ce3a72aa5bfc9ef4cdef01",
+      "products": [
+        {
+          "id": "menu-016",
+          "name": "MUTTON GRAVY",
+          "portion": "Standard"
+        }
+      ]
+    },
+    {
+      "slug": "pepper-chicken",
+      "src": "./menu-photos/v1/pepper-chicken.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 43213,
+      "sha256": "0cb965f2bba239106a62a8770777c578ce54fcb81a8916820c236c2e385525e6",
+      "products": [
+        {
+          "id": "menu-010",
+          "name": "PEPPER CHICKEN",
+          "portion": "Standard"
+        }
+      ]
+    },
+    {
+      "slug": "pepper-chicken-gravy",
+      "src": "./menu-photos/v1/pepper-chicken-gravy.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 44437,
+      "sha256": "25240d686f78eff272c26793105708497d775f23a67297b61fb1619b51c7e822",
+      "products": [
+        {
+          "id": "menu-014",
+          "name": "PEPPER CHICKEN GRAVY",
+          "portion": "Standard"
+        }
+      ]
+    },
+    {
+      "slug": "pepper-grill-chicken",
+      "src": "./menu-photos/v1/pepper-grill-chicken.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 46755,
+      "sha256": "6b5d1ce4aad4bb145fd727ae9227f2c0a31371b81fd91551923223c25e34437f",
+      "products": [
+        {
+          "id": "menu-024",
+          "name": "PEPPER GRILL FULL",
+          "portion": "Full"
+        },
+        {
+          "id": "menu-025",
+          "name": "PEPPER GRILL HALF",
+          "portion": "Half"
+        },
+        {
+          "id": "menu-026",
+          "name": "PEPPER GRILL QTR",
+          "portion": "Quarter"
+        }
+      ]
+    },
+    {
+      "slug": "plain-biryani",
+      "src": "./menu-photos/v1/plain-biryani.jpg",
+      "width": 384,
+      "height": 384,
+      "bytes": 44463,
+      "sha256": "73490da4750614b99af8f8d4d93da7f974da5d407eb6a8f8762a90228f4d8a54",
+      "products": [
+        {
+          "id": "menu-004",
+          "name": "EMPTY BIRIYANI",
+          "portion": "Standard"
+        },
+        {
+          "id": "menu-005",
+          "name": "MUTTON EMPTY",
+          "portion": "Standard"
+        },
+        {
+          "id": "menu-035",
+          "name": "EMPTY BIRIYANI 1 KG",
+          "portion": "1 kg"
+        },
+        {
+          "id": "menu-036",
+          "name": "EMPTY BIRIYANI 1/2 KG",
+          "portion": "1/2 kg"
+        }
+      ]
+    }
+  ]
+}

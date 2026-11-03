@@ -1,15 +1,17 @@
 import "../css/pos.css";
 
-import { decimalCompare, localDateIso, scaledInteger } from "./data.js";
-import { whenAppReady } from "./app.js";
+import { scaledInteger } from "./data.js";
+import { createPaymentView } from "./payment-view.js";
 import {
-  formatInteger,
-  formatMoney,
-  formatQuantity,
-  localizedName,
-  t,
-} from "./i18n.js";
-import { apiJson, getSession } from "./session.js";
+  billingQuote,
+  billingPaymentPreview,
+  checkoutInput,
+  ledgerItems,
+  menuProduct,
+} from "../../../../../../restaurant/billing-adapter.js";
+import { operationId, percent } from "../../../../../../restaurant/domain.js";
+import { formatInteger, formatMoney, localizedName, t } from "./i18n.js";
+
 import {
   clearChildren,
   closeDialog,
@@ -23,35 +25,27 @@ import {
 
 const state = {
   products: [],
+  catalogue: [],
   categories: [],
   customers: [],
   cart: [],
   quote: null,
+  billingSettings: null,
   payments: [],
   paymentPreview: null,
   paymentSequence: 0,
   selectedCategory: "",
   focusedProductId: null,
-  weighedProduct: null,
-  weightInput: "",
-  saleUuid: crypto.randomUUID(),
+  saleUuid: operationId(),
   quoteSequence: 0,
-  lastBarcode: null,
-  lastBarcodeAt: 0,
-  usingOfflineQuote: false,
-  currentShift: null,
-  quickKeys: [],
+  saving: false,
 };
 
-let cartKey = "";
+let services;
+let draftTail = Promise.resolve();
+let draftFailure = null;
+let loadSequence = 0;
 let paymentView = null;
-let quoteController = null;
-let audioContext = null;
-let offlinePromise = null;
-let offlineDatabasePromise = null;
-let taxEnginePromise = null;
-let retailOperationsPromise = null;
-const scheduleQuote = debounce(requestQuote, 150);
 const debouncedPaymentPreview = debounce(requestPaymentPreview, 150);
 
 function schedulePaymentPreview() {
@@ -61,41 +55,12 @@ function schedulePaymentPreview() {
   debouncedPaymentPreview();
 }
 
-function offlineApi() {
-  offlinePromise ||= import("./offline.js");
-  return offlinePromise;
-}
-
-function offlineDatabase() {
-  offlineDatabasePromise ||= import("./offline-db.js");
-  return offlineDatabasePromise;
-}
-
-function taxEngine() {
-  taxEnginePromise ||= import("./tax-engine.js");
-  return taxEnginePromise;
-}
-
-function retailOperations() {
-  retailOperationsPromise ||= import("./pos-retail-operations.js").then(
-    ({ createRetailOperations }) => createRetailOperations({
-      state,
-      quotePayload,
-      clearCart,
-      productById,
-      mutationComplete,
-      renderTotals,
-      offlineDatabase,
-    }),
-  );
-  return retailOperationsPromise;
-}
-
 function exactQuantity(value) {
-  const match = String(value ?? "").trim().match(/^(\d{1,9})(?:\.(\d{0,3}))?$/);
-  if (!match) return null;
-  const quantity = `${match[1]}.${(match[2] || "").padEnd(3, "0")}`;
-  return scaledInteger(quantity, 3) > 0n ? quantity : null;
+  const match = String(value ?? "")
+    .trim()
+    .match(/^(\d{1,4})(?:\.0{1,3})?$/);
+  if (!match || Number(match[1]) < 1) return null;
+  return `${Number(match[1])}.000`;
 }
 
 function quantityFromScaled(value) {
@@ -111,72 +76,71 @@ function changedQuantity(current, delta) {
 function cartRecord() {
   return {
     cart: state.cart,
-    orderDiscount: document.querySelector("#order-discount").value.trim() || "0.00",
+    orderDiscount:
+      document.querySelector("#order-discount").value.trim() || "0.00",
     customerId: document.querySelector("#pos-customer").value,
     saleUuid: state.saleUuid,
   };
 }
 
 async function persistCart() {
-  if (!cartKey) return;
-  const database = await offlineDatabase();
-  if (!state.cart.length) {
-    await database.deleteCart(cartKey);
-    return;
-  }
-  await database.saveCart(cartKey, cartRecord());
+  if (!services || state.saving) return;
+  const record = cartRecord();
+  const value = {
+    items: ledgerItems(record.cart),
+    discount: record.orderDiscount,
+    customer_id: record.customerId,
+    operation: record.saleUuid,
+    originalCart: record.cart,
+  };
+  // Capture before queueing so rapid taps cannot mutate an earlier write.
+  const snapshot = JSON.parse(JSON.stringify(value));
+  document.querySelector("#draft-status").textContent = "Saving cart…";
+  const work = draftTail.then(() => services.ledger.saveDraft(snapshot));
+  draftTail = work.then(
+    () => {
+      draftFailure = null;
+      document.querySelector("#draft-status").textContent =
+        "Cart saved locally";
+    },
+    (error) => {
+      draftFailure = error;
+      document.querySelector("#draft-status").textContent =
+        "Cart not saved — keep app open";
+    },
+  );
+  return work;
+}
+
+export async function flushBillingDraft() {
+  await draftTail;
+  if (draftFailure) throw draftFailure;
+}
+
+export function isBillingSaving() {
+  return state.saving;
 }
 
 function persistSoon() {
-  persistCart().catch(() => showToast(t("pos.persistence_failed"), { tone: "warning" }));
+  persistCart().catch(() =>
+    showToast(t("pos.persistence_failed"), { tone: "warning" }),
+  );
 }
 
 function productById(productId) {
-  return state.products.find((product) => product.id === productId) ||
-    state.cart.find((item) => item.product_id === productId)?.product || null;
-}
-
-function quotePayload() {
-  const customerValue = document.querySelector("#pos-customer").value;
-  return {
-    lines: state.cart.map((item) => ({
-      product_id: item.product_id,
-      quantity: item.quantity,
-      line_discount: "0.00",
-    })),
-    customer_id: customerValue ? Number.parseInt(customerValue, 10) : null,
-    business_date: localDateIso(),
-    order_discount: document.querySelector("#order-discount").value.trim() || "0.00",
-    apply_round_off: true,
-  };
-}
-
-function setScannerStatus(key, tone = "") {
-  const status = document.querySelector("#scanner-status");
-  status.classList.remove("is-scanning", "is-miss");
-  if (tone) status.classList.add(tone);
-  status.querySelector("span").textContent = t(key);
-}
-
-function playTone(kind) {
-  if (localStorage.getItem("vglpos.scannerSounds") === "false") return;
-  const Audio = window.AudioContext || window.webkitAudioContext;
-  if (!Audio) return;
-  audioContext ||= new Audio();
-  const oscillator = audioContext.createOscillator();
-  const gain = audioContext.createGain();
-  oscillator.type = kind === "hit" ? "sine" : "square";
-  oscillator.frequency.value = kind === "hit" ? 880 : 190;
-  gain.gain.value = 0.08;
-  oscillator.connect(gain);
-  gain.connect(audioContext.destination);
-  oscillator.start();
-  oscillator.stop(audioContext.currentTime + (kind === "hit" ? 0.08 : 0.16));
+  return (
+    state.products.find((product) => product.id === productId) ||
+    state.cart.find((item) => item.product_id === productId)?.product ||
+    state.catalogue.find((product) => product.id === productId) ||
+    null
+  );
 }
 
 function renderCategories() {
   const strip = document.querySelector("#category-strip");
-  strip.querySelectorAll("[data-dynamic-category]").forEach((element) => element.remove());
+  strip
+    .querySelectorAll("[data-dynamic-category]")
+    .forEach((element) => element.remove());
   state.categories.forEach((category) => {
     const button = document.createElement("button");
     button.type = "button";
@@ -187,47 +151,44 @@ function renderCategories() {
     strip.append(button);
   });
   strip.querySelectorAll("[data-category-id]").forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.categoryId === state.selectedCategory);
+    button.classList.toggle(
+      "is-active",
+      button.dataset.categoryId === state.selectedCategory,
+    );
   });
 }
 
-function productTile(product, index) {
+function productTile(product) {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "product-tile";
-  button.dataset.productId = String(product.id);
-  button.disabled = product.is_inventory_tracked &&
-    !product.allow_negative_stock && decimalCompare(product.on_hand, "0.000") <= 0;
-
+  button.dataset.productId = product.id;
   const visual = document.createElement("span");
   visual.className = "product-visual";
-  if (index % 3 === 1) visual.dataset.accent = "warm";
-  const icon = document.createElement("i");
-  icon.dataset.lucide = product.is_weighed ? "scale" : "package";
-  visual.append(icon);
-
+  if (product.imageSource) {
+    const image = document.createElement("img");
+    image.src = product.imageSource;
+    image.alt = "";
+    image.loading = "lazy";
+    image.decoding = "async";
+    visual.append(image);
+  } else {
+    const icon = document.createElement("i");
+    icon.dataset.lucide = "utensils";
+    visual.append(icon);
+  }
   const copy = document.createElement("span");
   copy.className = "product-copy";
   const name = document.createElement("strong");
   name.textContent = localizedName(product);
-  const sku = document.createElement("small");
-  sku.textContent = product.sku;
-  copy.append(name, sku);
-
+  const portion = document.createElement("small");
+  portion.textContent = product.portion;
+  copy.append(name, portion);
   const meta = document.createElement("span");
   meta.className = "product-meta";
   const price = document.createElement("strong");
   price.textContent = formatMoney(product.selling_price);
-  const stock = document.createElement("span");
-  stock.textContent = `${formatQuantity(product.on_hand)} ${product.uom}`;
-  meta.append(price, stock);
-  if (product.stock_unverified
-      && decimalCompare(product.on_hand, product.low_stock_threshold) <= 0) {
-    const warning = document.createElement("small");
-    warning.className = "stock-unverified";
-    warning.textContent = t("pos.stock_unverified");
-    meta.append(warning);
-  }
+  meta.append(price);
   button.append(visual, copy, meta);
   return button;
 }
@@ -236,97 +197,18 @@ function renderProducts() {
   const grid = document.querySelector("#pos-product-grid");
   const empty = document.querySelector("#pos-products-empty");
   const filtered = state.selectedCategory
-    ? state.products.filter((product) => String(product.category_id) === state.selectedCategory)
+    ? state.products.filter(
+        (product) => String(product.category_id) === state.selectedCategory,
+      )
     : state.products;
   clearChildren(grid);
   grid.setAttribute("aria-busy", "false");
   grid.classList.toggle("is-hidden", filtered.length === 0);
   empty.classList.toggle("is-hidden", filtered.length > 0);
-  filtered.forEach((product, index) => grid.append(productTile(product, index)));
-  refreshIcons(grid);
-}
-
-function renderQuickKeys() {
-  const container = document.querySelector("#quick-key-grid");
-  clearChildren(container);
-  state.quickKeys.forEach((entry) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "quick-key-button";
-    button.dataset.quickProductId = String(entry.product.id);
-    const key = document.createElement("kbd");
-    key.textContent = String(entry.key_number);
-    const name = document.createElement("span");
-    name.textContent = localizedName(entry.product);
-    button.append(key, name);
-    container.append(button);
-  });
-}
-
-async function loadQuickKeys() {
-  if (!navigator.onLine) return;
-  try {
-    const response = await apiJson("/api/v1/retail/quick-keys");
-    state.quickKeys = response.items;
-    renderQuickKeys();
-  } catch (error) {
-    showToast(`${t("pos.quick_keys_failed")}: ${error.message}`, { tone: "warning" });
-  }
-}
-
-function renderQuickKeySettings() {
-  const container = document.querySelector("#quick-key-settings");
-  clearChildren(container);
-  const pinned = new Map(
-    state.quickKeys.filter((entry) => entry.is_pinned)
-      .map((entry) => [entry.key_number, entry.product.id]),
+  filtered.forEach((product, index) =>
+    grid.append(productTile(product, index)),
   );
-  for (let number = 1; number <= 12; number += 1) {
-    const label = document.createElement("label");
-    const key = document.createElement("kbd");
-    key.textContent = String(number);
-    const select = document.createElement("select");
-    select.dataset.quickKeyNumber = String(number);
-    const empty = document.createElement("option");
-    empty.value = "";
-    empty.textContent = "—";
-    select.append(empty);
-    state.products.forEach((product) => {
-      const option = document.createElement("option");
-      option.value = String(product.id);
-      option.textContent = `${localizedName(product)} · ${product.sku}`;
-      option.selected = pinned.get(number) === product.id;
-      select.append(option);
-    });
-    label.append(key, select);
-    container.append(label);
-  }
-}
-
-async function configureQuickKeys(event) {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const assignments = [...form.querySelectorAll("[data-quick-key-number]")]
-    .filter((select) => select.value)
-    .map((select) => ({
-      key_number: Number.parseInt(select.dataset.quickKeyNumber, 10),
-      product_id: Number.parseInt(select.value, 10),
-    }));
-  setBusy(form, true);
-  try {
-    const response = await apiJson("/api/v1/retail/quick-keys", {
-      method: "PUT",
-      body: JSON.stringify({ assignments }),
-    });
-    state.quickKeys = response.items;
-    renderQuickKeys();
-    closeDialog("#quick-keys-dialog");
-    showToast(t("pos.quick_keys_saved"), { tone: "success" });
-  } catch (error) {
-    showToast(error.message, { tone: "danger" });
-  } finally {
-    setBusy(form, false);
-  }
+  refreshIcons(grid);
 }
 
 function createQuantityControl(item) {
@@ -357,7 +239,8 @@ function cartLine(item, index) {
   const product = item.product;
   const line = document.createElement("div");
   line.className = "cart-line";
-  if (state.focusedProductId === item.product_id) line.classList.add("is-focused");
+  if (state.focusedProductId === item.product_id)
+    line.classList.add("is-focused");
   line.dataset.cartProductId = String(item.product_id);
   line.tabIndex = 0;
 
@@ -418,13 +301,15 @@ function renderTotals() {
     document.querySelector(selector).textContent = formatMoney(value);
   });
   document.querySelector("#pay-button").disabled =
-    !state.cart.length || !state.quote || !state.currentShift;
+    !state.cart.length || !state.quote || state.saving;
 }
 
 function renderCart(highlightId = null) {
   const container = document.querySelector("#cart-lines");
   clearChildren(container);
-  document.querySelector("#cart-count").textContent = formatInteger(state.cart.length);
+  document.querySelector("#cart-count").textContent = formatInteger(
+    state.cart.length,
+  );
   if (!state.cart.length) {
     const empty = document.createElement("div");
     empty.className = "cart-empty";
@@ -448,24 +333,23 @@ function renderCart(highlightId = null) {
 }
 
 function mutationComplete(highlightId = null) {
+  if (state.saving) return;
   state.quote = null;
-  renderCart(highlightId);
+  state.paymentPreview = null;
   persistSoon();
-  scheduleQuote();
-}
-
-function availableQuantity(product, requested) {
-  return !product.is_inventory_tracked || product.allow_negative_stock ||
-    decimalCompare(requested, product.on_hand) <= 0;
+  requestQuote(highlightId);
 }
 
 function addProduct(product, quantity = "1.000") {
   const existing = state.cart.find((item) => item.product_id === product.id);
   const requested = existing
-    ? quantityFromScaled(scaledInteger(existing.quantity, 3) + scaledInteger(quantity, 3))
+    ? quantityFromScaled(
+        scaledInteger(existing.quantity, 3) + scaledInteger(quantity, 3),
+      )
     : quantity;
-  if (!availableQuantity(product, requested)) {
-    showToast(t("pos.insufficient_stock"), { tone: "warning" });
+  if (state.saving) return;
+  if (!exactQuantity(requested)) {
+    showToast("Quantity must be 1–9999 whole portions", { tone: "warning" });
     return;
   }
   if (existing) existing.quantity = requested;
@@ -475,22 +359,18 @@ function addProduct(product, quantity = "1.000") {
 }
 
 function selectProduct(product) {
-  if (product.is_weighed) {
-    state.weighedProduct = product;
-    state.weightInput = "";
-    document.querySelector("#weight-title").textContent = localizedName(product);
-    document.querySelector("#weight-value").textContent = "0.000";
-    openDialog("#weight-dialog");
-    return;
-  }
+  if (state.saving) return;
   addProduct(product);
 }
 
 function updateQuantity(productId, quantity) {
-  const item = state.cart.find((candidate) => candidate.product_id === productId);
+  if (state.saving) return;
+  const item = state.cart.find(
+    (candidate) => candidate.product_id === productId,
+  );
   if (!item) return;
   const normalized = exactQuantity(quantity);
-  if (!normalized || !availableQuantity(item.product, normalized)) {
+  if (!normalized) {
     showToast(t("pos.invalid_quantity"), { tone: "warning" });
     renderCart();
     return;
@@ -500,7 +380,10 @@ function updateQuantity(productId, quantity) {
 }
 
 function adjustQuantity(productId, delta) {
-  const item = state.cart.find((candidate) => candidate.product_id === productId);
+  if (state.saving) return;
+  const item = state.cart.find(
+    (candidate) => candidate.product_id === productId,
+  );
   if (!item) return;
   const next = changedQuantity(item.quantity, delta);
   if (scaledInteger(next, 3) <= 0n) {
@@ -511,14 +394,21 @@ function adjustQuantity(productId, delta) {
 }
 
 function removeItem(productId) {
+  if (state.saving) return;
   const index = state.cart.findIndex((item) => item.product_id === productId);
   if (index < 0) return;
   const [removed] = state.cart.splice(index, 1);
+  const operation = state.saleUuid;
   mutationComplete();
   showToast(t("pos.item_removed", { name: localizedName(removed.product) }), {
     actionLabel: t("pos.undo"),
     duration: 5000,
     onAction: () => {
+      if (state.saving || state.saleUuid !== operation) return;
+      if (state.cart.some((item) => item.product_id === removed.product_id)) {
+        addProduct(removed.product, removed.quantity);
+        return;
+      }
       state.cart.splice(index, 0, removed);
       mutationComplete(removed.product_id);
     },
@@ -526,11 +416,15 @@ function removeItem(productId) {
 }
 
 function clearCart({ offerUndo = true } = {}) {
+  if (state.saving) return;
   if (!state.cart.length) return;
   const previous = cartRecord();
   state.cart = [];
   state.quote = null;
-  state.saleUuid = crypto.randomUUID();
+  state.paymentPreview = null;
+  ++state.quoteSequence;
+  state.saleUuid = operationId();
+  const clearedOperation = state.saleUuid;
   document.querySelector("#order-discount").value = "0.00";
   renderCart();
   persistSoon();
@@ -539,9 +433,11 @@ function clearCart({ offerUndo = true } = {}) {
       actionLabel: t("pos.undo"),
       duration: 5000,
       onAction: () => {
+        if (state.saving || state.saleUuid !== clearedOperation) return;
         state.cart = previous.cart;
         state.saleUuid = previous.saleUuid;
-        document.querySelector("#order-discount").value = previous.orderDiscount;
+        document.querySelector("#order-discount").value =
+          previous.orderDiscount;
         document.querySelector("#pos-customer").value = previous.customerId;
         mutationComplete();
       },
@@ -550,317 +446,173 @@ function clearCart({ offerUndo = true } = {}) {
 }
 
 async function localQuote() {
-  const facts = await (await offlineApi()).getOfflineFacts();
-  if (!facts?.supplier_state) {
-    throw new Error("Reconnect this terminal once before offline billing.");
-  }
-  const customerValue = document.querySelector("#pos-customer").value;
-  const customer = customerValue
-    ? state.customers.find((item) => item.id === Number.parseInt(customerValue, 10))
-    : null;
-  return (await taxEngine()).computeTax({
-    lines: state.cart.map((item) => ({
-      quantity: item.quantity,
-      unit_price: item.product.selling_price,
-      tax_rate: item.product.tax_rate,
-      cess_rate: item.product.cess_rate,
-      line_discount: "0.00",
-      tax_inclusive: item.product.is_tax_inclusive,
-    })),
-    supplier_state: facts.supplier_state,
-    place_of_supply: customer?.state_code || facts.supplier_state,
-    order_discount: document.querySelector("#order-discount").value.trim() || "0.00",
-    apply_round_off: true,
-  });
+  return billingQuote(
+    state.cart,
+    document.querySelector("#order-discount").value,
+    state.billingSettings || await services.ledger.settings(),
+  );
 }
 
-async function useLocalQuote(sequence) {
-  const quote = await localQuote();
-  if (sequence !== state.quoteSequence) return;
-  state.quote = quote;
-  state.usingOfflineQuote = true;
-  renderCart();
-  if (document.querySelector("#payment-dialog").open) {
-    document.querySelector("#payment-total").textContent = formatMoney(quote.net_amount);
-    schedulePaymentPreview();
-  }
-}
-
-async function requestQuote() {
+async function requestQuote(highlightId = null) {
   const sequence = ++state.quoteSequence;
+  state.paymentPreview = null;
+  renderPaymentPreview();
   if (!state.cart.length) {
     state.quote = null;
-    renderCart();
-    return;
-  }
-  quoteController?.abort();
-  quoteController = new AbortController();
-  if (!navigator.onLine) {
-    try {
-      await useLocalQuote(sequence);
-    } catch (error) {
-      state.quote = null;
-      renderCart();
-      showToast(`${t("pos.quote_failed")}: ${error.message}`, { tone: "danger" });
-    }
+    renderCart(highlightId);
     return;
   }
   try {
-    const quote = await apiJson("/api/v1/sales/quote", {
-      method: "POST",
-      body: JSON.stringify(quotePayload()),
-      signal: quoteController.signal,
-    });
+    const quote = await localQuote();
     if (sequence !== state.quoteSequence) return;
     state.quote = quote;
-    state.usingOfflineQuote = false;
-    renderCart();
+    document.querySelector("#cart-error").textContent = "";
+    renderCart(highlightId);
     if (document.querySelector("#payment-dialog").open) {
-      document.querySelector("#payment-total").textContent = formatMoney(quote.net_amount);
+      document.querySelector("#payment-total").textContent = formatMoney(
+        quote.net_amount,
+      );
       schedulePaymentPreview();
     }
   } catch (error) {
-    if (error.name === "AbortError") return;
-    if (!navigator.onLine || error instanceof TypeError) {
-      try {
-        await useLocalQuote(sequence);
-        return;
-      } catch (offlineError) {
-        error = offlineError;
-      }
-    }
+    if (sequence !== state.quoteSequence) return;
     state.quote = null;
     renderCart();
-    showToast(`${t("pos.quote_failed")}: ${error.message}`, { tone: "danger" });
+    document.querySelector("#cart-error").textContent = error.message;
   }
 }
 
 async function loadProducts(query = "") {
-  const grid = document.querySelector("#pos-product-grid");
-  grid.setAttribute("aria-busy", "true");
-  const cached = await (await offlineApi()).cachedReferenceData();
-  try {
-    const parameters = new URLSearchParams({ limit: "200" });
-    if (query) parameters.set("q", query);
-    const page = await apiJson(`/api/v1/products?${parameters}`);
-    const cachedById = new Map(cached.products.map((product) => [product.id, product]));
-    state.products = page.items.map((product) => ({
-      ...product,
-      tax_rate: cachedById.get(product.id)?.tax_rate,
-      cess_rate: cachedById.get(product.id)?.cess_rate,
-    }));
-    renderProducts();
-  } catch (error) {
-    state.products = query
-      ? cached.products.filter((product) => {
-          const needle = query.toLocaleLowerCase();
-          return [product.name, product.name_en, product.name_ta, product.sku, product.barcode]
-            .some((value) => String(value || "").toLocaleLowerCase().includes(needle));
-        })
-      : cached.products;
-    renderProducts();
-    if (!state.products.length) {
-      showToast(`${t("errors.products")}: ${error.message}`, { tone: "danger" });
-    }
-  }
+  const sequence = ++loadSequence;
+  const products = await services.ledger.products();
+  state.catalogue = products.filter((p) => p.active).map(menuProduct);
+  const active = products.filter(
+    (p) =>
+      p.active &&
+      [p.name, p.portion, p.category].some((v) =>
+        v.toLocaleLowerCase().includes(query.toLocaleLowerCase()),
+      ),
+  );
+  const mapped = await Promise.all(
+    active.map(async (p) => ({
+      ...menuProduct(p),
+      imageSource: p.image ? await services.images.read(p.image) : null,
+    })),
+  );
+  if (sequence !== loadSequence) return;
+  state.products = mapped;
+  renderProducts();
 }
 
 async function loadReferenceData() {
-  const cached = await (await offlineApi()).cachedReferenceData();
-  try {
-    const [categories, customers] = await Promise.all([
-      apiJson("/api/v1/products/categories"),
-      apiJson("/api/v1/customers?limit=200"),
-    ]);
-    state.categories = categories.items;
-    state.customers = customers.items;
-  } catch (error) {
-    state.categories = [];
-    state.customers = cached.customers;
-    if (!state.customers.length) {
-      showToast(`${t("pos.reference_failed")}: ${error.message}`, { tone: "warning" });
-    }
-  }
+  const [products, customers] = await Promise.all([
+    services.ledger.products(),
+    services.ledger.customers(),
+  ]);
+  state.categories = [
+    ...new Set(products.filter((p) => p.active).map((p) => p.category)),
+  ].map((name) => ({ id: name, name }));
+  state.customers = customers;
   renderCategories();
   const select = document.querySelector("#pos-customer");
-  select.querySelectorAll("option:not(:first-child)").forEach((option) => option.remove());
-  state.customers.forEach((customer) => {
+  const selected = select.value;
+  select
+    .querySelectorAll("option:not(:first-child)")
+    .forEach((option) => option.remove());
+  customers.forEach((customer) => {
     const option = document.createElement("option");
-    option.value = String(customer.id);
-    option.textContent = customer.gstin ? `${customer.name} · GSTIN` : customer.name;
+    option.value = customer.id;
+    option.textContent = `${customer.name}${customer.phone ? " · " + customer.phone : ""}`;
     select.append(option);
+  });
+  select.value = selected;
+  const settings = await services.ledger.settings();
+  state.billingSettings = settings;
+  const priceBasis = document.querySelector("#scanner-status span");
+  priceBasis.dataset.i18n = settings.receipt_mode === "tax_invoice"
+    ? settings.tax_inclusive === false ? "restaurant.pricesExclusive" : "restaurant.pricesInclusive"
+    : "restaurant.localBilling";
+  priceBasis.textContent = t(priceBasis.dataset.i18n);
+  document.querySelector("#cgst-label").textContent =
+    `CGST ${percent(settings.tax_bps, 2)}%`;
+  document.querySelector("#sgst-label").textContent =
+    `SGST ${percent(settings.tax_bps, 2)}%`;
+  document.querySelectorAll("[data-gst-row]").forEach((row) => {
+    row.hidden = settings.receipt_mode !== "tax_invoice";
   });
 }
 
 async function restoreCart() {
-  const saved = await (await offlineDatabase()).loadCart(cartKey);
-  if (!saved?.cart?.length) return;
-  state.cart = saved.cart;
-  state.saleUuid = saved.saleUuid || crypto.randomUUID();
-  document.querySelector("#order-discount").value = saved.orderDiscount || "0.00";
-  document.querySelector("#pos-customer").value = saved.customerId || "";
-  renderCart();
-  scheduleQuote();
-  showToast(t("pos.cart_restored"), { tone: "success" });
-}
-
-async function processBarcode(barcode) {
-  setScannerStatus("pos.scanning", "is-scanning");
-  try {
-    const product = await apiJson(`/api/v1/products/lookup?barcode=${encodeURIComponent(barcode)}`);
-    if (!state.products.some((item) => item.id === product.id)) state.products.push(product);
-    const now = Date.now();
-    state.lastBarcode = barcode;
-    state.lastBarcodeAt = now;
-    selectProduct(product);
-    playTone("hit");
-    setScannerStatus("pos.scan_added", "is-scanning");
-    window.setTimeout(() => setScannerStatus("pos.scanner_ready"), 1000);
-  } catch (error) {
-    const cached = (await (await offlineApi()).cachedReferenceData()).products.find(
-      (product) => product.barcode === barcode,
-    );
-    if (cached) {
-      if (!state.products.some((item) => item.id === cached.id)) state.products.push(cached);
-      selectProduct(cached);
-      playTone("hit");
-      setScannerStatus("pos.scan_added", "is-scanning");
-      window.setTimeout(() => setScannerStatus("pos.scanner_ready"), 1000);
-      return;
-    }
-    playTone("miss");
-    setScannerStatus("pos.scan_unknown", "is-miss");
-    showToast(t("pos.unknown_barcode", { barcode }), {
-      tone: "warning",
-      duration: 7000,
-      actionLabel: t("pos.add_new_product"),
-      onAction: () => { location.href = `/products?barcode=${encodeURIComponent(barcode)}`; },
-    });
-    window.setTimeout(() => setScannerStatus("pos.scanner_ready"), 1600);
-  }
-}
-
-function initializeScanner() {
-  let characters = "";
-  let lastTimestamp = 0;
-  let resetTimer = null;
-  let originalTarget = null;
-  let originalValue = "";
-  const reset = () => {
-    characters = "";
-    lastTimestamp = 0;
-    originalTarget = null;
-    originalValue = "";
-    window.clearTimeout(resetTimer);
-  };
-  document.addEventListener("keydown", (event) => {
-    if (event.ctrlKey || event.altKey || event.metaKey) {
-      reset();
-      return;
-    }
-    if (event.key === "Enter") {
-      if (characters.length >= 4 && event.timeStamp - lastTimestamp < 30) {
-        event.preventDefault();
-        event.stopPropagation();
-        if (originalTarget && "value" in originalTarget) {
-          originalTarget.value = originalValue;
-          originalTarget.dispatchEvent(new Event("input", { bubbles: true }));
-        }
-        const barcode = characters;
-        reset();
-        processBarcode(barcode);
-      } else {
-        reset();
-      }
-      return;
-    }
-    if (event.key.length !== 1) return;
-    const gap = lastTimestamp ? event.timeStamp - lastTimestamp : 0;
-    if (characters && gap >= 30) reset();
-    if (!characters) {
-      originalTarget = event.target instanceof HTMLInputElement ? event.target : null;
-      originalValue = originalTarget?.value || "";
-    }
-    characters += event.key;
-    lastTimestamp = event.timeStamp;
-    window.clearTimeout(resetTimer);
-    resetTimer = window.setTimeout(reset, 40);
-  }, true);
-}
-
-function paymentPayload() {
-  return state.payments
-    .filter((payment) => scaledInteger(payment.amount, 2) > 0n)
-    .map((payment) => ({
-      method: payment.method,
-      amount: payment.amount,
-      reference_number: payment.reference.trim() || null,
+  const saved = await services.ledger.draft();
+  if (!saved) return;
+  state.cart =
+    saved.originalCart ||
+    (saved.items || []).map((item) => ({
+      product_id: item.product_id,
+      quantity: `${item.quantity}.000`,
+      product: menuProduct({
+        id: item.product_id,
+        name: item.name,
+        portion: item.portion,
+        price_paise: item.unit_paise,
+      }),
     }));
+  state.saleUuid = saved.operation || operationId();
+  document.querySelector("#order-discount").value = saved.discount || "0.00";
+  document.querySelector("#pos-customer").value = saved.customer_id || "";
+  await requestQuote();
+  if (state.cart.length) showToast(t("pos.cart_restored"), { tone: "success" });
 }
 
-function renderPayments() { paymentView?.renderPayments(); }
-function renderPaymentPreview() { paymentView?.renderPaymentPreview(); }
-function paymentSummary(...args) { return paymentView.summary(...args); }
+function renderPayments() {
+  paymentView?.renderPayments();
+}
+function renderPaymentPreview() {
+  paymentView?.renderPaymentPreview();
+}
+function paymentSummary(...args) {
+  return paymentView.summary(...args);
+}
 
 async function requestPaymentPreview() {
-  const sequence = ++state.paymentSequence;
+  ++state.paymentSequence;
   state.paymentPreview = null;
-  renderPaymentPreview();
-  let payments;
   try {
-    paymentSummary(state.quote?.net_amount || "0.00", state.payments);
-    payments = paymentPayload();
-  } catch { return; }
-  if (!state.quote || !payments.length) return;
-  if (!navigator.onLine || state.usingOfflineQuote) {
-    try {
-      const engine = await taxEngine();
-      if (sequence !== state.paymentSequence) return;
-      state.paymentPreview = engine.computePaymentPreview(state.quote, payments);
-      document.querySelector("#payment-error").textContent = "";
-    } catch (error) {
-      document.querySelector("#payment-error").textContent = error.message;
-    }
-    renderPaymentPreview();
-    return;
-  }
-  try {
-    const preview = await apiJson("/api/v1/sales/payment-preview", {
-      method: "POST",
-      body: JSON.stringify({ ...quotePayload(), payments }),
-    });
-    if (sequence !== state.paymentSequence) return;
-    state.paymentPreview = preview;
+    if (state.quote && !state.saving)
+      state.paymentPreview = billingPaymentPreview(
+        state.quote.net_amount,
+        state.payments,
+      );
     document.querySelector("#payment-error").textContent = "";
   } catch (error) {
-    if (sequence !== state.paymentSequence) return;
-    if (!navigator.onLine || error instanceof TypeError) {
-      try {
-        const engine = await taxEngine();
-        if (sequence !== state.paymentSequence) return;
-        state.paymentPreview = engine.computePaymentPreview(state.quote, payments);
-        state.usingOfflineQuote = true;
-        document.querySelector("#payment-error").textContent = "";
-      } catch (offlineError) {
-        document.querySelector("#payment-error").textContent = offlineError.message;
-      }
-    } else {
-      document.querySelector("#payment-error").textContent = error.message;
-    }
+    document.querySelector("#payment-error").textContent = error.message;
   }
   renderPaymentPreview();
 }
 
 async function openPayment() {
-  try { paymentView ||= (await import("./payment-view.js")).createPaymentView(state); }
-  catch (error) { showToast(error.message, { tone: "danger" }); return; }
-  if (!state.quote) {
+  try {
+    paymentView ||= createPaymentView(state, () => services.ledger.settings());
+  } catch (error) {
+    showToast(error.message, { tone: "danger" });
+    return;
+  }
+  if (state.saving || !state.cart.length || !state.quote) {
     showToast(t("pos.wait_for_total"), { tone: "warning" });
     return;
   }
-  state.payments = [{ id: crypto.randomUUID(), method: "CASH", amount: state.quote.net_amount, reference: "" }];
+  state.payments = [
+    {
+      id: operationId(),
+      method: "CASH",
+      amount: state.quote.net_amount,
+      reference: "",
+    },
+  ];
   state.paymentPreview = null;
-  document.querySelector("#payment-total").textContent = formatMoney(state.quote.net_amount);
+  document.querySelector("#payment-total").textContent = formatMoney(
+    state.quote.net_amount,
+  );
   document.querySelector("#payment-error").textContent = "";
   renderPayments();
   renderPaymentPreview();
@@ -870,84 +622,71 @@ async function openPayment() {
   requestPaymentPreview();
 }
 
-async function saveOfflineCheckout(payload) {
-  const offline = await offlineApi();
-  const provisionalNumber = await offline.nextProvisionalNumber();
-  await offline.queueOfflineSale({
-    payload,
-    quote: state.quote,
-    provisionalNumber,
-    cart: state.cart,
-  });
-  localStorage.setItem("vglpos.lastReceiptPath", `/receipt/offline/${state.saleUuid}`);
-  state.cart = [];
-  await (await offlineDatabase()).deleteCart(cartKey);
-  closeDialog("#payment-dialog");
-  showToast(t("pos.offline_saved", { invoice: provisionalNumber }), {
-    tone: "warning",
-    duration: 8000,
-  });
-  location.href = `/receipt/offline/${payload.offline_uuid}?paper=${localStorage.getItem("vglpos.paper") || "80"}`;
-}
-
 async function completeSale() {
-  if (!state.paymentPreview || scaledInteger(state.paymentPreview.balance_due, 2) !== 0n) return;
-  if (!state.currentShift) {
-    document.querySelector("#payment-error").textContent = t("pos.shift_required");
-    return;
-  }
-  const button = document.querySelector("#complete-sale");
-  button.disabled = true;
-  const payload = {
-    ...quotePayload(),
-    payments: paymentPayload(),
-    shift_id: state.currentShift.id,
-    offline_uuid: state.saleUuid,
-    notes: null,
-  };
-  if (!navigator.onLine || state.usingOfflineQuote) {
-    try {
-      await saveOfflineCheckout(payload);
-    } catch (error) {
-      document.querySelector("#payment-error").textContent = error.message;
-      button.disabled = false;
-    }
-    return;
-  }
-  try {
-    const sale = await apiJson("/api/v1/sales/checkout", {
-      method: "POST",
-      body: JSON.stringify(payload),
+  if (state.saving || !state.paymentPreview || !state.quote) return;
+  state.saving = true;
+  renderTotals();
+  document
+    .querySelectorAll(
+      "#payment-dialog button, #payment-dialog input, #payment-dialog select",
+    )
+    .forEach((element) => {
+      element.disabled = true;
     });
-    localStorage.setItem("vglpos.lastSaleId", String(sale.id));
-    localStorage.setItem("vglpos.lastReceiptPath", `/receipt/${sale.id}`);
-    state.cart = [];
-    await (await offlineDatabase()).deleteCart(cartKey);
-    closeDialog("#payment-dialog");
-    location.href = `/receipt/${sale.id}?paper=${localStorage.getItem("vglpos.paper") || "80"}`;
+  let sale;
+  let saveError;
+  try {
+    const input = checkoutInput(
+      state.cart,
+      document.querySelector("#order-discount").value,
+      document.querySelector("#pos-customer").value,
+      state.saleUuid,
+      state.payments,
+      state.quote.net_amount,
+    );
+    // No pending draft may run after checkout's atomic draft removal.
+    await flushBillingDraft();
+    sale = await services.ledger.checkout(input);
   } catch (error) {
-    if (!navigator.onLine || error instanceof TypeError) {
-      try {
-        await saveOfflineCheckout(payload);
-        return;
-      } catch (offlineError) {
-        error = offlineError;
-      }
-    }
-    document.querySelector("#payment-error").textContent = error.message;
-    button.disabled = false;
+    saveError = error;
+  } finally {
+    state.saving = false;
+    document
+      .querySelectorAll(
+        "#payment-dialog button, #payment-dialog input, #payment-dialog select",
+      )
+      .forEach((element) => {
+        element.disabled = false;
+      });
+  }
+  if (!sale) {
+    renderTotals();
+    await requestPaymentPreview();
+    document.querySelector("#payment-error").textContent = saveError.message;
+    return;
+  }
+  // Commit has succeeded. Receipt failures must never leave a payable copy of this cart.
+  state.cart = [];
+  state.quote = null;
+  state.payments = [];
+  state.paymentPreview = null;
+  state.saleUuid = operationId();
+  document.querySelector("#order-discount").value = "0.00";
+  document.querySelector("#draft-status").textContent = "Bill saved locally";
+  closeDialog("#payment-dialog");
+  renderCart();
+  try {
+    await services.showReceipt(sale.id);
+  } catch (error) {
+    showToast(
+      `Bill ${sale.bill_number} saved. Open Sales to reprint: ${error.message}`,
+      { tone: "warning" },
+    );
   }
 }
 
 async function holdBill() {
-  if (!state.cart.length) {
-    showToast(t("pos.nothing_to_hold"), { tone: "warning" });
-    return;
-  }
-  if (!state.currentShift || !navigator.onLine) {
-    showToast(t("pos.hold_requires_online_shift"), { tone: "warning" });
-    return;
-  }
+  if (state.saving || !state.cart.length) return;
   const form = document.querySelector("#hold-form");
   form.reset();
   document.querySelector("#hold-error").textContent = "";
@@ -957,38 +696,39 @@ async function holdBill() {
 
 async function submitHeldBill(event) {
   event.preventDefault();
+  if (state.saving) return;
   const form = event.currentTarget;
-  const error = document.querySelector("#hold-error");
-  error.textContent = "";
+  state.saving = true;
   setBusy(form, true);
   try {
-    await apiJson("/api/v1/retail/held-bills", {
-      method: "POST",
-      body: JSON.stringify({
-        ...quotePayload(),
-        shift_id: state.currentShift.id,
-        label: form.elements.label.value.trim() || null,
-      }),
-    });
+    await flushBillingDraft();
+    await services.ledger.holdCart(
+      cartRecord(),
+      form.elements.label.value.trim(),
+    );
+    state.cart = [];
+    state.quote = null;
+    state.saleUuid = operationId();
+    document.querySelector("#order-discount").value = "0.00";
     closeDialog("#hold-dialog");
-    clearCart({ offerUndo: false });
-    showToast(t("pos.bill_held"), { tone: "success" });
-  } catch (failure) {
-    error.textContent = failure.message;
+    renderCart();
+  } catch (error) {
+    document.querySelector("#hold-error").textContent = error.message;
   } finally {
+    state.saving = false;
     setBusy(form, false);
+    renderTotals();
   }
 }
 
 async function fetchHeldBills() {
-  const response = await apiJson("/api/v1/retail/held-bills");
-  return response.items;
+  return services.ledger.heldBills();
 }
 
 async function showHeldBills() {
   const list = document.querySelector("#held-list");
   clearChildren(list);
-  let holds = [];
+  let holds;
   try {
     holds = await fetchHeldBills();
   } catch (error) {
@@ -1005,12 +745,11 @@ async function showHeldBills() {
     row.className = "held-bill";
     const copy = document.createElement("div");
     const title = document.createElement("strong");
-    title.textContent = hold.label || t("pos.held_items", { count: hold.item_count });
+    title.textContent =
+      hold.label || t("pos.held_items", { count: hold.item_count });
     const time = document.createElement("small");
-    time.textContent = `${formatDate(hold.created_at, { dateStyle: "short", timeStyle: "short" })} · ${formatMoney(hold.net_amount)}`;
-    const notice = document.createElement("small");
-    notice.textContent = t("pos.stock_not_reserved");
-    copy.append(title, time, notice);
+    time.textContent = hold.created_at;
+    copy.append(title, time);
     const actions = document.createElement("div");
     actions.className = "held-bill-actions";
     const restore = document.createElement("button");
@@ -1031,423 +770,211 @@ async function showHeldBills() {
 }
 
 async function restoreHeldBill(id) {
+  if (state.saving) return;
   if (state.cart.length) {
     showToast(t("pos.hold_current_first"), { tone: "warning" });
     return;
   }
+  state.saving = true;
   try {
-    const hold = await apiJson(`/api/v1/retail/held-bills/${id}/recall`, {
-      method: "POST",
-      body: "{}",
-    });
-    const lines = hold.cart_payload.lines || [];
-    const restored = lines.map((line) => ({
-      product_id: line.product_id,
-      quantity: line.quantity,
-      product: productById(line.product_id),
-    }));
-    if (restored.some((line) => !line.product)) {
-      throw new Error(t("pos.held_product_unavailable"));
-    }
-    state.cart = restored;
-    state.saleUuid = crypto.randomUUID();
-    document.querySelector("#order-discount").value = hold.cart_payload.order_discount || "0.00";
-    document.querySelector("#pos-customer").value = hold.cart_payload.customer_id || "";
+    await flushBillingDraft();
+    const saved = await services.ledger.recallHeldBill(id);
+    state.cart = saved.cart;
+    state.saleUuid = saved.saleUuid || operationId();
+    document.querySelector("#order-discount").value =
+      saved.orderDiscount || "0.00";
+    document.querySelector("#pos-customer").value = saved.customerId || "";
     closeDialog("#holds-dialog");
-    mutationComplete();
   } catch (error) {
     showToast(error.message, { tone: "danger" });
+  } finally {
+    state.saving = false;
+    mutationComplete();
   }
 }
 
 async function discardHeldBill(id) {
   try {
-    await apiJson(`/api/v1/retail/held-bills/${id}`, { method: "DELETE" });
+    await services.ledger.discardHeldBill(id);
     await showHeldBills();
   } catch (error) {
     showToast(error.message, { tone: "danger" });
   }
 }
 
-function setCurrentShift(shift) {
-  state.currentShift = shift;
-  const status = document.querySelector("#shift-status");
-  status.dataset.state = shift ? "open" : "closed";
-  status.querySelector("span").textContent = shift
-    ? t("pos.shift_open", { id: shift.id })
-    : t("pos.shift_required");
-  if (shift) sessionStorage.setItem("vglpos.shiftId", String(shift.id));
-  else sessionStorage.removeItem("vglpos.shiftId");
-  renderTotals();
-}
 
-async function ensureShift() {
-  try {
-    const response = await apiJson("/api/v1/shifts/current");
-    setCurrentShift(response.shift);
-    if (!response.shift) openDialog("#shift-open-dialog");
-  } catch (error) {
-    const stored = sessionStorage.getItem("vglpos.shiftId");
-    if (stored && !navigator.onLine) {
-      setCurrentShift({ id: Number.parseInt(stored, 10), status: "OPEN" });
-      return;
-    }
-    setCurrentShift(null);
-    showToast(error.message, { tone: "danger" });
-    openDialog("#shift-open-dialog");
-  }
-}
-
-async function openShift(event) {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const error = document.querySelector("#shift-open-error");
-  error.textContent = "";
-  setBusy(form, true);
-  try {
-    const shift = await apiJson("/api/v1/shifts/open", {
-      method: "POST",
-      body: JSON.stringify({
-        opening_cash: denominationTotal(form),
-        denomination_counts: denominationCounts(form),
-        notes: form.elements.notes.value.trim() || null,
-      }),
-    });
-    setCurrentShift(shift);
-    closeDialog("#shift-open-dialog");
-    showToast(t("pos.shift_opened"), { tone: "success" });
-  } catch (failure) {
-    error.textContent = failure.message;
-  } finally {
-    setBusy(form, false);
-  }
-}
-
-async function closeShift(event) {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const error = document.querySelector("#shift-close-error");
-  error.textContent = "";
-  const summary = await (await offlineDatabase()).outboxSummary();
-  if (summary.total && !form.elements.queue_acknowledged.checked) {
-    error.textContent = t("pos.shift_queue_warning", { count: summary.total });
-    return;
-  }
-  const heldCount = Number.parseInt(form.dataset.heldCount || "0", 10);
-  if (heldCount && !form.elements.expire_held_bills.checked) {
-    error.textContent = t("pos.held_close_warning", { count: heldCount });
-    return;
-  }
-  setBusy(form, true);
-  try {
-    const shift = await apiJson("/api/v1/shifts/close", {
-      method: "POST",
-      body: JSON.stringify({
-        shift_id: state.currentShift.id,
-        counted_cash: denominationTotal(form),
-        denomination_counts: denominationCounts(form),
-        notes: form.elements.notes.value.trim() || null,
-        expire_held_bills: form.elements.expire_held_bills.checked,
-        approver_user_id: form.elements.approver_user_id.value
-          ? Number.parseInt(form.elements.approver_user_id.value, 10)
-          : null,
-        approval_pin: form.elements.approval_pin.value || null,
-        variance_reason: form.elements.variance_reason.value.trim() || null,
-      }),
-    });
-    setCurrentShift(null);
-    closeDialog("#shift-close-dialog");
-    showToast(t("pos.shift_closed", { difference: formatMoney(shift.cash_difference) }), { tone: "success", duration: 8000 });
-    location.href = `/z-report/${shift.id}`;
-  } catch (failure) {
-    error.textContent = failure.message;
-    if (failure.status === 403) {
-      document.querySelector("#variance-approval").classList.remove("is-hidden");
-      form.elements.approver_user_id.required = true;
-      form.elements.approval_pin.required = true;
-      form.elements.variance_reason.required = true;
-    }
-  } finally {
-    setBusy(form, false);
-  }
-}
-
-async function openShiftClose() {
-  if (!state.currentShift) {
-    openDialog("#shift-open-dialog");
-    return;
-  }
-  const summary = await (await offlineDatabase()).outboxSummary();
-  const warning = document.querySelector("#shift-queue-warning");
-  warning.classList.toggle("is-hidden", summary.total === 0);
-  document.querySelector("#shift-queue-message").textContent = summary.total
-    ? t("pos.shift_queue_warning", { count: summary.total })
-    : "";
-  warning.querySelector("input").checked = false;
-  let held = [];
-  try {
-    held = await fetchHeldBills();
-  } catch (error) {
-    showToast(error.message, { tone: "warning" });
-  }
-  const form = document.querySelector("#shift-close-form");
-  form.dataset.heldCount = String(held.length);
-  form.elements.shift_id.value = String(state.currentShift.id);
-  form.elements.expire_held_bills.checked = false;
-  const heldWarning = document.querySelector("#held-bills-warning");
-  heldWarning.classList.toggle("is-hidden", held.length === 0);
-  document.querySelector("#held-bills-message").textContent = held.length
-    ? t("pos.held_close_warning", { count: held.length })
-    : "";
-  document.querySelector("#variance-approval").classList.add("is-hidden");
-  form.elements.approver_user_id.required = false;
-  form.elements.approval_pin.required = false;
-  form.elements.variance_reason.required = false;
-  form.querySelectorAll("[data-denomination]").forEach((input) => { input.value = "0"; });
-  updateDenominationTotal(form);
-  openDialog("#shift-close-dialog");
-}
-
-async function reprintLastReceipt() {
-  const saleId = localStorage.getItem("vglpos.lastSaleId");
-  const receiptPath = localStorage.getItem("vglpos.lastReceiptPath");
-  if (!saleId || !receiptPath || receiptPath.includes("/offline/")) {
-    showToast(t("pos.no_last_receipt"), { tone: "warning" });
-    return;
-  }
-  try {
-    await apiJson(`/api/v1/sales/${saleId}/reprint`, {
-      method: "POST",
-      body: "{}",
-    });
-    location.href = `${receiptPath}?print=1`;
-  } catch (error) {
-    showToast(error.message, { tone: "danger" });
-  }
-}
-
-function runShortcut(key) {
-  const focusedItem = state.focusedProductId || state.cart[0]?.product_id;
-  if (key === "F1") openDialog("#help-dialog");
-  else if (key === "F2") openPayment();
-  else if (key === "F3") document.querySelector("#pos-search").focus();
-  else if (key === "F4") retailOperations().then((operations) => operations.holdBill());
-  else if (key === "F5") retailOperations().then((operations) => operations.showHeldBills());
-  else if (key === "F6") document.querySelector("#pos-customer").focus();
-  else if (key === "F7") document.querySelector("#order-discount").focus();
-  else if (key === "F8" && focusedItem) document.querySelector(`[data-quantity-input="${focusedItem}"]`)?.focus();
-  else if (key === "F9") reprintLastReceipt();
-  else if (key === "F10") retailOperations().then((operations) => operations.openShiftClose());
-}
-
-function initializeKeyboard() {
-  document.addEventListener("keydown", (event) => {
-    if (/^F(?:[1-9]|10)$/.test(event.key)) {
-      event.preventDefault();
-      runShortcut(event.key);
-      return;
-    }
-    if (event.key === "Escape" && !document.querySelector("dialog[open]")) {
-      event.preventDefault();
-      clearCart();
-      return;
-    }
-    const typing = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement;
-    if (!typing && event.altKey && !document.querySelector("dialog[open]") && /^[1-9]$/.test(event.key)) {
-      const quickKey = state.quickKeys.find((entry) => entry.key_number === Number.parseInt(event.key, 10));
-      if (quickKey) {
-        event.preventDefault();
-        selectProduct(quickKey.product);
-        return;
-      }
-    }
-    if (!typing && (event.key === "+" || event.key === "-") && state.focusedProductId) {
-      event.preventDefault();
-      adjustQuantity(state.focusedProductId, event.key === "+" ? 1 : -1);
-    }
-  });
-}
 
 function initializeEvents() {
-  document.querySelector("#quick-key-grid").addEventListener("click", (event) => {
-    const button = event.target.closest("[data-quick-product-id]");
-    if (!button) return;
-    const entry = state.quickKeys.find(
-      (item) => item.product.id === Number.parseInt(button.dataset.quickProductId, 10),
-    );
-    if (entry) selectProduct(entry.product);
-  });
-  document.querySelector("#configure-quick-keys").addEventListener("click", () => {
-    retailOperations().then((operations) => {
-      operations.renderQuickKeySettings();
-      openDialog("#quick-keys-dialog");
+  document
+    .querySelector("#pos-product-grid")
+    .addEventListener("click", (event) => {
+      const tile = event.target.closest("[data-product-id]");
+      if (!tile) return;
+      const product = productById(tile.dataset.productId);
+      if (product) selectProduct(product);
     });
-  });
-  document.querySelector("#pos-product-grid").addEventListener("click", (event) => {
-    const tile = event.target.closest("[data-product-id]");
-    if (!tile) return;
-    const product = productById(Number.parseInt(tile.dataset.productId, 10));
-    if (product) selectProduct(product);
-  });
-  document.querySelector("#category-strip").addEventListener("click", (event) => {
-    const button = event.target.closest("[data-category-id]");
-    if (!button) return;
-    state.selectedCategory = button.dataset.categoryId;
-    renderCategories();
-    renderProducts();
-  });
+  document
+    .querySelector("#category-strip")
+    .addEventListener("click", (event) => {
+      const button = event.target.closest("[data-category-id]");
+      if (!button) return;
+      state.selectedCategory = button.dataset.categoryId;
+      renderCategories();
+      renderProducts();
+    });
   document.querySelector("#cart-lines").addEventListener("focusin", (event) => {
     const line = event.target.closest("[data-cart-product-id]");
     if (line) {
-      state.focusedProductId = Number.parseInt(line.dataset.cartProductId, 10);
-      renderCart();
+      state.focusedProductId = line.dataset.cartProductId;
+      document
+        .querySelectorAll(".cart-line")
+        .forEach((row) => row.classList.toggle("is-focused", row === line));
     }
   });
   document.querySelector("#cart-lines").addEventListener("click", (event) => {
     const action = event.target.closest("[data-quantity-action]");
-    if (action) adjustQuantity(Number.parseInt(action.dataset.productId, 10), action.dataset.quantityAction === "increment" ? 1 : -1);
+    if (action)
+      adjustQuantity(
+        action.dataset.productId,
+        action.dataset.quantityAction === "increment" ? 1 : -1,
+      );
     const remove = event.target.closest("[data-remove-product-id]");
-    if (remove) removeItem(Number.parseInt(remove.dataset.removeProductId, 10));
+    if (remove) removeItem(remove.dataset.removeProductId);
   });
   document.querySelector("#cart-lines").addEventListener("change", (event) => {
-    if (event.target.matches("[data-quantity-input]")) updateQuantity(Number.parseInt(event.target.dataset.quantityInput, 10), event.target.value);
+    if (event.target.matches("[data-quantity-input]"))
+      updateQuantity(event.target.dataset.quantityInput, event.target.value);
   });
-  document.querySelector("#pos-search").addEventListener("input", debounce((event) => loadProducts(event.target.value.trim()), 250));
-  document.querySelector("#pos-customer").addEventListener("change", () => { persistSoon(); scheduleQuote(); });
-  document.querySelector("#order-discount").addEventListener("input", () => { persistSoon(); scheduleQuote(); });
-  document.querySelector("#clear-cart").addEventListener("click", () => clearCart());
+  document.querySelector("#pos-search").addEventListener(
+    "input",
+    debounce((event) => loadProducts(event.target.value.trim()), 250),
+  );
+  document
+    .querySelector("#pos-customer")
+    .addEventListener("change", () => mutationComplete());
+  document
+    .querySelector("#order-discount")
+    .addEventListener("input", () => mutationComplete());
+  document
+    .querySelector("#clear-cart")
+    .addEventListener("click", () => clearCart());
   document.querySelector("#pay-button").addEventListener("click", openPayment);
-  document.querySelectorAll("[data-shortcut]").forEach((button) => button.addEventListener("click", () => runShortcut(button.dataset.shortcut)));
-
-  document.querySelector("#weight-keypad").addEventListener("click", (event) => {
-    const key = event.target.closest("[data-key]")?.dataset.key;
-    if (!key) return;
-    if (key === "backspace") state.weightInput = state.weightInput.slice(0, -1);
-    else if (key === "." && state.weightInput.includes(".")) return;
-    else if (state.weightInput.includes(".") && state.weightInput.split(".")[1].length >= 3) return;
-    else state.weightInput += key;
-    document.querySelector("#weight-value").textContent = state.weightInput || "0.000";
-  });
-  document.querySelector("#add-weight").addEventListener("click", () => {
-    const quantity = exactQuantity(state.weightInput);
-    if (!quantity || !state.weighedProduct) {
-      showToast(t("pos.invalid_weight"), { tone: "warning" });
-      return;
-    }
-    addProduct(state.weighedProduct, quantity);
-    closeDialog("#weight-dialog");
-  });
-
-  document.querySelector("#add-payment-row").addEventListener("click", () => {
-    if (state.payments.length >= 5) return;
-    let amount = "0.00";
-    try { amount = paymentSummary(state.quote.net_amount, state.payments).balance; } catch { return; }
-    state.payments.push({ id: crypto.randomUUID(), method: "UPI", amount, reference: "" });
+  document.querySelector("#hold-bill").addEventListener("click", holdBill);
+  document
+    .querySelector("#recall-bill")
+    .addEventListener("click", showHeldBills);
+  document.querySelector("#split-payment").addEventListener("click", () => {
+    if (state.saving) return;
+    if (state.payments.length === 1)
+      state.payments = [
+        {
+          id: operationId(),
+          method: "CASH",
+          amount: state.quote.net_amount,
+          reference: "",
+        },
+        { id: operationId(), method: "UPI", amount: "0.00", reference: "" },
+      ];
+    else
+      state.payments = [
+        {
+          id: operationId(),
+          method: "CASH",
+          amount: state.quote.net_amount,
+          reference: "",
+        },
+      ];
     renderPayments();
     schedulePaymentPreview();
   });
   document.querySelector("#payment-rows").addEventListener("input", (event) => {
-    const id = event.target.dataset.paymentAmount || event.target.dataset.paymentReference || event.target.dataset.paymentMethod;
+    const id =
+      event.target.dataset.paymentAmount ||
+      event.target.dataset.paymentReference ||
+      event.target.dataset.paymentMethod;
     const payment = state.payments.find((item) => item.id === id);
-    if (!payment) return;
-    if (event.target.dataset.paymentAmount) payment.amount = event.target.value.trim();
-    if (event.target.dataset.paymentReference) payment.reference = event.target.value;
+    if (!payment || state.saving) return;
+    if (event.target.dataset.paymentAmount)
+      payment.amount = event.target.value.trim();
+    if (event.target.dataset.paymentReference)
+      payment.reference = event.target.value;
     if (event.target.dataset.paymentMethod) payment.method = event.target.value;
     if (event.target.dataset.paymentMethod) {
-      const reference = event.target.closest(".payment-row").querySelector("[data-payment-reference]");
-      const required = ["UPI", "CARD"].includes(payment.method);
-      reference.required = required;
-      reference.placeholder = t(required ? "pos.reference_required" : "pos.reference_optional");
-      reference.setAttribute("aria-label", reference.placeholder);
+      if (state.payments.length === 1) payment.amount = state.quote.net_amount;
+      renderPayments();
     }
     schedulePaymentPreview();
   });
-  document.querySelector("#payment-rows").addEventListener("change", (event) => {
-    if (event.target.matches("select")) event.target.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-  document.querySelector("#payment-rows").addEventListener("click", (event) => {
-    const remove = event.target.closest("[data-remove-payment]");
-    if (!remove) return;
-    state.payments = state.payments.filter((payment) => payment.id !== remove.dataset.removePayment);
-    renderPayments();
-    schedulePaymentPreview();
-  });
+  document
+    .querySelector("#payment-rows")
+    .addEventListener("change", (event) => {
+      if (event.target.matches("select"))
+        event.target.dispatchEvent(new Event("input", { bubbles: true }));
+    });
   document.querySelectorAll("[data-cash]").forEach((button) => {
     button.addEventListener("click", () => {
-      let cash = state.payments.find((payment) => payment.method === "CASH");
-      if (!cash && state.payments.length < 5) {
-        cash = { id: crypto.randomUUID(), method: "CASH", amount: "", reference: "" };
-        state.payments.push(cash);
-      }
-      if (!cash) return;
+      if (state.saving) return;
+      const cash = state.payments.find((p) => p.method === "CASH");
+      if (!cash || cash.method !== "CASH") return;
       if (button.dataset.cash === "exact") {
-        try { cash.amount = paymentSummary(state.quote.net_amount, state.payments.filter((item) => item !== cash)).balance; }
-        catch { return; }
+        try {
+          cash.amount = paymentSummary(
+            state.quote.net_amount,
+            state.payments.filter((item) => item !== cash),
+          ).balance;
+        } catch {
+          return;
+        }
       } else cash.amount = `${button.dataset.cash}.00`;
       renderPayments();
       schedulePaymentPreview();
     });
   });
-  document.querySelector("#complete-sale").addEventListener("click", completeSale);
+  document
+    .querySelector("#complete-sale")
+    .addEventListener("click", completeSale);
   document.querySelector("#held-list").addEventListener("click", (event) => {
     const recall = event.target.closest("[data-recall-hold]");
     if (recall) {
-      retailOperations().then((operations) => operations.restoreHeldBill(recall.dataset.recallHold));
+      restoreHeldBill(recall.dataset.recallHold);
     }
     const discard = event.target.closest("[data-discard-hold]");
     if (discard) {
-      retailOperations().then((operations) => operations.discardHeldBill(discard.dataset.discardHold));
+      discardHeldBill(discard.dataset.discardHold);
     }
   });
   document.querySelector("#hold-form").addEventListener("submit", (event) => {
-    retailOperations().then((operations) => operations.submitHeldBill(event));
-  });
-  document.querySelector("#quick-keys-form").addEventListener("submit", (event) => {
-    retailOperations().then((operations) => operations.configureQuickKeys(event));
-  });
-  document.querySelector("#shift-open-form").addEventListener("submit", (event) => {
-    retailOperations().then((operations) => operations.openShift(event));
-  });
-  document.querySelector("#shift-close-form").addEventListener("submit", (event) => {
-    retailOperations().then((operations) => operations.closeShift(event));
+    submitHeldBill(event);
   });
 }
 
-async function initializePos(session) {
+export async function initializePos(localServices) {
+  services = localServices;
   registerIcons((await import("./pos-icons.js")).posIcons);
-  cartKey = `vglpos.cart.${session.user.company_id}.${session.user.id}.${session.user.branch_id || 0}.${session.user.terminal_id || 0}`;
-  const operations = await retailOperations();
-  operations.initializeDenominations();
   initializeEvents();
-  initializeKeyboard();
-  initializeScanner();
-  if (navigator.onLine) {
-    try {
-      await (await offlineApi()).syncReferenceData();
-    } catch {
-      await (await offlineApi()).publishStatus();
-    }
-  }
-  await Promise.all([loadProducts(), loadReferenceData(), operations.ensureShift()]);
-  await operations.loadQuickKeys();
+  await refreshBilling();
   await restoreCart();
-  if (new URLSearchParams(location.search).get("shiftClose") === "1") {
-    operations.openShiftClose();
-  }
 }
 
-whenAppReady((readySession) => {
-  const session = readySession || getSession();
-  if (session) initializePos(session);
-});
+export async function refreshBilling() {
+  state.billingSettings = null;
+  await Promise.all([
+    loadProducts(document.querySelector("#pos-search").value.trim()),
+    loadReferenceData(),
+  ]);
+  if (state.cart.length) await requestQuote();
+}
 
 document.addEventListener("vgl:locale-changed", () => {
+  if (!services) return;
   renderCategories();
   renderProducts();
   renderCart();
-  retailOperations().then((operations) => {
-    operations.renderQuickKeys();
-    operations.renderShiftState();
-  });
   if (document.querySelector("#payment-dialog").open) renderPayments();
 });
+
+export function selectBillingCustomer(id) {
+  if (state.saving) return;
+  document.querySelector("#pos-customer").value = id;
+  mutationComplete();
+}

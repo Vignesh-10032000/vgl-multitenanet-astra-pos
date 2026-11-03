@@ -1,0 +1,6 @@
+{
+  "appId": "in.vgl.restaurant",
+  "appName": "Restaurant POS",
+  "webDir": "dist/restaurant",
+  "android": { "allowMixedContent": false, "backgroundColor": "#f3f7fd" }
+}

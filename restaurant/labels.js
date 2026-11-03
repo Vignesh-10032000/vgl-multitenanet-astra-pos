@@ -1,0 +1,146 @@
+import { getLocale } from "../src/vglpos/web/static/src/js/i18n.js";
+import tamilLabels from "./labels-ta.js";
+
+/** All operator-facing report terminology lives here, including export headings. */
+export const metrics = {
+  bills: { en: "Total Bills", ta: "மொத்த பில்கள்", icon: "receipt" },
+  sales_paise: { en: "Total Sales", ta: "மொத்த விற்பனை", icon: "indian-rupee" },
+  corrections_paise: {
+    en: "Cancelled / Returned",
+    ta: "ரத்து / திரும்பக் கொடுத்தது",
+    icon: "rotate-ccw",
+  },
+  net_paise: {
+    en: "Final Sales",
+    ta: "இறுதி விற்பனை",
+    icon: "badge-indian-rupee",
+    helper: "Total Sales minus Cancelled",
+  },
+  cash_paise: { en: "Cash in Counter", ta: "கல்லாவில் பணம்", icon: "wallet" },
+  upi_paise: { en: "GPay Received", ta: "GPay வரவு", icon: "smartphone" },
+};
+export const labels = {
+  vglCredit: "Software by",
+  vglSlogan: "Build · Automate · Grow",
+  dashboard: "Business overview",
+  sales: "Sales register",
+  reports: "Reports",
+  today: "Today",
+  yesterday: "Yesterday",
+  week: "This week",
+  month: "This month",
+  custom: "Custom",
+  all: "All",
+  cash: "Cash",
+  upi: "GPay (UPI)",
+  split: "Cash + GPay",
+  from: "From",
+  to: "To",
+  payment: "Payment",
+  apply: "Apply",
+  search: "Bill number or customer",
+  searchPlaceholder: "Search bill number, name or phone",
+  dayTab: "Day-wise",
+  itemTab: "Item-wise",
+  paymentTab: "Payment-wise",
+  cancelledTab: "Cancelled bills",
+  overviewHeading: "A clearer view of your restaurant.",
+  overviewHint: "Bills, sales and payments, together in one place.",
+  performance: "Restaurant performance",
+  period: "Selected period",
+  topItems: "Top 5 selling items",
+  lastBills: "Last 5 bills",
+  paymentSplit: "Cash vs GPay",
+  viewSales: "View all bills",
+  newBill: "Start a new bill",
+  unitsHint: "Billed quantities · cancelled bills excluded",
+  paymentHint: "Receipts after recorded returns",
+  filterHint:
+    "Payment filters show only that payment's share of mixed bills. Bill details retain the full saved total.",
+  correctionHint:
+    "Cancelled / Returned is counted on the date recorded, including returns for earlier bills.",
+  empty: "No records for this period",
+  saved: "Saved",
+  cancelled: "Cancelled",
+  returned: "Returned",
+  returnBill: "Return",
+  cancelBill: "Cancel entire bill",
+  recordCorrection: "Record cancellation / return",
+  bill: "Bill",
+  dateTime: "Date / time (IST)",
+  customer: "Customer",
+  billTotal: "Bill total",
+  selectedAmount: "Selected payment",
+  status: "Status",
+  actions: "Actions",
+  view: "View / Reprint",
+  cancelReturn: "Cancel / Return",
+  date: "Date (IST)",
+  item: "Item",
+  portion: "Portion",
+  quantity: "Billed quantity",
+  invoiced: "Invoiced amount",
+  received: "Received",
+  returnedAmount: "Returned",
+  reason: "Reason",
+  correctionType: "Type",
+  finalHelper: "Total Sales minus Cancelled",
+  cashHelper: "Cash sales minus cash returned",
+  splitPayment: "Split Cash + GPay",
+  singlePayment: "Use one payment",
+  cashTendered: "Cash tendered",
+  upiReceived: "GPay received",
+  returnCash: "Cash returned ₹",
+  returnUpi: "GPay returned ₹",
+  returnHint:
+    "Enter the amounts actually returned. Cash + GPay must equal the return amount.",
+  addCustomer: "Add customer",
+  editCustomer: "Edit customer",
+  customerHint: "Attach a customer to the bill, or continue with Walk-in.",
+  name: "Name",
+  phone: "Phone",
+  city: "City",
+  namePlaceholder: "Customer name",
+  phonePlaceholder: "Phone number (optional)",
+  cityPlaceholder: "City (optional)",
+  saveCustomer: "Save customer",
+  cancel: "Cancel",
+  hold: "Hold bill",
+  recall: "Recall bill",
+};
+/** Presentation labels follow the operator's language; auditor headings remain stable. */
+export const uiLabels = Object.defineProperties({}, Object.fromEntries(
+  Object.entries(labels).map(([key, english]) => [key, {
+    enumerable: true,
+    get: () => getLocale() === "ta" ? tamilLabels[key] || english : english,
+  }]),
+));
+export const qrLabels = {
+  en: {
+    show: "Show GPay QR", title: "Scan to pay", back: "Back to payment",
+    demo: "DEMO · NO PAYMENT", live: "GPay / UPI", noPayee: "UPI ID not configured",
+    loading: "Preparing QR…", changed: "The amount changed. Close and reopen the QR.",
+    demoHint: "Preview only. This QR cannot receive money. Add your verified merchant UPI details in Settings to enable payments.",
+    liveHint: "Scan with GPay or another UPI app. Confirm the payment received before completing the sale.",
+    demoAlt: "Demo QR, cannot receive payments", liveAlt: "Merchant UPI payment QR",
+  },
+  ta: {
+    show: "GPay QR காட்டு", title: "ஸ்கேன் செய்து செலுத்தவும்", back: "கட்டணத்திற்குத் திரும்பு",
+    demo: "மாதிரி · பணம் செலுத்த முடியாது", live: "GPay / UPI", noPayee: "UPI ID அமைக்கப்படவில்லை",
+    loading: "QR தயாராகிறது…", changed: "தொகை மாறிவிட்டது. QR-ஐ மூடி மீண்டும் திறக்கவும்.",
+    demoHint: "இது மாதிரி மட்டுமே. இந்த QR மூலம் பணம் பெற முடியாது. பணம் பெற, அமைப்புகளில் உறுதிசெய்த வணிக UPI விவரங்களைச் சேர்க்கவும்.",
+    liveHint: "GPay அல்லது பிற UPI செயலியில் ஸ்கேன் செய்யவும். பில்லை முடிக்கும் முன் பணம் வந்ததை உறுதிசெய்யவும்.",
+    demoAlt: "மாதிரி QR, பணம் பெற முடியாது", liveAlt: "வணிக UPI கட்டண QR",
+  },
+};
+const exportMetricLabels = {
+  discount_paise: "Discount",
+  round_paise: "Round off",
+  void_paise: "Cancelled sales",
+  refund_paise: "Returned sales",
+};
+export const metricText = (key) =>
+  metrics[key] ? `${metrics[key].en}\n${metrics[key].ta}` : exportMetricLabels[key] || key;
+export const metricHeader = (key) =>
+  `${metricText(key)}${key.endsWith("_paise") ? " INR" : ""}`;
+export const paymentLabel = (method) => labels[method] || method;

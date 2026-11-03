@@ -1,0 +1,790 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#073f7d" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://localhost; worker-src 'self' blob:; object-src 'none'; base-uri 'self'"
+    />
+    <title>Restaurant POS</title>
+    <script type="module" src="./app.js"></script>
+  </head>
+  <body data-page="pos" data-locked="true">
+    <section
+      id="access-screen"
+      class="access-screen"
+      aria-labelledby="access-title"
+    >
+      <aside class="access-brand-panel">
+        <div class="access-brand-heading">
+          <div id="access-brand-logo"></div>
+          <span class="access-wordmark" id="access-brand-name"
+            >Restaurant POS</span
+          >
+        </div>
+        <div>
+          <p class="access-overline">YOUR RESTAURANT. YOUR WORKSPACE.</p>
+          <h1>A smoother day,<br />from the first bill.</h1>
+          <p>Billing, menu and business insights — together at your counter.</p>
+        </div>
+        <footer>
+          <i data-lucide="shield-check"></i
+          ><span>Works offline · Your data stays with you</span>
+        </footer>
+      </aside>
+      <div class="access-form-panel">
+        <div class="access-form-wrap">
+          <span class="access-lock-icon"
+            ><i data-lucide="lock-keyhole"></i
+          ></span>
+          <p class="eyebrow">RESTAURANT WORKSPACE</p>
+          <h2 id="access-title">Opening your restaurant…</h2>
+          <p id="access-description"></p>
+          <form id="access-form" hidden>
+            <label for="access-username"
+              >Username<input
+                id="access-username"
+                name="username"
+                autocomplete="username"
+                minlength="3"
+                maxlength="64"
+                required
+                placeholder="Your username" /></label
+            ><label for="access-password"
+              >Password<input
+                id="access-password"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                maxlength="128"
+                required
+                placeholder="Your password" /></label
+            ><label id="access-confirm-row" for="access-confirm"
+              >Confirm password<input
+                id="access-confirm"
+                name="confirm"
+                type="password"
+                autocomplete="new-password"
+                maxlength="128"
+                placeholder="Enter your password again"
+            /></label>
+            <p id="access-error" class="form-error" role="alert"></p>
+            <button
+              id="access-submit"
+              class="button button-primary"
+              type="submit"
+            >
+              Sign in
+            </button>
+          </form>
+          <div class="access-recovery">
+            <span>Reinstalled the app?</span
+            ><button type="button" id="access-recover" class="text-button">
+              <i data-lucide="folder-open"></i>Find an existing backup
+            </button>
+            <p id="access-recovery-status" role="status"></p>
+          </div>
+          <p class="access-footnote">
+            Offline access for this device. Shared-folder backups remain
+            separate from the app.
+          </p>
+          <div class="vgl-brand vgl-brand-access" aria-label="Software by Vignesh Growth Lab">
+            <span class="vgl-brand-credit" data-label="vglCredit">Software by</span>
+            <img src="./branding/vgl/vgl-logo.png" alt="Vignesh Growth Lab" width="140" height="70" decoding="async" />
+            <span class="vgl-brand-slogan" data-label="vglSlogan">Build · Automate · Grow</span>
+          </div>
+        </div>
+      </div>
+    </section>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <div class="app-shell">
+      <aside class="side-nav" aria-label="Primary navigation">
+        <a class="brand" href="#billing"
+          ><img
+            id="nav-logo"
+            class="brand-logo"
+            alt="Restaurant logo"
+            hidden
+          /><span id="nav-menu-logo"></span
+          ><span class="brand-copy"
+            ><strong id="store-name">Restaurant POS</strong
+            ><small>Restaurant counter</small></span
+          ></a
+        >
+        <nav>
+          <a href="#billing" data-nav="billing" class="is-active"
+            ><i data-lucide="utensils"></i><span>Billing</span></a
+          >
+          <a href="#dashboard" data-nav="dashboard"
+            ><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a
+          >
+          <a href="#products" data-nav="products"
+            ><i data-lucide="utensils"></i><span>Products</span></a
+          >
+          <a href="#customers" data-nav="customers"
+            ><i data-lucide="users"></i><span>Customers</span></a
+          >
+          <a href="#sales" data-nav="sales"
+            ><i data-lucide="receipt"></i><span>Sales</span></a
+          >
+          <a href="#reports" data-nav="reports"
+            ><i data-lucide="chart-no-axes-combined"></i
+            ><span>Reports &amp; Analytics</span></a
+          >
+          <a href="#settings" data-nav="settings"
+            ><i data-lucide="settings"></i><span>Settings</span></a
+          >
+        </nav>
+        <a href="#settings" id="backup-health" class="backup-health"
+          >Check backups</a
+        >
+        <div class="vgl-brand vgl-brand-sidebar" aria-label="Software by Vignesh Growth Lab">
+          <span class="vgl-brand-credit" data-label="vglCredit">Software by</span>
+          <img src="./branding/vgl/vgl-logo.png" alt="Vignesh Growth Lab" width="104" height="52" decoding="async" />
+          <span class="vgl-brand-slogan" data-label="vglSlogan">Build · Automate · Grow</span>
+        </div>
+        <div class="side-nav-footer">
+          <span class="status-dot"></span
+          ><span id="storage-status">Opening local data…</span>
+        </div>
+      </aside>
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Restaurant workspace</p>
+            <h1 id="page-title">Billing counter</h1>
+          </div>
+          <div class="topbar-actions">
+            <button type="button" id="locale-toggle" class="icon-button" aria-label="Switch to Tamil" title="Switch to Tamil">
+              <i data-lucide="languages" aria-hidden="true"></i><span id="locale-label" lang="ta">தமிழ்</span>
+            </button>
+            <button type="button" id="theme-toggle" class="icon-button" aria-label="Use dark mode" title="Use dark mode" aria-pressed="false">
+              <span id="theme-icon"><i data-lucide="moon-star" aria-hidden="true"></i></span>
+            </button>
+            <button
+              type="button"
+              id="lock-workspace"
+              class="button button-secondary"
+            >
+              <i data-lucide="lock-keyhole"></i><span>Lock</span>
+            </button>
+            <span id="mode-label" class="mode-label">Training mode</span
+            ><button
+              type="button"
+              id="last-receipt"
+              class="button button-secondary"
+            >
+              Reprint last
+            </button>
+          </div>
+        </header>
+        <main id="main-content" class="page-content">
+          <section id="billing-view" data-view="billing">
+            <!-- ORIGINAL_BILLING -->
+          </section>
+          <section data-view="products" hidden>
+            <div class="section-toolbar">
+              <div>
+                <p class="eyebrow">YOUR RESTAURANT MENU</p>
+                <h2>Menu products</h2>
+                <p class="workspace-subtitle">
+                  Manage portions, prices and photos. Starter photos are illustrative;
+                  upload your restaurant's own photos to replace them.
+                </p>
+              </div>
+              <button class="button button-primary" id="add-product">
+                <i data-lucide="plus"></i>Add product
+              </button>
+            </div>
+            <input
+              type="search"
+              id="product-search"
+              aria-label="Search products"
+              placeholder="Search name, portion or category"
+            />
+            <div id="product-list" class="table-scroll"></div>
+          </section>
+          <section data-view="customers" hidden>
+            <div class="section-toolbar">
+              <h2>Customers</h2>
+              <button class="button button-primary" id="add-customer">
+                Add customer
+              </button>
+            </div>
+            <input
+              type="search"
+              id="customer-search"
+              aria-label="Search customers"
+              placeholder="Search name or phone"
+            />
+            <div id="customer-list" class="table-scroll"></div>
+          </section>
+          <section data-view="dashboard" hidden>
+            <!-- ORIGINAL_DASHBOARD -->
+          </section>
+          <section data-view="sales" hidden>
+            <div class="section-toolbar">
+              <div>
+                <p class="eyebrow">Bills</p>
+                <h2 data-label="sales"></h2>
+              </div>
+            </div>
+            <form
+              id="sales-filter"
+              class="period-filter"
+              aria-label="Sales filters"
+            ></form>
+            <p class="filter-note" data-label="filterHint"></p>
+            <div
+              id="sales-totals"
+              class="totals-strip"
+              aria-label="Sales totals"
+            ></div>
+            <div class="sales-register-panel">
+              <div id="sales-list" class="table-scroll"></div>
+              <footer id="sales-pagination" class="sales-pagination"></footer>
+            </div>
+          </section>
+          <section data-view="reports" hidden>
+            <div class="section-toolbar">
+              <h2 data-label="reports"></h2>
+              <div class="report-export-actions">
+                <button
+                  type="button"
+                  data-export="csv"
+                  class="button button-secondary"
+                >
+                  <i data-lucide="file-text"></i>CSV</button
+                ><button
+                  type="button"
+                  data-export="xlsx"
+                  class="button button-secondary"
+                >
+                  <i data-lucide="file-spreadsheet"></i>XLSX</button
+                ><button
+                  type="button"
+                  data-export="pdf"
+                  class="button button-secondary"
+                >
+                  <i data-lucide="download"></i>PDF
+                </button>
+              </div>
+            </div>
+            <form
+              id="report-filter"
+              class="period-filter"
+              aria-label="Report filters"
+            ></form>
+            <div id="analytics-cards" class="analytics-cards"></div>
+            <div class="analytics-chart-grid">
+              <article class="analytics-panel">
+                <div class="analytics-panel-heading">
+                  <div>
+                    <p class="eyebrow">PERFORMANCE OVER TIME</p>
+                    <h3>Revenue trend <span>₹</span></h3>
+                  </div>
+                  <label class="sr-only" for="trend-grouping"
+                    >Revenue chart grouping</label
+                  ><select id="trend-grouping">
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                </div>
+                <div id="revenue-chart" class="revenue-chart"></div>
+              </article>
+              <article class="analytics-panel">
+                <div class="analytics-panel-heading">
+                  <div>
+                    <p class="eyebrow">PAYMENTS RECEIVED</p>
+                    <h3>Payment breakdown</h3>
+                  </div>
+                  <i data-lucide="wallet"></i>
+                </div>
+                <div id="analytics-payments"></div>
+              </article>
+            </div>
+            <div class="analytics-bottom-grid">
+              <article class="analytics-panel">
+                <div class="analytics-panel-heading">
+                  <div>
+                    <p class="eyebrow">MENU PERFORMANCE</p>
+                    <h3>Top-selling foods</h3>
+                  </div>
+                  <i data-lucide="utensils"></i>
+                </div>
+                <div id="analytics-top-items"></div>
+                <p class="chart-note">Billed quantities and invoiced amounts. Fully cancelled bills are excluded; returns are shown separately.</p>
+              </article>
+              <article class="analytics-panel">
+                <div class="analytics-panel-heading">
+                  <div>
+                    <p class="eyebrow">COMPLETE AUDIT TRAIL</p>
+                    <h3>Cancellations &amp; returns</h3>
+                  </div>
+                  <i data-lucide="rotate-ccw"></i>
+                </div>
+                <div id="analytics-returns"></div>
+              </article>
+            </div>
+            <p class="filter-note" data-label="correctionHint"></p>
+            <div
+              id="report-totals"
+              class="totals-strip"
+              aria-label="Report totals"
+            ></div>
+            <div class="report-tabs" role="tablist" aria-label="Report type">
+              <button
+                type="button"
+                role="tab"
+                id="report-tab-daily"
+                aria-controls="report-details"
+                data-report-tab="daily"
+                data-label="dayTab"
+                aria-selected="true"
+              ></button>
+              <button
+                type="button"
+                role="tab"
+                id="report-tab-items"
+                aria-controls="report-details"
+                data-report-tab="items"
+                data-label="itemTab"
+                aria-selected="false"
+              ></button>
+              <button
+                type="button"
+                role="tab"
+                id="report-tab-payments"
+                aria-controls="report-details"
+                data-report-tab="payments"
+                data-label="paymentTab"
+                aria-selected="false"
+              ></button>
+              <button
+                type="button"
+                role="tab"
+                id="report-tab-cancelled"
+                aria-controls="report-details"
+                data-report-tab="cancelled"
+                data-label="cancelledTab"
+                aria-selected="false"
+              ></button>
+            </div>
+            <div
+              id="report-details"
+              role="tabpanel"
+              aria-labelledby="report-tab-daily"
+            ></div>
+          </section>
+          <section data-view="settings" hidden>
+            <h2>Restaurant setup</h2>
+            <p>
+              Review the menu, store details and current tax status before live
+              billing.
+            </p>
+            <form id="settings-form" class="settings-grid">
+              <label
+                >Restaurant name<input
+                  name="name"
+                  required
+                  maxlength="160" /></label
+              ><label>Phone<input name="phone" maxlength="35" /></label
+              ><label class="wide"
+                >Address<textarea name="address" maxlength="350"></textarea>
+              </label>
+              <label
+                >Cashier<input name="cashier" required maxlength="80" /></label
+              ><label
+                >Bill series (1–4 letters/numbers)<input
+                  name="series"
+                  required
+                  pattern="[A-Za-z0-9]{1,4}"
+                  maxlength="4"
+              /></label>
+              <label
+                >Receipt type<select name="receipt_mode">
+                  <option value="training">
+                    Training receipt — review setup
+                  </option>
+                  <option value="bill_of_supply">
+                    Bill of Supply — composition confirmed
+                  </option>
+                  <option value="tax_invoice">
+                    Tax invoice — regular GST confirmed
+                  </option>
+                </select></label
+              ><label>Current GSTIN<input name="gstin" maxlength="15" /></label
+              ><label
+                >GST % (tax invoice only)<input
+                  name="tax_percent"
+                  inputmode="decimal"
+                  value="0.00"
+              /></label>
+              <label>Menu price basis<select name="tax_inclusive"><option value="false">Add GST on top of menu prices</option><option value="true">Menu prices already include GST</option></select></label>
+              <label class="check"
+                ><input type="checkbox" name="tax_confirmed" />Current
+                receipt/tax status confirmed with accountant</label
+              ><label class="check"
+                ><input type="checkbox" name="round_rupee" />Round final total
+                to nearest rupee</label
+              >
+              <label
+                >Merchant UPI ID<input name="upi_id" maxlength="120" /></label
+              ><label
+                >Merchant payee name<input
+                  name="upi_payee"
+                  maxlength="120" /></label
+              ><label class="check"
+                ><input type="checkbox" name="upi_confirmed" />I verified this
+                merchant UPI payee</label
+              >
+              <label
+                >Receipt typeface<select name="receipt_font">
+                  <option value="sans">Sans / Noto Sans Tamil</option>
+                  <option value="mono">Monospace / Tamil fallback</option>
+                </select></label
+              ><label
+                >Restaurant logo (local image)<input
+                  name="logo"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp" /></label
+              ><label class="check"
+                ><input name="menu_logo" type="checkbox" />Use Tamil logo from
+                the supplied menu</label
+              ><label class="check"
+                ><input name="remove_logo" type="checkbox" />Remove current
+                logo</label
+              ><label class="wide"
+                >Receipt footer<textarea
+                  name="footer"
+                  maxlength="250"
+                ></textarea>
+              </label>
+              <p class="form-error wide" id="settings-error" role="alert"></p>
+              <button class="button button-primary">Save setup</button>
+            </form>
+            <details class="menu-photo-credits">
+              <summary>Menu photo credits</summary>
+              <p>Credits for photo references included with the app. Manage your selected menu photos in Products.</p>
+              <ul id="menu-photo-credits"></ul>
+            </details>
+            <div class="vgl-brand vgl-brand-settings" aria-label="Software by Vignesh Growth Lab">
+              <span class="vgl-brand-credit" data-label="vglCredit">Software by</span>
+              <img src="./branding/vgl/vgl-logo.png" alt="Vignesh Growth Lab" width="140" height="70" decoding="async" />
+              <span class="vgl-brand-slogan" data-label="vglSlogan">Build · Automate · Grow</span>
+            </div>
+            <section class="data-tools">
+              <h2>Data backup &amp; restore</h2>
+              <p>
+                Back up the complete local ledger, settings and images. Save the
+                file in a shared device folder. Shared-folder backups remain
+                after uninstall. After reinstall, reconnect that folder to
+                discover your backups and recover the saved ledger.
+              </p>
+              <div class="backup-folder-panel">
+                <div>
+                  <i data-lucide="folder-open"></i
+                  ><strong>Uninstall-safe backups</strong>
+                  <p id="persistent-backup-status">
+                    Choose a shared backup folder to enable automatic backups.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  id="choose-backup-folder"
+                  class="button button-primary"
+                >
+                  Choose backup folder</button
+                ><button
+                  type="button"
+                  id="scan-backups"
+                  class="button button-secondary"
+                >
+                  Find backups
+                </button>
+              </div>
+              <p class="backup-note">
+                Use a folder such as Documents / Restaurant Backups, outside
+                Android/data. Reinstalling requires granting folder access
+                again. Keep an additional copy on another device.
+              </p>
+              <div id="backup-candidates"></div>
+              <button
+                type="button"
+                id="backup-button"
+                class="button button-secondary"
+              >
+                Save complete backup</button
+              ><label class="restore-label"
+                >Choose backup to validate<input
+                  type="file"
+                  id="restore-file"
+                  accept="application/json,.json"
+              /></label>
+              <p id="backup-status" role="status"></p>
+            </section>
+            <section class="data-tools">
+              <h2>80 mm receipt printing</h2>
+              <p>
+                Uses Android’s print dialog. Select ESC POS USB Print Service
+                and the tested 80 mm printer. Submitted jobs still require
+                checking paper output; reprint a saved bill after a printer
+                problem.
+              </p>
+            </section>
+          </section>
+        </main>
+      </section>
+    </div>
+    <div
+      id="toast-region"
+      class="toast-region"
+      role="status"
+      aria-live="polite"
+    ></div>
+    <!-- ORIGINAL_BILLING_DIALOGS -->
+    <dialog id="product-dialog" class="dialog" aria-labelledby="product-title">
+      <form id="product-form">
+        <div class="dialog-header">
+          <div class="product-dialog-heading">
+            <span class="dialog-title-icon"
+              ><i data-lucide="utensils"></i
+            ></span>
+            <div>
+              <p class="eyebrow">MENU CATALOGUE</p>
+              <h2 id="product-title">Menu product</h2>
+              <p class="workspace-subtitle">
+                Set a portion, price and photo for this dish.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="icon-button"
+            data-close
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <div class="dialog-body form-stack product-fields">
+          <input type="hidden" name="id" /><label
+            >Name<input name="name" required maxlength="160" /></label
+          ><label
+            >Portion / variant<input
+              name="portion"
+              required
+              maxlength="80" /></label
+          ><label
+            >Category<input
+              name="category"
+              required
+              maxlength="80"
+              list="category-options" /></label
+          ><datalist id="category-options"></datalist
+          ><label
+            >Selling price ₹<input
+              name="price"
+              inputmode="decimal"
+              required /></label
+          ><label
+            >Photo (stored locally)<input
+              name="photo"
+              type="file"
+              accept="image/jpeg,image/png,image/webp" /></label
+          ><label class="check"
+            ><input name="remove_image" type="checkbox" />Remove current
+            photo</label
+          ><label class="check"
+            ><input name="active" type="checkbox" checked />Active on billing
+            menu</label
+          >
+          <p class="form-error" id="product-error" role="alert"></p>
+        </div>
+        <div class="dialog-actions">
+          <button class="button button-secondary" type="button" data-close>
+            Cancel</button
+          ><button class="button button-primary">Save product</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog
+      id="customer-dialog"
+      class="dialog dialog-small"
+      aria-labelledby="customer-title"
+    >
+      <form id="customer-form">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow" data-label="customer"></p>
+            <h2 id="customer-title" data-label="addCustomer"></h2>
+            <p class="customer-dialog-hint" data-label="customerHint"></p>
+          </div>
+          <button
+            type="button"
+            class="icon-button"
+            data-close
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <div class="dialog-body customer-fields">
+          <input name="id" type="hidden" />
+          <label for="customer-name"
+            ><span data-label="name"></span
+            ><input
+              id="customer-name"
+              name="name"
+              required
+              maxlength="160"
+              autocomplete="name"
+              placeholder="Customer name"
+          /></label>
+          <label for="customer-phone"
+            ><span data-label="phone"></span
+            ><input
+              id="customer-phone"
+              name="phone"
+              type="tel"
+              inputmode="tel"
+              maxlength="30"
+              autocomplete="tel"
+              placeholder="Phone number (optional)"
+          /></label>
+          <label for="customer-city"
+            ><span data-label="city"></span
+            ><input
+              id="customer-city"
+              name="city"
+              maxlength="100"
+              autocomplete="address-level2"
+              placeholder="City (optional)"
+          /></label>
+          <p id="customer-error" class="form-error" role="alert"></p>
+        </div>
+        <div class="dialog-actions">
+          <button class="button button-secondary" type="button" data-close>
+            Cancel</button
+          ><button class="button button-primary">Save customer</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog
+      id="receipt-dialog"
+      class="dialog receipt-dialog"
+      aria-labelledby="receipt-title"
+    >
+      <div class="dialog-header">
+        <h2 id="receipt-title">Saved bill</h2>
+        <button type="button" class="icon-button" data-close aria-label="Close">
+          ×
+        </button>
+      </div>
+      <div id="receipt-preview"></div>
+      <p id="print-status" class="dialog-body" role="status"></p>
+      <div class="dialog-actions">
+        <button class="button button-secondary" id="correct-bill">
+          Cancel / Return</button
+        ><button class="button button-primary" id="print-receipt">
+          Print / reprint
+        </button>
+      </div>
+    </dialog>
+    <dialog
+      id="correction-dialog"
+      class="dialog dialog-small"
+      aria-labelledby="correction-title"
+    >
+      <form id="correction-form">
+        <div class="dialog-header">
+          <h2 id="correction-title" data-label="cancelReturn"></h2>
+          <button
+            type="button"
+            class="icon-button"
+            data-close
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <div class="dialog-body form-stack">
+          <p>
+            Original bill and number are retained. Record the actual return of
+            Cash/UPI separately.
+          </p>
+          <label
+            >Correction<select name="kind">
+              <option value="refund" data-label="returnBill"></option>
+              <option
+                value="void"
+                data-label="cancelBill"
+              ></option></select></label
+          ><label
+            >Amount ₹<input name="amount" inputmode="decimal" required /></label
+          ><label
+            >Reason<textarea name="reason" maxlength="500" required></textarea>
+          </label>
+          <fieldset id="return-channels">
+            <legend data-label="returnHint"></legend>
+            <label
+              ><span data-label="returnCash"></span
+              ><input
+                name="cash_return"
+                inputmode="decimal"
+                value="0.00" /></label
+            ><label
+              ><span data-label="returnUpi"></span
+              ><input name="upi_return" inputmode="decimal" value="0.00"
+            /></label>
+          </fieldset>
+          <p class="form-error" id="correction-error" role="alert"></p>
+        </div>
+        <div class="dialog-actions">
+          <button class="button button-secondary" type="button" data-close>
+            Cancel</button
+          ><button
+            class="button button-primary"
+            data-label="recordCorrection"
+          ></button>
+        </div>
+      </form>
+    </dialog>
+    <dialog
+      id="restore-dialog"
+      class="dialog dialog-small"
+      aria-labelledby="restore-title"
+    >
+      <div class="dialog-header">
+        <h2 id="restore-title">Restore validated backup</h2>
+        <button class="icon-button" type="button" data-close aria-label="Close">
+          ×
+        </button>
+      </div>
+      <div class="dialog-body">
+        <p id="restore-summary"></p>
+        <p>
+          This replaces this app’s current ledger and numbering. Save a current
+          backup first and avoid restoring an older counter for live billing.
+        </p>
+        <label
+          >Type RESTORE<input id="restore-confirm" autocomplete="off"
+        /></label>
+      </div>
+      <div class="dialog-actions">
+        <button class="button button-secondary" type="button" data-close>
+          Cancel</button
+        ><button class="button button-primary" id="restore-button" disabled>
+          Replace local data
+        </button>
+      </div>
+    </dialog>
+  </body>
+</html>
