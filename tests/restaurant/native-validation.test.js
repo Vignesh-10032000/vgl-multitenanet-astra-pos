@@ -1,8 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { nativeDatabase } from "../../restaurant/drivers.js";
-import { database, setup, MemoryImages, order } from "./helpers.js";
-import { createBackup, inspectBackup } from "../../restaurant/backup.js";
+import { nativeDatabase, openDatabase } from "../../restaurant/drivers.js";
+import { database } from "./helpers.js";
 
 function bridge({ failOpen = false } = {}) {
   const calls = [], db = database();
@@ -22,19 +21,11 @@ function bridge({ failOpen = false } = {}) {
   } };
 }
 
-test("NATIVE-VALIDATION-01 complete backup validates through native bridge contract, isolated from the live name", async () => {
-  const { db, ledger } = await setup();
-  try {
-    await ledger.checkout(order());
-    const source = await createBackup(ledger, new MemoryImages());
-    const fake = bridge();
-    const validated = await inspectBackup(source, () => nativeDatabase(fake.sqlite, { validation: true }));
-    assert.deepEqual(validated.tables, await ledger.snapshot());
-    const name = fake.calls[0][1];
-    assert.match(name, /^validation_[a-f0-9]{32}$/);
-    assert.deepEqual(fake.calls.filter(call => ["delete", "close"].includes(call[0])), [["delete", name], ["close", name]]);
-    assert.ok(fake.calls.some(call => call[1].includes("synchronous=FULL")));
-  } finally { await db.close(); }
+test("NATIVE-VALIDATION-01 inspection cannot open or mutate the native live connection", async () => {
+  const calls=[];
+  await assert.rejects(nativeDatabase({ createConnection: () => { calls.push('create'); } }, { validation: true }), /disabled/);
+  await assert.rejects(openDatabase({ validation: true }), /disabled/);
+  assert.deepEqual(calls, []);
 });
 
 test("NATIVE-VALIDATION-02 normal connection never deletes the live database; failed opens close safely", async () => {

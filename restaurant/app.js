@@ -22,7 +22,7 @@ import { Capacitor } from "@capacitor/core";
 import menu from "../resources/menu-transcription.json";
 import defaults from "./store-defaults.json";
 import { Ledger } from "./repository.js";
-import { openDatabase } from "./drivers.js";
+import { openDatabase, browserDatabase } from "./drivers.js";
 import { ImageStore } from "./assets.js";
 import { installMenuPhotos, restoreMenuIllustrations } from "./menu-photo-install.js";
 import { installBrandLogo } from "./brand-logo.js";
@@ -535,7 +535,7 @@ function bind() {
       $("#backup-status").textContent = "Validating backup…";
       const source = await file.text();
       const { inspectBackup } = await import("./backup.js");
-      const data = await inspectBackup(source, () => openDatabase({ validation: true }));
+      const data = await inspectBackup(source, () => browserDatabase());
       pendingRestore = source;
       $("#restore-summary").textContent =
         `Validated: ${data.tables.sales.length} bills, ${data.tables.products.length} products, ${Object.keys(data.files).length} images. Created ${data.created_at}.`;
@@ -564,7 +564,7 @@ function bind() {
       await flushBillingDraft();
       const { restoreBackup } = await import("./backup.js");
       await restoreBackup(pendingRestore, ledger, images, () =>
-        openDatabase({ validation: true }),
+        browserDatabase(),
       );
       const owner = await ledger.localSetting("owner-access");
       if (owner) sessionStorage.setItem("owner-access", owner.verifier);
@@ -639,7 +639,7 @@ async function initializeBackground() {
   $("#access-startup-status").textContent = assetError ? workspaceText("backgroundFailed") : "";
   window.restaurantStartupMark?.("6-backups:start");
   const { PersistentBackups } = await import("./backup-service.js");
-  backups = new PersistentBackups({ ledger, images, transport: backupFolder(), makeDatabase: () => openDatabase({ validation: true }),
+  backups = new PersistentBackups({ ledger, images, transport: backupFolder(), makeDatabase: () => browserDatabase(),
     status: message => {
       $("#persistent-backup-status").textContent = message;
       $("#backup-health").textContent = message.startsWith("Backup saved") ? "Shared backup saved"

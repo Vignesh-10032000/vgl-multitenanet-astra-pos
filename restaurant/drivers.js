@@ -1,8 +1,7 @@
 import { Capacitor } from "@capacitor/core";
 import { get, set } from "idb-keyval";
-import { operationId } from "./domain.js";
 
-/** Browser preview uses actual SQLite WASM; only Android uses the durable native database. */
+/** Isolated in-memory SQLite for preview/backup inspection; never the Android ledger. */
 export async function browserDatabase({ bytes, persist = false } = {}) {
   const [{ default: initialize }, { default: wasm }] = await Promise.all([
     import("sql.js"),
@@ -65,7 +64,8 @@ export async function browserDatabase({ bytes, persist = false } = {}) {
 }
 
 export async function openDatabase({ validation = false } = {}) {
-  if (!Capacitor.isNativePlatform()) return browserDatabase({ persist: !validation });
+  if (validation) throw new Error("Native backup validation is disabled; use isolated in-memory SQLite");
+  if (!Capacitor.isNativePlatform()) return browserDatabase({ persist: true });
   const { SQLiteConnection, CapacitorSQLite } = await import(
     "@capacitor-community/sqlite"
   );
@@ -73,10 +73,10 @@ export async function openDatabase({ validation = false } = {}) {
   return nativeDatabase(sqlite, { validation });
 }
 
-/** Same SQLite contract for the live ledger and isolated backup validation. */
+/** The native connection is reserved for the authoritative live ledger. */
 export async function nativeDatabase(sqlite, { validation = false } = {}) {
-  // Backup validation uses an isolated native database, never the live ledger.
-  const name = validation ? `validation_${operationId().replaceAll("-", "")}` : "restaurant";
+  if (validation) throw new Error("Native backup validation is disabled; use isolated in-memory SQLite");
+  const name = "restaurant";
   const db = await sqlite.createConnection(
     name,
     false,
@@ -100,9 +100,6 @@ export async function nativeDatabase(sqlite, { validation = false } = {}) {
     begin: () => db.beginTransaction(),
     commit: () => db.commitTransaction(),
     rollback: () => db.rollbackTransaction(),
-    close: async () => {
-      try { if (validation) await db.delete(); }
-      finally { await sqlite.closeConnection(name, false); }
-    },
+    close: () => sqlite.closeConnection(name, false),
   };
 }

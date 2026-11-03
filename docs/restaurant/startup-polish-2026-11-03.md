@@ -1,3 +1,19 @@
+# Superseding corrected-build device report
+
+Corrected production **1.0.18 (19)** is installed on the Pad Go and the owner has signed in. Read [the final corrected-build report](padgo-polish-verification-2026-11-03.md) for current checklists, recovery history, native measurements and verification limits. It overrides earlier native-validation/A6/artifact/installation statements below. Do not install the withdrawn 1.0.17 polish APK.
+
+---
+
+# Critical Pad Go verification update — 3 November 2026
+
+The first startup-polish 1.0.17 (18), SHA-256 `fce41f78ef1cadd5c0f2e30e3ca0a76db2a14ddf9ea21e2ce17e3fc89eadc804`, is WITHDRAWN. On the physical Pad Go, inspecting a synthetic backup through its new native validation path replaced the live ledger before confirmation. This path has been disabled and the previous isolated in-memory sql.js backup validator restored. Native SQLite remains the authoritative billing database. A6's request to exclude WASM from native backup validation is therefore not fulfilled.
+
+All nine real owner bills / 25 lines / ten payments, customers, credentials/settings and 23 images were recovered from the verified latest shared backup and matched every table against the captured owner snapshot. Failure evidence and consistent closed-app recovery archives remain private under `test-results/padgo-polish-2026-11-03-1793674858462/`. The owner-created ninth bill occurred during sign-in, not from the assistant's unpaid tests. All 14 original backups remain; the owner's ninth bill appended a fifteenth. No shared backup was deleted.
+
+The known previous APK was put back in place while 1.0.18 (19) is prepared. The recovered owner database is stopped and intact. A separate package `in.vgl.restaurant.polishcheck` has passed different-ledger inspection/cancel without changes, corrupted-checksum rejection, and explicit confirmed restore of complete images. Final fixed-APK installation evidence will be recorded in `docs/restaurant/padgo-polish-verification-2026-11-03.md`. Do not reinstall the withdrawn artifact.
+
+---
+
 # Startup, login and billing polish — 3 November 2026
 
 Scope: front-desk offline Android counter. No authentication algorithm, schema, `synchronous=FULL`, tax/receipt arithmetic, saved sale or backup format changes. Existing unrelated workspace work is retained. Local baseline snapshot precedes the phase commits; nothing is pushed.
