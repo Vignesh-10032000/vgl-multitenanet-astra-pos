@@ -1,4 +1,5 @@
 import { OwnerAccess } from "./access.js";
+import { workspaceText } from "./preferences.js";
 
 export async function createAccessUI({
   ledger,
@@ -13,42 +14,43 @@ export async function createAccessUI({
     form = document.querySelector("#access-form");
   let recovery = null,
     busy = false;
+  let firstShow = true;
+  function text(selector, key) {
+    const element = document.querySelector(selector);
+    element.dataset.i18n = `restaurant.${key}`;
+    element.textContent = workspaceText(key);
+  }
   async function show() {
     document.body.dataset.locked = "true";
     screen.hidden = false;
     const account = recovery
       ? await access.recoveryAccount(recovery.data)
       : await access.account();
-    document.querySelector("#access-title").textContent = recovery
-      ? "Continue from your backup"
-      : account
-        ? "Welcome back"
-        : "Set up your owner account";
+    text("#access-title", recovery ? "recoverTitle" : account ? "welcome" : "setupTitle");
     document.querySelector("#access-description").textContent = recovery
       ? `${recovery.billCount} saved bills · ${new Date(recovery.data.created_at).toLocaleString("en-IN")}. Sign in to replace this device's current ledger with this backup.`
       : account
-        ? "Sign in to open your restaurant workspace."
-        : "Create a username and password for this offline restaurant.";
+        ? workspaceText("signInHelp")
+        : workspaceText("setupHelp");
     document.querySelector("#access-confirm-row").hidden = Boolean(account);
     form.elements.confirm.required = !account;
     form.elements.password.autocomplete = account
       ? "current-password"
       : "new-password";
-    form.elements.username.value = account?.username || "";
-    form.elements.password.value = "";
-    form.elements.confirm.value = "";
-    document.querySelector("#access-submit").textContent = account
-      ? recovery
-        ? "Sign in & recover"
-        : "Sign in"
-      : "Create account & continue";
+    if (!firstShow) {
+      form.elements.username.value = account?.username || "";
+      form.elements.password.value = "";
+      form.elements.confirm.value = "";
+    }
+    firstShow = false;
+    text("#access-submit", account ? recovery ? "signInRecover" : "signIn" : "createAccount");
     document.querySelector("#access-error").textContent = "";
     form.hidden = false;
   }
   async function enter() {
     document.body.dataset.locked = "false";
-    screen.hidden = true;
-    await unlocked();
+    try { await unlocked(); screen.hidden = true; }
+    catch (error) { document.body.dataset.locked = "true"; throw error; }
   }
   form.addEventListener("submit", async (event) => {
     event.preventDefault();

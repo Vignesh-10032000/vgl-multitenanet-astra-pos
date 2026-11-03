@@ -5,9 +5,8 @@ import {
   isBillingSaving,
   selectBillingCustomer,
 } from "../src/vglpos/web/static/src/js/pos.js";
-import { createReporting } from "./reporting-ui.js";
 import { uiLabels as labels } from "./labels.js";
-import { initializePreferences, translateWorkspace, workspaceText } from "./preferences.js";
+import { translateWorkspace, workspaceText } from "./preferences.js";
 import "./style.css";
 import "./workspace-style.css";
 import { workspaceIcons, icon } from "./workspace-icons.js";
@@ -17,14 +16,13 @@ import {
   refreshIcons,
 } from "../src/vglpos/web/static/src/js/ui.js";
 import { createAccessUI } from "./access-ui.js";
-import { PersistentBackups } from "./backup-service.js";
 import { backupFolder } from "./backup-folder.js";
 import { closeDialog } from "../src/vglpos/web/static/src/js/ui.js";
 import { Capacitor } from "@capacitor/core";
 import menu from "../resources/menu-transcription.json";
 import defaults from "./store-defaults.json";
 import { Ledger } from "./repository.js";
-import { openDatabase, browserDatabase } from "./drivers.js";
+import { openDatabase } from "./drivers.js";
 import { ImageStore } from "./assets.js";
 import { installMenuPhotos, restoreMenuIllustrations } from "./menu-photo-install.js";
 import { installBrandLogo } from "./brand-logo.js";
@@ -53,12 +51,14 @@ let ledger,
 let billingReady = false;
 let reporting;
 let accessUI, backups;
+let workspaceReady, backgroundReady;
 async function reloadLocalData() {
   // Native plugin connections survive a WebView reload; close this one first.
   await ledger.exclusive(() => ledger.db.close());
   location.reload();
 }
 async function backupNow() {
+  if (!backups && backgroundReady) await backgroundReady;
   if (!backups) return;
   try {
     await backups.save();
@@ -67,6 +67,7 @@ async function backupNow() {
   }
 }
 async function findBackups(connect = false) {
+  await backgroundReady;
   if (connect) await backups.connect();
   const target = accessUI?.locked()
     ? $("#access-recovery-status")
@@ -110,15 +111,26 @@ function table(columns, rows) {
 }
 
 async function renderRestaurantIdentity() {
-  const logo = settings.logo ? await images.read(settings.logo) : null;
-  $("#store-name").textContent = settings.name;
-  $("#access-brand-name").textContent = settings.name;
+  const identity = settings;
+  const logo = identity.logo ? await images.read(identity.logo) : null;
+  if (settings !== identity) return renderRestaurantIdentity();
+  for (const selector of ["#store-name", "#access-brand-name"])
+    if ($(selector).textContent !== settings.name) $(selector).textContent = settings.name;
   $("#nav-logo").hidden = !logo;
-  if (logo) $("#nav-logo").src = logo;
-  $("#nav-menu-logo").innerHTML = !logo && settings.menu_logo ? menuLogo() : "";
-  $("#access-brand-logo").innerHTML = logo
-    ? `<img class="access-custom-logo" src="${e(logo)}" alt="Restaurant logo">`
-    : settings.menu_logo ? menuLogo() : "";
+  if (logo && $("#nav-logo").getAttribute("src") !== logo) $("#nav-logo").src = logo;
+  const fallback = !logo && settings.menu_logo ? menuLogo() : "";
+  if ($("#nav-menu-logo").innerHTML !== fallback) $("#nav-menu-logo").innerHTML = fallback;
+  const target = $("#access-brand-logo");
+  if (logo) {
+    if (target.querySelector(".access-custom-logo")?.getAttribute("src") !== logo)
+      target.innerHTML = `<img class="access-custom-logo" src="${e(logo)}" alt="">`;
+  } else if (target.innerHTML !== fallback) target.innerHTML = fallback;
+  if (document.title !== settings.name) document.title = settings.name;
+  try {
+    const cached = JSON.stringify({ name: settings.name, logo });
+    if (localStorage.getItem("restaurant.branding") !== cached)
+      localStorage.setItem("restaurant.branding", cached);
+  } catch (error) { console.warn("Branding cache unavailable", error); }
 }
 
 async function loadReference() {
@@ -519,7 +531,7 @@ function bind() {
       $("#backup-status").textContent = "Validating backup…";
       const source = await file.text();
       const { inspectBackup } = await import("./backup.js");
-      const data = await inspectBackup(source, () => browserDatabase());
+      const data = await inspectBackup(source, () => openDatabase({ validation: true }));
       pendingRestore = source;
       $("#restore-summary").textContent =
         `Validated: ${data.tables.sales.length} bills, ${data.tables.products.length} products, ${Object.keys(data.files).length} images. Created ${data.created_at}.`;
@@ -548,7 +560,7 @@ function bind() {
       await flushBillingDraft();
       const { restoreBackup } = await import("./backup.js");
       await restoreBackup(pendingRestore, ledger, images, () =>
-        browserDatabase(),
+        openDatabase({ validation: true }),
       );
       const owner = await ledger.localSetting("owner-access");
       if (owner) sessionStorage.setItem("owner-access", owner.verifier);
@@ -564,124 +576,124 @@ function bind() {
   });
   window.addEventListener("hashchange", () => route().catch(fail));
 }
-async function start() {
-  registerIcons({ ...posIcons, ...workspaceIcons });
-  await initializePreferences(async () => {
-    const page = document.body.dataset.page;
-    if (page === "products") await renderProducts();
-    if (page === "customers") renderCustomers();
-    await reporting?.refresh();
-  });
-  document.body.dataset.native = String(Capacitor.isNativePlatform());
-  ledger = new Ledger(await openDatabase());
-  await ledger.initialize(menu.items, defaults);
-  let photoSetupError = "", photosInstalled = 0, brandInstalled = false;
-  const photoFields = $$("#access-form input, #access-submit");
-  photoFields.forEach(field => { field.disabled = true; });
-  try {
-    brandInstalled = await installBrandLogo({ ledger, images });
-  } catch (error) {
-    photoSetupError += ` Restaurant logo could not be installed: ${error.message}. Reopen the app to retry.`;
-  }
-  settings = await ledger.settings();
-  await renderRestaurantIdentity();
-  try {
-    $("#access-description").textContent = "Preparing offline menu photos…";
-    photosInstalled = await installMenuPhotos({ledger, images, manifest:menuPhotos});
-    photosInstalled += await restoreMenuIllustrations({ledger, images, manifest:menuPhotoRestore});
-  } catch (error) {
-    // Optional photographs must never prevent access to the saved ledger.
-    photoSetupError += ` Menu photos could not be installed: ${error.message}. Your saved data is intact; reopen the app to retry.`;
-  }
+async function initializeWorkspace() {
+  window.restaurantStartupMark?.("5-workspace:start");
   await loadReference();
+  const { createReporting } = await import("./reporting-ui.js");
+  reporting = createReporting({
+    ledger, showReceipt,
+    correctSale: async id => { await showReceipt(id); openCorrection(); },
+    notify: toast, fail, storeName: () => settings.name,
+  });
+  await initializePos({ ledger, images, showReceipt: async id => {
+    await backupNow();
+    return showReceipt(id);
+  }, reprint });
+  billingReady = true;
   $("#menu-photo-credits").innerHTML = menuPhotoRefresh.assets.map(asset =>
     `<li><strong>${e(asset.slug.replaceAll("-", " "))}</strong> — ${e(asset.source.author)}. <a href="${e(asset.source.page_url)}" target="_blank" rel="noopener noreferrer">Original photograph</a> · <a href="${e(asset.source.license_url)}" target="_blank" rel="noopener noreferrer">${e(asset.source.license)}</a>. Resized and JPEG encoded; no subject crop.</li>`
   ).join("");
-  await initializePos({
-    ledger,
-    images,
-    showReceipt: async (id) => {
-      await backupNow();
-      return showReceipt(id);
-    },
-    reprint,
+  $$('[data-dialog-close]').forEach(button => button.addEventListener("click", () => {
+    if (!isBillingSaving()) closeDialog(button.closest("dialog"));
+  }));
+  $("#payment-dialog").addEventListener("cancel", event => {
+    if (isBillingSaving()) event.preventDefault();
   });
-  billingReady = true;
+  $("#storage-status").textContent = Capacitor.isNativePlatform() ? "Local SQLite ready" : "Browser preview · SQLite";
+  bind();
+  document.addEventListener("restaurant:language-changed", () => {
+    const page = document.body.dataset.page;
+    if (page === "products") renderProducts().catch(fail);
+    if (page === "customers") renderCustomers();
+    reporting.refresh().catch(fail);
+  });
   translateWorkspace();
-  $("#customer-name").placeholder = labels.namePlaceholder;
-  $("#customer-phone").placeholder = labels.phonePlaceholder;
-  $("#customer-city").placeholder = labels.cityPlaceholder;
-  reporting = createReporting({
-    ledger,
-    showReceipt,
-    correctSale: async (id) => {
-      await showReceipt(id);
-      openCorrection();
-    },
-    notify: toast,
-    fail,
-    storeName: () => settings.name,
-  });
-  backups = new PersistentBackups({
-    ledger,
-    images,
-    transport: backupFolder(),
-    makeDatabase: () => browserDatabase(),
-    status: (message) => {
+  refreshIcons();
+  window.restaurantStartupMark?.("5-workspace:end");
+}
+
+async function initializeBackground() {
+  let changed = false, assetError = false;
+  $("#access-startup-status").textContent = workspaceText("backgroundPreparing");
+  window.restaurantStartupMark?.("2-logo:start");
+  try { changed = await installBrandLogo({ ledger, images }); }
+  catch (error) { assetError = true; console.warn("Optional logo install failed", error); }
+  window.restaurantStartupMark?.("2-logo:end");
+  window.restaurantStartupMark?.("3-branding:start");
+  settings = await ledger.settings();
+  try { await renderRestaurantIdentity(); }
+  catch (error) { assetError = true; console.warn("Optional identity image failed", error); }
+  window.restaurantStartupMark?.("3-branding:end");
+  window.restaurantStartupMark?.("4-photos:start");
+  try {
+    changed = Boolean(await installMenuPhotos({ ledger, images, manifest: menuPhotos })) || changed;
+    changed = Boolean(await restoreMenuIllustrations({ ledger, images, manifest: menuPhotoRestore })) || changed;
+  } catch (error) { assetError = true; console.warn("Optional menu photos failed", error); }
+  window.restaurantStartupMark?.("4-photos:end");
+  await workspaceReady;
+  if (changed) await refreshBilling();
+  $("#access-startup-status").textContent = assetError ? workspaceText("backgroundFailed") : "";
+  window.restaurantStartupMark?.("6-backups:start");
+  const { PersistentBackups } = await import("./backup-service.js");
+  backups = new PersistentBackups({ ledger, images, transport: backupFolder(), makeDatabase: () => openDatabase({ validation: true }),
+    status: message => {
       $("#persistent-backup-status").textContent = message;
-      $("#backup-health").textContent = message.startsWith("Backup saved")
-        ? "Shared backup saved"
-        : message.startsWith("Connected")
-          ? "Backups connected"
-          : message.startsWith("Saving")
-            ? "Saving backup…"
-            : "Set up / check backups";
+      $("#backup-health").textContent = message.startsWith("Backup saved") ? "Shared backup saved"
+        : message.startsWith("Connected") ? "Backups connected"
+          : message.startsWith("Saving") ? "Saving backup…" : "Set up / check backups";
       $("#backup-health").title = message;
     },
   });
   await backups.initialize();
-  if ((photosInstalled || brandInstalled) && backups.connected) await backupNow();
-  document.querySelectorAll("[data-dialog-close]").forEach((button) => {
-    button.addEventListener("click", () => {
-      if (!isBillingSaving()) closeDialog(button.closest("dialog"));
-    });
-  });
-  document
-    .querySelector("#payment-dialog")
-    .addEventListener("cancel", (event) => {
-      if (isBillingSaving()) event.preventDefault();
-    });
-  $("#storage-status").textContent = Capacitor.isNativePlatform()
-    ? "Local SQLite ready"
-    : "Browser preview · SQLite";
-  bind();
+  $("#access-recover").disabled = false;
+  if (changed && backups.connected) await backupNow();
+  window.restaurantStartupMark?.("6-backups:end");
+  if (backups.connected && !(await ledger.snapshot()).sales.length && accessUI.locked())
+    // Do not await findBackups here: it waits for this background promise.
+    queueMicrotask(() => findBackups().catch(fail));
+}
+
+export async function start() {
+  window.restaurantStartupMark?.("1-core:start");
+  registerIcons({ ...posIcons, ...workspaceIcons });
+  document.body.dataset.native = String(Capacitor.isNativePlatform());
+  ledger = new Ledger(await openDatabase());
+  try { await ledger.initialize(menu.items, defaults); }
+  catch (error) {
+    try { await ledger.db.close(); } catch (closeError) { console.warn("Failed connection cleanup", closeError); }
+    throw error;
+  }
+  window.restaurantStartupMark?.("1-core:end");
+  window.restaurantStartupMark?.("7-access:start");
   accessUI = await createAccessUI({
     ledger,
     unlocked: async () => {
+      workspaceReady ||= initializeWorkspace();
+      await workspaceReady;
       await route();
-      if (photoSetupError) toast(photoSetupError);
     },
     recover: () => findBackups(true),
-    backedUp: backupNow,
-    beforeRecovery: flushBillingDraft,
+    // Schedule the existing complete backup without holding the sign-in form.
+    backedUp: () => { void backgroundReady?.then(backupNow).catch(fail); },
+    beforeRecovery: async () => { await workspaceReady; await flushBillingDraft(); },
     reload: reloadLocalData,
   });
-  refreshIcons();
-  photoFields.forEach(field => { field.disabled = false; });
-  if (
-    backups.connected &&
-    !(await ledger.snapshot()).sales.length &&
-    accessUI.locked()
-  )
-    await findBackups();
-  performance.mark("restaurant:ready");
+  $("#access-form").setAttribute("aria-busy", "false");
+  $("#access-submit").disabled = false;
+  window.restaurantStartupMark?.("7-access:end");
+  window.restaurantStartupMark?.("login-interactive");
+  // Yield a painted, interactive form before optional startup work.
+  backgroundReady = new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+    .then(initializeBackground);
+  backgroundReady.catch(error => {
+    console.error("Optional startup work failed", error);
+    $("#access-startup-status").textContent = workspaceText("backgroundFailed");
+  });
+  workspaceReady ||= new Promise(resolve => requestAnimationFrame(resolve)).then(initializeWorkspace);
+  workspaceReady.catch(error => {
+    $("#access-error").textContent = workspaceText("workspaceFailed");
+    console.error("Workspace initialization failed", error);
+  });
+  document.dispatchEvent(new Event("restaurant:access-ready"));
+  void Promise.allSettled([workspaceReady, backgroundReady]).then(() => performance.mark("restaurant:ready"));
 }
-start().catch((error) => {
-  $("#access-title").textContent = "Could not open local data";
-  $("#access-description").textContent =
-    `${error.message}. Keep app data intact and use a complete backup to recover.`;
-  $("#storage-status").textContent = "Local data could not open";
-  $("#cart-error").textContent =
-    `${error.message}. Do not clear app data. Restore a backup if needed.`;
-  fail(error);
-});

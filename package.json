@@ -33,6 +33,7 @@
     "@capacitor/android": "8.5.3",
     "@capacitor/core": "8.5.3",
     "@capacitor/filesystem": "8.1.5",
+    "@capacitor/splash-screen": "8.0.2",
     "@fontsource/inter": "^5.2.8",
     "@fontsource/noto-sans-tamil": "^5.2.8",
     "exceljs": "4.4.0",

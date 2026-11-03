@@ -46,6 +46,7 @@ export function originalBillingTemplate() {
         if (!dashboard || /\{%|\{\{/.test(dashboard))
           throw new Error("Dashboard content must be standalone HTML");
         return html
+          .replace("__RESTAURANT_NAME__", JSON.parse(readFileSync(resolve(import.meta.dirname, "store-defaults.json"), "utf8")).name.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]))
           .replace("<!-- ORIGINAL_DASHBOARD -->", dashboard)
           .replace("<!-- ORIGINAL_BILLING -->", content.slice(0, boundary))
           .replace(

@@ -12,20 +12,22 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://localhost; worker-src 'self' blob:; object-src 'none'; base-uri 'self'"
     />
-    <title>Restaurant POS</title>
-    <script type="module" src="./app.js"></script>
+    <title></title>
+    <script src="./startup-profile.js"></script>
+    <script type="module" src="./entry.js"></script>
   </head>
   <body data-page="pos" data-locked="true">
     <section
       id="access-screen"
       class="access-screen"
+      data-default-name="__RESTAURANT_NAME__"
       aria-labelledby="access-title"
     >
       <aside class="access-brand-panel">
         <div class="access-brand-heading">
           <div id="access-brand-logo"></div>
           <span class="access-wordmark" id="access-brand-name"
-            >Restaurant POS</span
+            ></span
           >
         </div>
         <div>
@@ -44,9 +46,9 @@
             ><i data-lucide="lock-keyhole"></i
           ></span>
           <p class="eyebrow">RESTAURANT WORKSPACE</p>
-          <h2 id="access-title">Opening your restaurant…</h2>
+          <h2 id="access-title" data-i18n="restaurant.welcome">Welcome back</h2>
           <p id="access-description"></p>
-          <form id="access-form" hidden>
+          <form id="access-form" aria-busy="true">
             <label for="access-username"
               >Username<input
                 id="access-username"
@@ -65,7 +67,7 @@
                 maxlength="128"
                 required
                 placeholder="Your password" /></label
-            ><label id="access-confirm-row" for="access-confirm"
+            ><label id="access-confirm-row" for="access-confirm" hidden
               >Confirm password<input
                 id="access-confirm"
                 name="confirm"
@@ -79,13 +81,17 @@
               id="access-submit"
               class="button button-primary"
               type="submit"
+              disabled
+              data-i18n="restaurant.gettingReady"
             >
-              Sign in
+              Getting ready…
             </button>
           </form>
+          <p id="access-startup-status" class="access-footnote" role="status"></p>
+          <button id="access-retry" type="button" class="button button-secondary" data-i18n="restaurant.retry" hidden>Retry</button>
           <div class="access-recovery">
             <span>Reinstalled the app?</span
-            ><button type="button" id="access-recover" class="text-button">
+            ><button type="button" id="access-recover" class="text-button" disabled>
               <i data-lucide="folder-open"></i>Find an existing backup
             </button>
             <p id="access-recovery-status" role="status"></p>
@@ -102,6 +108,7 @@
         </div>
       </div>
     </section>
+    <script src="./login-branding.js"></script>
     <a class="skip-link" href="#main-content">Skip to content</a>
     <div class="app-shell">
       <aside class="side-nav" aria-label="Primary navigation">

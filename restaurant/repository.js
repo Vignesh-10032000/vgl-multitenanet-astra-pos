@@ -42,6 +42,19 @@ export class Ledger {
   }
   async initialize(menu, defaults) {
     await this.db.exec("PRAGMA foreign_keys=ON;");
+    // A committed schema version is the source of truth. Warm opens perform no
+    // schema DDL or seed transaction; old/new ledgers use the unchanged path below.
+    const exists = await this.db.query("SELECT name FROM sqlite_master WHERE type='table' AND name='schema_versions'");
+    if (exists.length) {
+      const versions = await this.db.query("SELECT version FROM schema_versions");
+      if (versions.some(v => v.version > VERSION)) throw new Error("Database belongs to a newer app version");
+      if (versions.length === 1 && versions[0].version === VERSION) {
+        const current = await this._settings();
+        const setupReady = !defaults.gst_setup_revision || !defaults.tax_confirmed || current.gst_setup_revision;
+        const pricingReady = !defaults.gst_pricing_revision || current.gst_pricing_revision;
+        if (setupReady && pricingReady) return;
+      }
+    }
     await this.transaction(async () => {
       await this.db.exec(SCHEMA);
       const versions = await this.db.query(

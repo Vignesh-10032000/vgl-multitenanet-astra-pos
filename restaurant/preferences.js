@@ -5,6 +5,21 @@ import { uiLabels } from "./labels.js";
 import { refreshIcons } from "../src/vglpos/web/static/src/js/ui.js";
 
 const words = {
+  gettingReady: ["Getting ready…", "தயாராகிறது…"],
+  welcome: ["Welcome back", "மீண்டும் வருக"],
+  setupTitle: ["Set up your owner account", "உரிமையாளர் கணக்கை அமைக்கவும்"],
+  recoverTitle: ["Continue from your backup", "காப்பிலிருந்து தொடரவும்"],
+  signInHelp: ["Sign in to open your restaurant workspace.", "உணவகப் பணியிடத்தைத் திறக்க உள்நுழையவும்."],
+  setupHelp: ["Create a username and password for this offline restaurant.", "இந்த இணையமில்லா உணவகத்திற்கு பயனர்பெயரும் கடவுச்சொல்லும் உருவாக்கவும்."],
+  signIn: ["Sign in", "உள்நுழை"],
+  signInRecover: ["Sign in & recover", "உள்நுழைந்து மீட்டெடு"],
+  createAccount: ["Create account & continue", "கணக்கை உருவாக்கித் தொடரவும்"],
+  retry: ["Retry", "மீண்டும் முயற்சி"],
+  openFailed: ["Could not open local data", "உள்ளூர் தரவைத் திறக்க முடியவில்லை"],
+  openFailedHelp: ["Keep app data intact. Retry opening the database, or reconnect a complete backup after restarting.", "செயலித் தரவை அழிக்க வேண்டாம். மீண்டும் திறக்க முயலவும் அல்லது மறுதொடக்கத்திற்குப் பின் முழுக் காப்பை இணைக்கவும்."],
+  backgroundPreparing: ["Preparing offline images in the background…", "பின்னணியில் உள்ளூர் படங்கள் தயாராகின்றன…"],
+  backgroundFailed: ["Background setup needs attention. Your local data is retained; reopen to retry.", "பின்னணி அமைப்பைச் சரிபார்க்கவும். உள்ளூர் தரவு பாதுகாப்பாக உள்ளது; மீண்டும் திறந்து முயலவும்."],
+  workspaceFailed: ["Could not open the workspace. Reopen the app to retry; keep app data intact.", "பணியிடத்தைத் திறக்க முடியவில்லை. தரவை அழிக்காமல் செயலியை மீண்டும் திறந்து முயலவும்."],
   workspace: ["Restaurant workspace", "உணவகப் பணியிடம்"],
   name: ["Name", "பெயர்"],
   counter: ["Restaurant counter", "உணவகக் கவுன்டர்"],

@@ -1,5 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { get, set } from "idb-keyval";
+import { operationId } from "./domain.js";
 
 /** Browser preview uses actual SQLite WASM; only Android uses the durable native database. */
 export async function browserDatabase({ bytes, persist = false } = {}) {
@@ -63,21 +64,34 @@ export async function browserDatabase({ bytes, persist = false } = {}) {
   };
 }
 
-export async function openDatabase() {
-  if (!Capacitor.isNativePlatform()) return browserDatabase({ persist: true });
+export async function openDatabase({ validation = false } = {}) {
+  if (!Capacitor.isNativePlatform()) return browserDatabase({ persist: !validation });
   const { SQLiteConnection, CapacitorSQLite } = await import(
     "@capacitor-community/sqlite"
   );
   const sqlite = new SQLiteConnection(CapacitorSQLite);
+  return nativeDatabase(sqlite, { validation });
+}
+
+/** Same SQLite contract for the live ledger and isolated backup validation. */
+export async function nativeDatabase(sqlite, { validation = false } = {}) {
+  // Backup validation uses an isolated native database, never the live ledger.
+  const name = validation ? `validation_${operationId().replaceAll("-", "")}` : "restaurant";
   const db = await sqlite.createConnection(
-    "restaurant",
+    name,
     false,
     "no-encryption",
     1,
     false,
   );
-  await db.open();
-  await db.execute("PRAGMA foreign_keys=ON; PRAGMA synchronous=FULL;", false);
+  try {
+    await db.open();
+    await db.execute("PRAGMA foreign_keys=ON; PRAGMA synchronous=FULL;", false);
+  } catch (error) {
+    try { await sqlite.closeConnection(name, false); }
+    catch (closeError) { console.warn("Failed SQLite open cleanup", closeError); }
+    throw error;
+  }
   return {
     query: async (sql, values = []) =>
       (await db.query(sql, values)).values || [],
@@ -86,6 +100,9 @@ export async function openDatabase() {
     begin: () => db.beginTransaction(),
     commit: () => db.commitTransaction(),
     rollback: () => db.rollbackTransaction(),
-    close: () => sqlite.closeConnection("restaurant", false),
+    close: async () => {
+      try { if (validation) await db.delete(); }
+      finally { await sqlite.closeConnection(name, false); }
+    },
   };
 }

@@ -2,5 +2,6 @@
   "appId": "in.vgl.restaurant",
   "appName": "Restaurant POS",
   "webDir": "dist/restaurant",
-  "android": { "allowMixedContent": false, "backgroundColor": "#f3f7fd" }
+  "android": { "allowMixedContent": false, "backgroundColor": "#073f7d" },
+  "plugins": { "SplashScreen": { "launchAutoHide": false, "launchFadeOutDuration": 0, "backgroundColor": "#073f7d", "showSpinner": false } }
 }
