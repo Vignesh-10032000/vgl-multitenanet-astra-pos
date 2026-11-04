@@ -1,0 +1,16 @@
+{
+  "version_name": "1.0.20",
+  "version_code": 21,
+  "package": "in.vgl.restaurant",
+  "apk": "artifacts\\restaurant-pos-1.0.20-printer-fix-debug.apk",
+  "sha256": "cb4e7eb680931338ad46773eb1a3118dea198225cfdd99790af4154546489cb2",
+  "matched_web_assets": 68,
+  "same_signer_verified": true,
+  "receipt_node_tests": 4,
+  "browser_scenarios": 3,
+  "java_unit_tests": 19,
+  "android_lint_errors": 0,
+  "android_lint_warnings": 20,
+  "device_installed": false,
+  "physical_print_verified": false
+}

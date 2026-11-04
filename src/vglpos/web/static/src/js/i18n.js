@@ -2,6 +2,14 @@ const SUPPORTED_LOCALES = new Set(["en", "ta"]);
 const catalogues = new Map();
 let activeLocale = "en";
 
+/** Bundled catalogues let the Android counter translate without a Flask URL. */
+export function installCatalogue(locale, catalogue) {
+  catalogues.set(normalizedLocale(locale), catalogue);
+  activeLocale = normalizedLocale(locale);
+  document.documentElement.lang = activeLocale;
+  translateDocument();
+}
+
 function normalizedLocale(locale) {
   const candidate = String(locale || "").toLowerCase().split("-")[0];
   return SUPPORTED_LOCALES.has(candidate) ? candidate : "en";

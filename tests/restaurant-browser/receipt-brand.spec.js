@@ -55,6 +55,7 @@ test("RECEIPT-UI-01 owner reference hierarchy, new offline logo, exact GST and u
   await page.emulateMedia({ media: "screen" });
   await page.locator("#receipt-dialog [data-close]").click();
   await page.reload();
+  await unlockFixture(page);
   await page.locator("#last-receipt").click();
   await expect(receipt).toBeVisible();
   expect(await receipt.innerHTML()).toBe(html);

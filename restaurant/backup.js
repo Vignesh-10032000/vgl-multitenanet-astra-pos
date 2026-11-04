@@ -3,6 +3,7 @@ import { Ledger, validateImagePath, validateSettings } from "./repository.js";
 import { TABLES, VERSION, LEGACY_TABLES, V2_TABLES } from "./schema.js";
 import { billNumber, financialYear, payments, quote } from "./domain.js";
 import { ACCESS_KEY, backupAccount } from "./access.js";
+import { validateMenuType } from "./product-options.js";
 
 function validateTableShape(tables, schema) {
   if (Object.keys(tables).sort().join() !== Object.keys(schema).sort().join())
@@ -218,7 +219,10 @@ export async function inspectBackup(source, makeDatabase) {
         payments(a.amount_paise, refunds);
       }
     }
-    for (const draft of tables.drafts) JSON.parse(draft.value);
+    for (const draft of tables.drafts) {
+      const value = JSON.parse(draft.value);
+      if (draft.id.startsWith("local:product-menu:")) validateMenuType(value);
+    }
     return data;
   } finally {
     await db.close();

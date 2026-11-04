@@ -1,0 +1,34 @@
+rules:
+  - id: restaurant-no-dynamic-code
+    languages: [javascript]
+    severity: ERROR
+    message: Dynamic code execution is forbidden in the offline billing runtime.
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: new Function(...)
+      - pattern: document.write(...)
+  - id: restaurant-no-server-billing
+    languages: [javascript]
+    severity: ERROR
+    message: Converted billing must use local services instead of server or outbox APIs.
+    paths:
+      include: ["**/pos.js"]
+    pattern-either:
+      - pattern: apiJson(...)
+      - pattern: enqueueSale(...)
+      - pattern: fetch(...)
+  - id: restaurant-provider-success-after-close
+    languages: [java]
+    severity: ERROR
+    message: Resolve saved only after the provider stream has closed successfully.
+    pattern: |
+      try ($TYPE $STREAM = $OPEN) {
+        ...
+        $CALL.resolve(...);
+        ...
+      }
+  - id: restaurant-no-embedded-access-key
+    languages: [generic]
+    severity: ERROR
+    message: An access key must not be embedded in the local application.
+    pattern-regex: '\b(?:AKIA|ASIA)[A-Z0-9]{16}\b'

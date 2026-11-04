@@ -1,4 +1,5 @@
 import {
+  ArrowUpRight,
   CircleDot,
   CreditCard,
   Delete,
@@ -11,9 +12,12 @@ import {
   ShoppingCart,
   Trash2,
   UserPlus,
+  Utensils,
+  Wallet,
 } from "lucide";
 
 export const posIcons = {
+  ArrowUpRight,
   CircleDot,
   CreditCard,
   Delete,
@@ -26,4 +30,6 @@ export const posIcons = {
   ShoppingCart,
   Trash2,
   UserPlus,
+  Utensils,
+  Wallet,
 };

@@ -1038,11 +1038,9 @@ body:is([data-page="sales"], [data-page="reports"]) .section-toolbar h2 {
   font-weight: 600;
   color: var(--ink-muted);
 }
-.product-fields > label:nth-of-type(1),
-.product-fields > label:nth-of-type(5),
+.product-fields > .product-field-wide,
 .product-fields > .check,
-.product-fields > p,
-.product-fields > label:nth-of-type(4) {
+.product-fields > p {
   grid-column: 1/-1;
 }
 .product-fields input:not([type="checkbox"]) {
@@ -1389,3 +1387,7 @@ body:is([data-page="sales"], [data-page="reports"]) .section-toolbar h2 {
 #access-screen :is(input, button):focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 #access-submit[disabled] { opacity: 0.75; cursor: wait; }
 #access-error:not(:empty) { padding: 12px; border: 1px solid var(--danger); border-radius: 8px; background: var(--danger-soft); color: var(--danger); font-size: 14px; }
+.menu-type-filter { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
+.menu-type-filter select { min-height: 44px; min-width: 130px; }
+.product-browser > .menu-type-filter { padding-inline: 12px; }
+.fixed-portion-help { grid-column: 1 / -1; margin: 0; color: var(--ink-muted); font-size: 13px; }

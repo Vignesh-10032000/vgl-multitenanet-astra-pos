@@ -9,6 +9,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle state) {
         registerPlugin(RestaurantDocumentsPlugin.class);
         registerPlugin(RestaurantBackupPlugin.class);
+        registerPlugin(RestaurantPrinterPlugin.class);
         super.onCreate(state);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }

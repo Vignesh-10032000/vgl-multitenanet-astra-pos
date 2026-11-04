@@ -62,8 +62,12 @@ export function menuLogo() {
   return `<span class="menu-logo"><img src="${menuReference}" alt="Restaurant Tamil logo from supplied menu"></span>`;
 }
 
-export async function printSavedReceipt(sale, images) {
+export async function printSavedReceipt(sale, images, { transport = "usb" } = {}) {
   const html = await receiptHTML(sale, images);
+  if (Capacitor.getPlatform() === "android" && transport !== "service") {
+    const { printDirectReceipt } = await import("./direct-print.js");
+    return printDirectReceipt(html);
+  }
   let target = document.querySelector("#print-document");
   if (!target) {
     target = document.createElement("div");

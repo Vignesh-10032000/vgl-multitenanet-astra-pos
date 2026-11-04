@@ -1,0 +1,58 @@
+{
+  "checked_at": "2026-10-28T07:51:12.146303+05:30",
+  "servers": [
+    {
+      "name": "context7",
+      "url": "https://mcp.context7.com/mcp",
+      "initialize_ok": true,
+      "tools_list_ok": true,
+      "tools": [
+        "resolve-library-id",
+        "query-docs"
+      ],
+      "server_info": {
+        "name": "Context7",
+        "title": "Context7",
+        "version": "4.4.3",
+        "websiteUrl": "https://context7.com",
+        "description": "Context7 provides up-to-date documentation and code examples for libraries and frameworks.",
+        "icons": [
+          {
+            "src": "https://context7.com/context7-icon-green.svg",
+            "mimeType": "image/svg+xml",
+            "sizes": [
+              "any"
+            ]
+          },
+          {
+            "src": "https://context7.com/context7-icon-green.png",
+            "mimeType": "image/png",
+            "sizes": [
+              "512x512"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "capacitor",
+      "url": "https://capacitor-mcp.capawesome.io/mcp",
+      "initialize_ok": true,
+      "tools_list_ok": true,
+      "tools": [
+        "search_docs",
+        "get_doc_page",
+        "list_plugins",
+        "list_blog_posts"
+      ],
+      "server_info": {
+        "name": "capacitor-mcp",
+        "title": "Capacitor MCP Server by Capawesome",
+        "version": "1.0.0",
+        "description": "Unofficial MCP server for the Capacitor documentation, maintained by Capawesome.",
+        "websiteUrl": "https://capawesome.io/docs/ai/mcp/capacitor/"
+      },
+      "search_ok": true
+    }
+  ]
+}

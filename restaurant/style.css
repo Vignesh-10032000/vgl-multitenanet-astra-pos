@@ -253,6 +253,9 @@ th.amount {
 .receipt-dialog {
   max-width: 580px;
 }
+.receipt-dialog .dialog-actions {
+  flex-wrap: wrap;
+}
 #receipt-preview {
   background: #e7ecf2;
   padding: 20px;
@@ -497,7 +500,7 @@ body[data-page="pos"] .page-content {
   padding-bottom: 12px;
 }
 .product-browser {
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
 }
 .category-strip {
   display: flex;

@@ -30,6 +30,7 @@ import menuPhotos from "./menu-photos.json";
 import menuPhotoRefresh from "./menu-photo-refresh.json";
 import menuPhotoRestore from "./menu-photo-restore.json";
 import { paise, decimal, money, dayAt, operationId } from "./domain.js";
+import { kilograms, portionKilograms } from "./product-options.js";
 import {
   escapeHTML as e,
   menuLogo,
@@ -179,6 +180,10 @@ async function showReceipt(id) {
   currentSale = await ledger.sale(id);
   lastSaleId = id;
   $("#receipt-preview").innerHTML = await receiptHTML(currentSale, images);
+  const androidPrinting = Capacitor.getPlatform() === "android";
+  $("#print-receipt").textContent = androidPrinting ? "Print to USB" : "Print / reprint";
+  $("#print-service-receipt").hidden = !androidPrinting;
+  $("#printer-setup").hidden = !androidPrinting;
   $("#print-status").textContent =
     "Saved locally. Print / reprint uses this saved bill; it does not create another sale.";
   if (!$("#receipt-dialog").open) dialog("#receipt-dialog");
@@ -187,14 +192,16 @@ async function showReceipt(id) {
 async function renderProducts() {
   const search = $("#product-search").value.toLowerCase();
   const matches = products.filter((p) =>
-    `${p.name} ${p.portion} ${p.category}`.toLowerCase().includes(search),
+    `${p.name} ${p.portion} ${p.category}`.toLowerCase().includes(search) &&
+    (!$("#product-menu-filter").value || p.menu_type === $("#product-menu-filter").value),
   );
   $("#product-list").innerHTML = table(
-    [workspaceText("menuProduct"), labels.portion, workspaceText("category"), workspaceText("price"), labels.status, ""],
+    [workspaceText("menuProduct"), labels.portion, workspaceText("category"), workspaceText("menuType"), workspaceText("price"), labels.status, ""],
     matches.map((p) => [
       `<span class="food-cell"><span class="product-list-visual">${p.image ? `<img data-menu-photo="${e(p.id)}" alt="" loading="lazy" decoding="async">` : icon("utensils")}</span><strong>${e(p.name)}</strong></span>`,
       e(p.portion),
       e(p.category),
+      workspaceText(p.menu_type),
       money(p.price_paise),
       p.active ? workspaceText("activeStatus") : workspaceText("inactive"),
       `<button type="button" class="button button-secondary" data-edit-product="${e(p.id)}">${e(workspaceText("edit"))}</button>`,
@@ -217,6 +224,10 @@ function editProduct(p = {}) {
   for (const k of ["id", "name", "portion", "category"])
     f.elements[k].value = p[k] || "";
   f.elements.portion.value = p.portion || "Standard";
+  f.elements.kilograms.value = portionKilograms(p.portion);
+  f.elements.kilograms.setCustomValidity("");
+  f.elements.portion.readOnly = Boolean(f.elements.kilograms.value);
+  f.elements.menu_type.value = p.menu_type || $("#product-menu-filter").value || "regular";
   f.elements.price.value = p.price_paise ? decimal(p.price_paise) : "";
   f.elements.active.checked = p.id ? Boolean(p.active) : true;
   $("#product-error").textContent = "";
@@ -329,6 +340,16 @@ function bind() {
     }),
   );
   $("#product-search").addEventListener("input", renderProducts);
+  $("#product-menu-filter").addEventListener("change", renderProducts);
+  $('#product-form [name="kilograms"]').addEventListener("input", (event) => {
+    const portion = $("#product-form").elements.portion;
+    const value = event.target.value.trim();
+    portion.readOnly = Boolean(value);
+    event.target.setCustomValidity("");
+    if (!value) { portion.value = "Standard"; return; }
+    try { portion.value = `${kilograms(value)} kg`; }
+    catch (error) { event.target.setCustomValidity(error.message); }
+  });
   $("#customer-search").addEventListener("input", renderCustomers);
   $("#last-receipt").addEventListener("click", () => reprint().catch(fail));
   $("#add-product").addEventListener("click", () => editProduct());
@@ -412,15 +433,20 @@ function bind() {
       b.disabled = false;
     }
   });
-  $("#print-receipt").addEventListener("click", async () => {
-    const b = $("#print-receipt");
-    b.disabled = true;
+  for (const printButton of [$("#print-receipt"), $("#print-service-receipt")]) printButton.addEventListener("click", async () => {
+    const transport = printButton.id === "print-service-receipt" ? "service" : "usb";
+    const sale = currentSale;
+    $("#print-receipt").disabled = true;
+    $("#print-service-receipt").disabled = true;
+    $("#print-status").textContent = transport === "service"
+      ? "Checking ESC POS USB Print Service. Select that service, not Save as PDF."
+      : "Printing saved bill through USB. Allow USB access if Android asks.";
     let attempt;
     try {
-      attempt = await ledger.printAttempt(currentSale.id);
-      const result = await printSavedReceipt(currentSale, images);
+      attempt = await ledger.printAttempt(sale.id);
+      const result = await printSavedReceipt(sale, images, { transport });
       await ledger.printAttempt(
-        currentSale.id,
+        sale.id,
         result.state,
         result.detail || "",
         attempt,
@@ -433,7 +459,7 @@ function bind() {
       if (attempt)
         try {
           await ledger.printAttempt(
-            currentSale.id,
+            sale.id,
             "failed",
             String(error.message).slice(0, 500),
             attempt,
@@ -444,7 +470,16 @@ function bind() {
       $("#print-status").textContent =
         `Bill remains saved. Printing failed: ${error.message}`;
     } finally {
-      b.disabled = false;
+      $("#print-receipt").disabled = false;
+      $("#print-service-receipt").disabled = false;
+    }
+  });
+  $("#printer-setup").addEventListener("click", async () => {
+    try {
+      const { openPrinterSetup } = await import("./direct-print.js");
+      await openPrinterSetup();
+    } catch (error) {
+      $("#print-status").textContent = `Printer setup: ${error.message}`;
     }
   });
   $("#correct-bill").addEventListener("click", openCorrection);

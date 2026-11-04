@@ -214,6 +214,13 @@
               aria-label="Search products"
               placeholder="Search name, portion or category"
             />
+            <label class="menu-type-filter"><span data-i18n="restaurant.menuType">Menu type</span>
+              <select id="product-menu-filter">
+                <option value="" data-i18n="common.all">All</option>
+                <option value="regular" data-i18n="restaurant.regular">Regular</option>
+                <option value="parcel" data-i18n="restaurant.parcel">Parcel</option>
+              </select>
+            </label>
             <div id="product-list" class="table-scroll"></div>
           </section>
           <section data-view="customers" hidden>
@@ -539,10 +546,11 @@
             <section class="data-tools">
               <h2>80 mm receipt printing</h2>
               <p>
-                Uses Android’s print dialog. Select ESC POS USB Print Service
-                and the tested 80 mm printer. Submitted jobs still require
-                checking paper output; reprint a saved bill after a printer
-                problem.
+                On Android, use Print to USB for the connected RP 3230 and allow
+                USB access when asked. Android print service is a separate option:
+                enable ESC POS USB Print Service by Looped Labs and configure
+                80 mm / 203 DPI. Save as PDF does not print to the USB printer.
+                Check paper before reprinting; the bill remains saved.
               </p>
             </section>
           </section>
@@ -581,26 +589,35 @@
           </button>
         </div>
         <div class="dialog-body form-stack product-fields">
-          <input type="hidden" name="id" /><label
+          <input type="hidden" name="id" /><label class="product-field-wide"
             >Name<input name="name" required maxlength="160" /></label
           ><label
             >Portion / variant<input
               name="portion"
               required
               maxlength="80" /></label
-          ><label
+          ><label><span data-i18n="restaurant.kilograms">Kilograms per portion (optional)</span>
+            <input name="kilograms" inputmode="decimal" maxlength="8" placeholder="e.g. 0.5 or 1" />
+          </label
+          ><label class="product-field-wide"
             >Category<input
               name="category"
               required
               maxlength="80"
               list="category-options" /></label
           ><datalist id="category-options"></datalist
+          ><label><span data-i18n="restaurant.menuType">Menu type</span>
+            <select name="menu_type" required>
+              <option value="regular" data-i18n="restaurant.regular">Regular</option>
+              <option value="parcel" data-i18n="restaurant.parcel">Parcel</option>
+            </select></label
           ><label
             >Selling price ₹<input
               name="price"
               inputmode="decimal"
               required /></label
-          ><label
+          ><p class="fixed-portion-help" data-i18n="restaurant.fixedPortionHelp">Selling price is for this whole portion. Each size has its own fixed price; change it using Edit.</p
+          ><label class="product-field-wide"
             >Photo (stored locally)<input
               name="photo"
               type="file"
@@ -699,7 +716,11 @@
       <div class="dialog-actions">
         <button class="button button-secondary" id="correct-bill">
           Cancel / Return</button
-        ><button class="button button-primary" id="print-receipt">
+          ><button class="button button-secondary" id="printer-setup" hidden>
+            Printer setup</button
+          ><button class="button button-secondary" id="print-service-receipt" hidden>
+            Android print service</button
+          ><button class="button button-primary" id="print-receipt">
           Print / reprint
         </button>
       </div>

@@ -1,44 +1,54 @@
 import {
-  ArrowUpRight, BadgeIndianRupee, CalendarDays, ChevronRight, IndianRupee,
-  LockKeyhole, Receipt, RefreshCw, TriangleAlert, Wallet,
+  ArrowUpRight,
+  BadgeIndianRupee,
+  ChartNoAxesCombined,
+  IndianRupee,
+  Plus,
+  Receipt,
+  RotateCcw,
+  Smartphone,
+  Wallet,
 } from "lucide";
-
 import "../css/dashboard.css";
-
-import { whenAppReady } from "./app.js";
-import { renderRevenueBars } from "./charts.js";
-import { localDateIso, scaledInteger } from "./data.js";
-import { formatDate, formatInteger, formatMoney, formatQuantity, localizedName, t } from "./i18n.js";
-import { apiJson, getSession } from "./session.js";
-import { clearChildren, createBadge, createCell, registerIcons } from "./ui.js";
-
-registerIcons({ ArrowUpRight, BadgeIndianRupee, CalendarDays, ChevronRight, IndianRupee,
-  LockKeyhole, Receipt, RefreshCw, TriangleAlert, Wallet });
-
-let loadSequence = 0;
-let lastOverview = null;
+import { scaledInteger } from "./data.js";
+import { formatMoney, formatQuantity, localizedName } from "./i18n.js";
+import {
+  clearChildren,
+  createBadge,
+  createCell,
+  registerIcons,
+  refreshIcons,
+} from "./ui.js";
+import { decimal } from "../../../../../../restaurant/domain.js";
+import {
+  uiLabels as labels,
+  metrics,
+  paymentLabel,
+} from "../../../../../../restaurant/labels.js";
 
 function setMetric(name, value) {
-  const element = document.querySelector(`[data-metric="${name}"] .metric-value`);
-  if (!element) return;
-  element.classList.remove("skeleton-line");
-  element.textContent = value;
+  const element = document.querySelector(
+    `[data-metric="${name}"] .metric-value`,
+  );
+  if (element) element.textContent = value;
 }
-
-function emptyList(container, key) {
+function emptyList(container) {
   clearChildren(container);
   const message = document.createElement("p");
   message.className = "dashboard-placeholder";
-  message.textContent = t(key);
+  message.textContent = labels.empty;
   container.append(message);
 }
-
 function renderProducts(products) {
   const container = document.querySelector("#top-products");
-  emptyList(container, "dashboard.no_top_products");
+  emptyList(container);
   if (!products.length) return;
   clearChildren(container);
-  const largest = scaledInteger(products[0].revenue, 2);
+  const largest = products.reduce(
+    (n, p) =>
+      scaledInteger(p.revenue, 2) > n ? scaledInteger(p.revenue, 2) : n,
+    0n,
+  );
   products.forEach((product, index) => {
     const row = document.createElement("div");
     row.className = "dashboard-ranked-item";
@@ -49,11 +59,14 @@ function renderProducts(products) {
     const name = document.createElement("strong");
     name.textContent = localizedName(product);
     const quantity = document.createElement("small");
-    quantity.textContent = t("dashboard.units_sold", { quantity: formatQuantity(product.quantity) });
+    quantity.textContent = `${formatQuantity(product.quantity)} × ${product.portion}`;
     const progress = document.createElement("div");
     progress.className = "dashboard-progress";
     const fill = document.createElement("span");
-    const level = largest > 0n ? Number(scaledInteger(product.revenue, 2) * 10n / largest) : 0;
+    const level =
+      largest > 0n
+        ? Number((scaledInteger(product.revenue, 2) * 10n) / largest)
+        : 0;
     fill.className = `dashboard-progress-${Math.max(0, Math.min(10, level))}`;
     progress.append(fill);
     detail.append(name, quantity, progress);
@@ -63,160 +76,134 @@ function renderProducts(products) {
     container.append(row);
   });
 }
-
-function renderStock(products) {
-  const container = document.querySelector("#low-stock");
-  emptyList(container, "dashboard.stock_healthy");
-  if (!products.length) return;
-  clearChildren(container);
-  products.forEach((product) => {
-    const row = document.createElement("div");
-    row.className = "dashboard-stock-item";
-    const detail = document.createElement("div");
-    const name = document.createElement("strong");
-    name.textContent = localizedName(product);
-    const sku = document.createElement("small");
-    sku.textContent = product.sku;
-    detail.append(name, sku);
-    const quantity = scaledInteger(product.quantity, 3);
-    const status = createBadge(quantity <= 0n ? t("dashboard.out_of_stock") : t("dashboard.stock_left", {
-      quantity: formatQuantity(product.quantity),
-    }), quantity <= 0n ? "danger" : "warning");
-    row.append(detail, status);
-    container.append(row);
-  });
-}
-
-function renderPayments(payments) {
+function renderPayments(totals) {
   const container = document.querySelector("#payment-mix");
-  emptyList(container, "dashboard.no_payments");
-  if (!payments.length) return;
   clearChildren(container);
-  payments.forEach((payment) => {
+  for (const method of ["cash", "upi"]) {
     const row = document.createElement("div");
     row.className = "dashboard-payment-item";
     const detail = document.createElement("div");
     const name = document.createElement("strong");
-    name.textContent = payment.payment_method;
-    const count = document.createElement("small");
-    count.textContent = t("dashboard.payment_bills", { count: formatInteger(payment.transaction_count) });
-    detail.append(name, count);
+    name.textContent = paymentLabel(method);
+    const subtitle = document.createElement("small");
+    subtitle.textContent = metrics[`${method}_paise`].ta;
+    detail.append(name, subtitle);
     const amount = document.createElement("b");
-    amount.textContent = formatMoney(payment.amount);
+    amount.textContent = formatMoney(decimal(totals[`${method}_paise`]));
     row.append(detail, amount);
     container.append(row);
-  });
+  }
 }
-
-function renderSales(sales) {
+function renderSales(sales, showReceipt) {
   const body = document.querySelector("#recent-sales");
   clearChildren(body);
   if (!sales.length) {
-    const row = document.createElement("tr");
-    const cell = createCell(t("sales.empty_title"));
-    cell.colSpan = 7;
+    const row = document.createElement("tr"),
+      cell = createCell(labels.empty);
+    cell.colSpan = 6;
     row.append(cell);
     body.append(row);
     return;
   }
   sales.forEach((sale) => {
-    const row = document.createElement("tr");
-    const invoice = createCell(sale.invoice_number);
-    if (getSession()?.user?.permissions?.includes("sale.view")) {
-      const link = document.createElement("a");
-      link.href = `/receipt/${sale.id}`;
-      link.textContent = sale.invoice_number;
-      invoice.replaceChildren(link);
-    }
-    row.append(invoice, createCell(sale.customer_name || t("dashboard.walk_in")));
-    const quantity = createCell(formatQuantity(sale.item_quantity));
-    quantity.classList.add("numeric");
-    row.append(quantity, createCell(formatDate(sale.created_at, {
-      month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-    })), createCell(sale.payment_method));
+    const row = document.createElement("tr"),
+      invoice = document.createElement("td"),
+      button = document.createElement("button");
+    button.type = "button";
+    button.className = "text-button";
+    button.textContent = sale.bill_number;
+    button.addEventListener("click", () => showReceipt(sale.id));
+    invoice.append(button);
     const status = document.createElement("td");
-    status.append(createBadge(sale.sale_status, sale.sale_status === "COMPLETED" ? "success" : "danger"));
-    const amount = createCell(formatMoney(sale.net_amount));
-    amount.classList.add("numeric");
-    row.append(status, amount);
+    status.append(
+      createBadge(
+        sale.has_void
+          ? labels.cancelled
+          : sale.correction_count
+            ? labels.returned
+            : labels.saved,
+        sale.correction_count ? "warning" : "success",
+      ),
+    );
+    row.append(
+      invoice,
+      createCell(JSON.parse(sale.customer)?.name || "Walk-in"),
+      createCell(
+        new Date(sale.created_at).toLocaleString("en-IN", {
+          timeZone: "Asia/Kolkata",
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      ),
+      createCell(paymentLabel(sale.method)),
+      status,
+      createCell(formatMoney(decimal(sale.total_paise))),
+    );
     body.append(row);
   });
 }
-
-function renderOverview(overview) {
-  const summary = overview.summary;
-  const amounts = {
-    net: summary.net_amount, week: overview.week_sales, month: overview.month_sales,
-    average: overview.average_bill, cgst: summary.cgst_amount, sgst: summary.sgst_amount,
-    igst: summary.igst_amount, cess: summary.cess_amount, discount: summary.discount_amount,
-  };
-  Object.entries(amounts).forEach(([key, value]) => setMetric(key, formatMoney(value)));
-  const tax = [summary.cgst_amount, summary.sgst_amount, summary.igst_amount, summary.cess_amount]
-    .reduce((total, value) => total + scaledInteger(value, 2), 0n);
-  setMetric("tax", formatMoney(`${tax / 100n}.${String(tax % 100n).padStart(2, "0")}`));
-  setMetric("bills", formatInteger(summary.total_bills));
-  setMetric("products", formatInteger(overview.total_products));
-  setMetric("customers", formatInteger(overview.total_customers));
-  setMetric("low_stock", formatInteger(overview.low_stock_count));
-  renderRevenueBars(document.querySelector("#revenue-chart"), overview.revenue);
-  renderProducts(overview.top_products);
-  renderStock(overview.low_stock);
-  renderPayments(overview.payment_mix);
-  renderSales(overview.recent_sales);
-}
-
-async function loadDashboard() {
-  const requestSequence = ++loadSequence;
-  const content = document.querySelector("#dashboard-content");
-  const button = document.querySelector("#dashboard-refresh");
-  const error = document.querySelector("#dashboard-error");
-  const selectedDate = document.querySelector("#dashboard-date").value || localDateIso();
-  content.setAttribute("aria-busy", "true");
-  button.disabled = true;
-  error.classList.add("is-hidden");
-  try {
-    const overview = await apiJson(`/api/v1/reports/dashboard?on_date=${encodeURIComponent(selectedDate)}`, {
-      signal: AbortSignal.timeout(20000),
-    });
-    if (requestSequence !== loadSequence) return;
-    lastOverview = overview;
-    renderOverview(overview);
-  } catch {
-    if (requestSequence !== loadSequence) return;
-    error.querySelector("span").textContent = t(lastOverview ? "dashboard.refresh_failed" : "dashboard.unavailable");
-    error.classList.remove("is-hidden");
-    if (!lastOverview) {
-      document.querySelectorAll(".metric-value").forEach((element) => {
-        element.classList.remove("skeleton-line");
-        element.textContent = "—";
-      });
-      for (const selector of ["#revenue-chart", "#top-products", "#low-stock", "#payment-mix"]) {
-        emptyList(document.querySelector(selector), "dashboard.data_unavailable");
-      }
-      const row = document.createElement("tr");
-      const cell = createCell(t("dashboard.data_unavailable"));
-      cell.colSpan = 7;
-      row.append(cell);
-      document.querySelector("#recent-sales").replaceChildren(row);
-    }
-  } finally {
-    if (requestSequence === loadSequence) {
-      content.setAttribute("aria-busy", "false");
-      button.disabled = false;
-    }
-  }
-}
-
-whenAppReady(() => {
-  document.querySelector("#dashboard-date").value = localDateIso();
-  document.querySelector("#dashboard-date").addEventListener("change", loadDashboard);
-  document.querySelector("#dashboard-refresh").addEventListener("click", loadDashboard);
-  document.querySelector("#day-close-button")?.addEventListener("click", () => {
-    location.href = "/pos?shiftClose=1";
+export function renderDashboard(report, showReceipt, storeName) {
+  registerIcons({
+    ArrowUpRight,
+    BadgeIndianRupee,
+    ChartNoAxesCombined,
+    IndianRupee,
+    Plus,
+    Receipt,
+    RotateCcw,
+    Smartphone,
+    Wallet,
   });
-  loadDashboard();
-});
-
-document.addEventListener("vgl:locale-changed", () => {
-  if (lastOverview) renderOverview(lastOverview);
-});
+  document.querySelector("#dashboard-brand").textContent = storeName;
+  document.querySelector("#dashboard-heading").textContent =
+    labels.overviewHeading;
+  document.querySelector("#dashboard-subtitle").textContent =
+    labels.overviewHint;
+  const grid = document.querySelector("#dashboard-metrics");
+  clearChildren(grid);
+  for (const [key, label] of Object.entries(metrics)) {
+    const card = document.createElement("article");
+    card.className = "metric-card";
+    card.dataset.metric = key;
+    const icon = document.createElement("div");
+    icon.className = "metric-icon";
+    const glyph = document.createElement("i");
+    glyph.dataset.lucide = label.icon;
+    icon.append(glyph);
+    const copy = document.createElement("div"),
+      en = document.createElement("p"),
+      ta = document.createElement("p"),
+      value = document.createElement("strong");
+    en.className = "metric-label-en";
+    en.textContent = label.en;
+    ta.className = "metric-label-ta";
+    ta.lang = "ta";
+    ta.textContent = label.ta;
+    value.className = "metric-value";
+    copy.append(en, ta, value);
+    if (label.helper) {
+      const helper = document.createElement("small");
+      helper.textContent = label.helper;
+      copy.append(helper);
+    }
+    card.append(icon, copy);
+    grid.append(card);
+    setMetric(
+      key,
+      key === "bills"
+        ? String(report.totals[key])
+        : formatMoney(decimal(report.totals[key])),
+    );
+  }
+  renderProducts(
+    report.top_items.map((p) => ({ ...p, revenue: decimal(p.matched_paise) })),
+  );
+  renderPayments(report.totals);
+  renderSales(report.invoices.slice(-5).reverse(), showReceipt);
+  document
+    .querySelector("#dashboard-content")
+    .setAttribute("aria-busy", "false");
+  refreshIcons();
+}

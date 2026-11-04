@@ -1,0 +1,23 @@
+{
+  "checked_at": "2026-10-28T07:57:27.178917+05:30",
+  "original_local_path": "D:\\vgl pos",
+  "original_local_branch": "codex/landing-upgrade-published",
+  "original_local_head": "c6e39137ed0c84b431596a6d0d237d7b2ecdb66b",
+  "linked_repository": "https://github.com/Vignesh-10032000/vgl-multitenanet-astra-pos.git",
+  "original_local_remote_name": "astra",
+  "linked_remote_head": "c6e39137ed0c84b431596a6d0d237d7b2ecdb66b",
+  "new_project_path": "D:\\vgl-restaurant-pos",
+  "new_project_head": "c6e39137ed0c84b431596a6d0d237d7b2ecdb66b",
+  "new_project_branch": "codex/restaurant-offline",
+  "all_three_commits_match": true,
+  "original_local_tracked_diff": "",
+  "original_local_untracked_status": [
+    "?? .antigravity/",
+    "?? .serena/",
+    "?? run_localhost.bat",
+    "?? scripts/run_local.py"
+  ],
+  "original_origin_is_different_repository": true,
+  "copied_untracked_original_extras": false,
+  "application_conversion_implemented": false
+}

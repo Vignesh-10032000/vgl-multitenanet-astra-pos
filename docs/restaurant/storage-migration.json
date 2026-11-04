@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-29T21:27:45.1962507+05:30",
+  "moved": [
+    {
+      "source": "C:\\Users\\L E N O V O\\AppData\\Local\\ms-playwright",
+      "destination": "D:\\vgl-restaurant-pos\\.tools\\playwright",
+      "files": 1281,
+      "bytes": 1458095097,
+      "already_moved": true
+    },
+    {
+      "source": "C:\\Users\\L E N O V O\\AppData\\Local\\Android\\Sdk",
+      "destination": "D:\\vgl-restaurant-pos\\.tools\\android-sdk",
+      "files": 27945,
+      "bytes": 626964034
+    },
+    {
+      "source": "C:\\Users\\L E N O V O\\.android",
+      "destination": "D:\\vgl-restaurant-pos\\.tools\\android-user",
+      "files": 219,
+      "bytes": 242654998
+    }
+  ],
+  "c_free_before": 2321825792,
+  "c_free_after": 3261366272,
+  "d_free_after": 13751001088,
+  "initial_inspection_c_free_bytes": 872693760,
+  "copied_files_sha256_verified": true,
+  "compatibility_links_verified": true,
+  "scope": "POS tools and caches only; source already on D; shared installed Windows/Codex applications unchanged",
+  "moved_total_file_bytes": 2327714129,
+  "post_move_browser_tests": 13,
+  "post_move_restaurant_node_tests": 29,
+  "post_move_android_build_lint_unit_checks_passed": true
+}

@@ -1,0 +1,18 @@
+{
+  "version_name": "1.0.21",
+  "version_code": 22,
+  "package": "in.vgl.restaurant",
+  "apk": "artifacts\\restaurant-pos-1.0.21-usb-asset-fix-debug.apk",
+  "sha256": "379924522bdccfb4653b67564c0ff0127dce1c837dee5bec1a86f0c30bafa4d1",
+  "matched_web_assets": 68,
+  "same_signer_verified": true,
+  "receipt_node_tests": 4,
+  "distinct_browser_scenarios": 3,
+  "browser_note": "Two passed in broad run; reload receipt test passed after explicit startup-ready wait was added.",
+  "java_unit_tests": 22,
+  "new_resource_policy_tests": 3,
+  "android_lint_errors": 0,
+  "android_lint_warnings": 20,
+  "device_installed": false,
+  "physical_print_verified": false
+}

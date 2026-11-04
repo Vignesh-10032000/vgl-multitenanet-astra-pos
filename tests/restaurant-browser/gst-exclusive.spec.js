@@ -50,6 +50,8 @@ test("GST-EXCLUSIVE-UI-01 fresh menu adds GST through cash/split payments, saved
   await page.emulateMedia({ media: "screen" });
   await page.locator("#receipt-dialog [data-close]").click();
   await page.reload();
+  // The static shell paints before the local workspace binds its actions.
+  await expect(page.locator("#storage-status")).toContainText("SQLite");
   await page.locator("#last-receipt").click();
   await expect(receipt).toBeVisible();
   expect(await receipt.innerHTML()).toBe(receiptHTML);

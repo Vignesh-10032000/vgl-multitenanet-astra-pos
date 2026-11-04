@@ -1,0 +1,79 @@
+{
+  "checked_at": "2026-10-28T07:57:27.178917+05:30",
+  "project_skills": [
+    {
+      "name": "android-cli",
+      "path": ".agents/skills/android-cli",
+      "source_repository": "https://github.com/android/skills",
+      "installed_from_ref": "main",
+      "skill_sha256": "2d35bb178b30581a9d4a31c30cf4895861a095863a9d8434a134fd10c2fca0b3",
+      "file_count": 1
+    },
+    {
+      "name": "capacitor-app-development",
+      "path": ".agents/skills/capacitor-app-development",
+      "source_repository": "https://github.com/capawesome-team/skills",
+      "installed_from_ref": "main",
+      "skill_sha256": "4989660ae114278e2c5a3f744e309c989474104fa759a6812e6780b5daf692bd",
+      "file_count": 19
+    },
+    {
+      "name": "capacitor-mcp",
+      "path": ".agents/skills/capacitor-mcp",
+      "source_repository": "https://github.com/capawesome-team/skills",
+      "installed_from_ref": "main",
+      "skill_sha256": "32a6576f9dda1c06810ca87ef98a4c70e4aeffe2696e37a757e4f0171ba4047c",
+      "file_count": 2
+    },
+    {
+      "name": "capacitor-plugin-development",
+      "path": ".agents/skills/capacitor-plugin-development",
+      "source_repository": "https://github.com/capawesome-team/skills",
+      "installed_from_ref": "main",
+      "skill_sha256": "ffa4fb426a2809163f4038443fd7996e57dbc41638eaff2f9a547a1ffb2f2e9c",
+      "file_count": 9
+    },
+    {
+      "name": "testing-setup",
+      "path": ".agents/skills/testing-setup",
+      "source_repository": "https://github.com/android/skills",
+      "installed_from_ref": "main",
+      "skill_sha256": "5aefde63e4617071b227d3cea250d7aa772a192145cf93b0133fd1c8a7bd4a9e",
+      "file_count": 5
+    }
+  ],
+  "skill_scope": "project-local .agents/skills; refresh by starting a new project chat",
+  "new_project_mcp_config": ".codex/config.toml",
+  "documentation_mcp_endpoints": [
+    "https://mcp.context7.com/mcp",
+    "https://capacitor-mcp.capawesome.io/mcp"
+  ],
+  "existing_global_mcp_entries_observed": [
+    "context7",
+    "serena",
+    "playwright",
+    "chrome-devtools"
+  ],
+  "global_mcp_configuration_changed": false,
+  "node_version": "24.12.0",
+  "npm_version": "11.6.2",
+  "android_sdk_path": "C:\\Users\\L E N O V O\\AppData\\Local\\Android\\Sdk",
+  "adb_version": "1.0.41 / platform-tools 36.0.0",
+  "adb_on_path": false,
+  "java_on_path": false,
+  "java_anywhere_on_machine": "not exhaustively searched",
+  "android_sdk_platforms": [
+    "android-36"
+  ],
+  "android_build_tools": [
+    "35.0.0",
+    "36.1.0"
+  ],
+  "new_sdk_or_jdk_installed": false,
+  "native_device_test_run": false,
+  "registry_candidates_not_installed": {
+    "@capacitor/core": "8.5.3",
+    "@capacitor-community/sqlite": "8.1.1",
+    "exceljs": "4.4.0"
+  }
+}

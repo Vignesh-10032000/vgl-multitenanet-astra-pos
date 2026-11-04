@@ -1,4 +1,5 @@
 import { SCHEMA, TABLES, VERSION, PAYMENT_SCHEMA, migrateGstPricing } from "./schema.js";
+import { fixedKgPortion, productMenuType, validateMenuType } from "./product-options.js";
 import {
   billNumber,
   dateBounds,
@@ -214,16 +215,19 @@ export class Ledger {
     });
   }
   products() {
-    return this.exclusive(() =>
-      this.db.query("SELECT * FROM products ORDER BY category,name,portion"),
-    );
+    return this.exclusive(async () => {
+      const products = await this.db.query("SELECT * FROM products ORDER BY category,name,portion");
+      const rows = await this.db.query("SELECT id,value FROM drafts WHERE id LIKE 'local:product-menu:%'");
+      const types = new Map(rows.map(row => [row.id.slice("local:product-menu:".length), validateMenuType(JSON.parse(row.value))]));
+      return products.map(product => ({ ...product, menu_type: types.get(product.id) ?? productMenuType(product) }));
+    });
   }
   saveProduct(input) {
     return this.transaction(async () => {
       const p = {
         id: input.id || this.uuid(),
         name: text(input.name, "Name", true),
-        portion: text(input.portion, "Portion", true, 80),
+        portion: text(fixedKgPortion(input.kilograms, input.portion), "Portion", true, 80),
         category: text(input.category, "Category", true, 80),
         price_paise: integer(input.price_paise, "Price", 1),
         image: input.image || null,
@@ -234,6 +238,12 @@ export class Ledger {
         "INSERT INTO products VALUES(?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,portion=excluded.portion,category=excluded.category,price_paise=excluded.price_paise,image=excluded.image,active=excluded.active",
         Object.values(p),
       );
+      // Keep catalogue options in the existing backed-up local metadata store.
+      // Both writes share this transaction; legacy product/sale columns stay intact.
+      if (input.menu_type !== undefined)
+        await this.db.run("INSERT OR REPLACE INTO drafts(id,value) VALUES(?,?)", [
+          `local:product-menu:${p.id}`, JSON.stringify(validateMenuType(input.menu_type)),
+        ]);
       return p;
     });
   }

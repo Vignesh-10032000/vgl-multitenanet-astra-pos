@@ -13,13 +13,32 @@ build/
 
 # Local databases
 *.db
+*.db-*
+*.sqlite
+*.sqlite-*
 *.sqlite3
+*.sqlite3-*
 instance/
+
+# Signing identities and private restaurant source/reference attachments
+*.keystore
+*.jks
+/resources/
+/.codex/
+/.serena/
 
 # Tool caches / test output
 node_modules/
 test-results/
 playwright-report/
+.tools/
+android/.gradle/
+android/local.properties
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+.playwright-mcp/
+artifacts/
 .pytest_cache/
 .pytest-*/
 .mypy_cache/

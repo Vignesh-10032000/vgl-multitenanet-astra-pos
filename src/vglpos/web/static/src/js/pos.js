@@ -196,11 +196,10 @@ function productTile(product) {
 function renderProducts() {
   const grid = document.querySelector("#pos-product-grid");
   const empty = document.querySelector("#pos-products-empty");
-  const filtered = state.selectedCategory
-    ? state.products.filter(
-        (product) => String(product.category_id) === state.selectedCategory,
-      )
-    : state.products;
+  const menuType = document.querySelector("#billing-menu-filter").value;
+  const filtered = state.products.filter(product =>
+    (!state.selectedCategory || String(product.category_id) === state.selectedCategory) &&
+    (!menuType || product.menu_type === menuType));
   clearChildren(grid);
   grid.setAttribute("aria-busy", "false");
   grid.classList.toggle("is-hidden", filtered.length === 0);
@@ -813,6 +812,7 @@ async function discardHeldBill(id) {
 
 
 function initializeEvents() {
+  document.querySelector("#billing-menu-filter").addEventListener("change", renderProducts);
   document
     .querySelector("#pos-product-grid")
     .addEventListener("click", (event) => {
